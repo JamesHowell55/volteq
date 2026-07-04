@@ -87,7 +87,13 @@ function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
     </div>`).join('');
 
   const root = document.createElement('div');
-  root.style.cssText = 'position:fixed; left:-10000px; top:0; width:750px; background:#ffffff; color:#14170F; font-family:Arial,Helvetica,sans-serif;';
+  // No custom position/z-index here: html2pdf.js clones this element as-is
+  // into its OWN off-screen overlay (position:fixed; left:-100000px) before
+  // rendering, so any position/z-index we set ourselves is preserved onto
+  // the clone and fights with html2pdf's own wrapper, which was silently
+  // producing a blank capture. Keep this element plain/normal-flow; it's
+  // never actually shown, since it's cloned rather than measured in place.
+  root.style.cssText = 'width:750px; background:#ffffff; color:#14170F; font-family:Arial,Helvetica,sans-serif;';
   root.innerHTML = `
     <div style="padding:28px 32px;">
       <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid ${accent}; padding-bottom:10px; margin-bottom:14px;">
@@ -115,21 +121,23 @@ function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
 
 export async function exportReportToPdf(spec: ReportSpec): Promise<void> {
   const html2pdf = (await import('html2pdf.js')).default;
+  // Deliberately not appended to the document: html2pdf.js's own toContainer()
+  // step clones this element into ITS OWN off-screen overlay and measures the
+  // clone's dimensions there, so this element never needs to be attached or
+  // laid out itself — attaching it (or giving it any position/visibility
+  // trick of our own) previously caused a blank render, since our styling
+  // carried over onto the clone and fought with html2pdf's own wrapper.
   const container = buildPrintableDom(spec);
-  document.body.appendChild(container);
-  try {
-    const options = {
-      margin: 0,
-      filename: buildPdfFilename(spec.tabName),
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, backgroundColor: '#ffffff', windowWidth: 750 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css'] },
-    };
-    // `pagebreak` is a real html2pdf.js option not present in its bundled .d.ts
-    const worker = html2pdf();
-    await worker.set(options as unknown as Parameters<typeof worker.set>[0]).from(container).save();
-  } finally {
-    document.body.removeChild(container);
-  }
+  const options = {
+    margin: 0,
+    filename: buildPdfFilename(spec.tabName),
+    windowWidth: 750,
+    image: { type: 'jpeg', quality: 0.95 },
+    html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['css'] },
+  };
+  // `windowWidth`/`pagebreak` are real html2pdf.js options not present in its bundled .d.ts
+  const worker = html2pdf();
+  await worker.set(options as unknown as Parameters<typeof worker.set>[0]).from(container).save();
 }
