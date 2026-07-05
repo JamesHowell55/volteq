@@ -5,7 +5,7 @@ export interface ThemeState {
   accentHex: string;
 }
 
-export const DEFAULT_ACCENT = '#5DCAA5'; // Voltaic Labs teal 200
+export const DEFAULT_ACCENT = '#5DCAA5'; // Voltaic teal 200
 const STORAGE_KEY = 'ec-theme';
 
 export const HEX_PATTERN = /^#(?:[0-9a-fA-F]{3}){1,2}$/;

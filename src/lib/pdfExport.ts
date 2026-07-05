@@ -35,7 +35,7 @@ export function buildPdfFilename(tabName: string, date: Date = new Date()): stri
   const d = pad(date.getDate());
   const hh = pad(date.getHours());
   const mm = pad(date.getMinutes());
-  return `${y}${m}${d}_${hh}_${mm}_VoltaicLabs_${tabName}.pdf`;
+  return `${y}${m}${d}_${hh}_${mm}_Voltaic_${tabName}.pdf`;
 }
 
 function escapeHtml(s: string): string {
@@ -98,7 +98,7 @@ function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
     <div style="padding:28px 32px;">
       <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid ${accent}; padding-bottom:10px; margin-bottom:14px;">
         <div>
-          <div style="font-size:12px; font-weight:700; letter-spacing:0.05em; color:${accent};">VOLTAIC LABS</div>
+          <div style="font-size:12px; font-weight:700; letter-spacing:0.05em; color:${accent};">VOLTAIC</div>
           <div style="font-size:16px; font-weight:700; margin-top:2px;">${escapeHtml(spec.pageTitle)}</div>
         </div>
         <div style="font-size:9.5px; color:#797D74; text-align:right;">Generated ${escapeHtml(timestamp)}</div>
