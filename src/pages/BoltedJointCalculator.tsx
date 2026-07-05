@@ -150,6 +150,11 @@ export default function BoltedJointCalculator() {
   const [nutTorqueOverride, setNutTorqueOverride] = useState<number | ''>('');
   const [insertTorqueOverride, setInsertTorqueOverride] = useState<number | ''>('');
 
+  const [includeThermalEffects, setIncludeThermalEffects] = useState(false);
+  const [assemblyTempC, setAssemblyTempC] = useState(20);
+  const [operatingTempC, setOperatingTempC] = useState(80);
+  const [boltCteOverridePerC, setBoltCteOverridePerC] = useState(12.0);
+
   const size = useMemo(() => getFastenerSize(sizeId) ?? ALL_SIZES[0], [sizeId]);
   const propertyClass = useMemo(() => {
     if (propertyClassId === 'custom') {
@@ -236,11 +241,13 @@ export default function BoltedJointCalculator() {
       scatterConvention,
       externalAxialLoadN,
       safetyFactorTarget,
+      thermal: advancedMode && includeThermalEffects ? { assemblyTempC, operatingTempC, boltThermalExpansionPerC: boltCteOverridePerC * 1e-6 } : null,
     }),
     [
       mode, size, headType, propertyClass, sections, advancedMode, effectiveHeadWasher, effectiveNutWasher, includeSpringWasherCompliance,
       threadEngagementMode, effectiveNut, effectiveThreadedInsert, engagementLengthMm, threadFrictionMu, bearingFrictionMu,
       targetPreloadN, targetTorqueNm, snugTorqueNm, additionalAngleDeg, tighteningMethod, scatterConvention, externalAxialLoadN, safetyFactorTarget,
+      includeThermalEffects, assemblyTempC, operatingTempC, boltCteOverridePerC,
     ]
   );
 
@@ -307,6 +314,21 @@ export default function BoltedJointCalculator() {
       issue: 'The compression cone grows wider than a clamped member\'s outer diameter at some point.',
       guidance: 'Not a hard failure — treat the stiffness result as approximate, or increase the clamped sections\' outer diameter for a tighter estimate.',
       severity: 'warn',
+    });
+  }
+  if (result.thermalResult && !result.thermalResult.overallPass) {
+    const t = result.thermalResult;
+    const reasons: string[] = [];
+    if (!t.boltStressPass) reasons.push(`bolt SF ${fmt(t.boltStressSafetyFactor, 2)}`);
+    if (!t.memberBearingPass.every(Boolean)) reasons.push('a bearing face SF');
+    if (t.jointSeparates) reasons.push('joint separation');
+    failureGuidance.push({
+      issue: `Fails at operating temperature (${fmt(operatingTempC, 0)}°C) though it passes at assembly temperature: ${reasons.join(', ')}.`,
+      guidance:
+        t.deltaForceN > 0
+          ? 'Heating increases clamping force here (members expand more than the bolt) — reduce assembly preload/torque, use a bolt material with a CTE closer to the clamped members, or re-check the bolt/bearing stress margin at the hot condition.'
+          : 'Cooling reduces clamping force here (the bolt contracts more than the members, or vice versa) — increase assembly preload/torque to keep enough clamping force at the cold condition, or choose materials with closer CTEs.',
+      severity: 'fail',
     });
   }
   const failingChecks = failureGuidance.filter((f) => f.severity === 'fail');
@@ -389,8 +411,17 @@ export default function BoltedJointCalculator() {
         result: `Required ≥ ${fmt(result.threadShearCheck.requiredEngagementMm, 1)} mm, provided ${fmt(result.threadShearCheck.providedEngagementMm, 1)} mm — ${result.threadShearCheck.pass ? 'pass' : 'fail'}`,
       });
     }
+    if (result.thermalResult) {
+      const t = result.thermalResult;
+      steps.push({
+        title: `Thermal effects: assembly ${fmt(assemblyTempC, 0)}°C → operating ${fmt(operatingTempC, 0)}°C`,
+        formula: 'ΔF = k_combined · [ΔT·Σ(α_member,i·t_i) − ΔT·α_bolt·L_grip]',
+        substitution: `ΔT=${fmt(operatingTempC - assemblyTempC, 0)}°C, α_bolt=${fmt(boltCteOverridePerC, 2)}×10⁻⁶/°C, k_combined=${fmt(result.combinedStiffnessNPerMm, 0)} N/mm`,
+        result: `ΔF = ${fmt(t.deltaForceN, 0)} N → preload at operating temp = ${fmt(t.preloadN, 0)} N; bolt SF = ${fmt(t.boltStressSafetyFactor, 2)} — ${t.overallPass ? 'pass' : 'fail'}`,
+      });
+    }
     return steps;
-  }, [result, mode, size, threadFrictionMu, bearingFrictionMu, snugTorqueNm, additionalAngleDeg, tighteningMethod, scatterConvention, externalAxialLoadN, sections, safetyFactorTarget]);
+  }, [result, mode, size, threadFrictionMu, bearingFrictionMu, snugTorqueNm, additionalAngleDeg, tighteningMethod, scatterConvention, externalAxialLoadN, sections, safetyFactorTarget, assemblyTempC, operatingTempC, boltCteOverridePerC]);
 
   const bomRows: ReportRow[] = useMemo(() => {
     const rows: ReportRow[] = [{ label: 'Bolt', value: buildBoltPartNumber(size, headType, propertyClass.label) }];
@@ -445,8 +476,21 @@ export default function BoltedJointCalculator() {
           { label: 'Joint separation margin', value: `${fmt(result.jointSeparationMarginN, 0)} N` },
         ],
       },
+      ...(result.thermalResult
+        ? [
+            {
+              heading: `Thermal effects (assembly ${fmt(assemblyTempC, 0)}°C → operating ${fmt(operatingTempC, 0)}°C)`,
+              rows: [
+                { label: 'Preload change (ΔF)', value: `${result.thermalResult.deltaForceN >= 0 ? '+' : ''}${fmt(result.thermalResult.deltaForceN, 0)} N` },
+                { label: 'Preload at operating temp', value: `${fmt(result.thermalResult.preloadN, 0)} N` },
+                { label: 'Bolt SF at operating temp', value: fmt(result.thermalResult.boltStressSafetyFactor, 2) },
+                { label: 'Passes at operating temp', value: result.thermalResult.overallPass ? 'Yes' : 'No' },
+              ],
+            },
+          ]
+        : []),
     ],
-    [result]
+    [result, assemblyTempC, operatingTempC]
   );
 
   const handleExportPdf = () => {
@@ -874,6 +918,38 @@ export default function BoltedJointCalculator() {
               </div>
             )}
           </div>
+
+          {advancedMode && (
+            <div className="card">
+              <div className="card-title">
+                <span>
+                  <span className="step-num">6</span>Thermal effects
+                  <InfoTooltip>If the bolt and clamped parts are assembled at one temperature and operate at another, and they expand by different amounts (different CTE), the joint's clamping force changes — heating usually tightens a steel-bolted aluminium joint further, while cooling can loosen it. Enable this to check both conditions.</InfoTooltip>
+                </span>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: 'var(--text-2)', fontWeight: 600, marginBottom: includeThermalEffects ? '0.85rem' : 0 }}>
+                <input type="checkbox" checked={includeThermalEffects} onChange={(e) => setIncludeThermalEffects(e.target.checked)} style={{ width: 'auto' }} />
+                Include thermal expansion effects
+              </label>
+              {includeThermalEffects && (
+                <div className="grid grid-2">
+                  <div className="field">
+                    <label>Assembly temperature (°C)</label>
+                    <input autoComplete="off" type="number" value={assemblyTempC} onChange={(e) => setAssemblyTempC(Number(e.target.value))} />
+                  </div>
+                  <div className="field">
+                    <label>Operating temperature (°C)</label>
+                    <input autoComplete="off" type="number" value={operatingTempC} onChange={(e) => setOperatingTempC(Number(e.target.value))} />
+                  </div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label>Bolt CTE override (×10⁻⁶/°C)</label>
+                    <input autoComplete="off" type="number" min={0.1} step={0.1} value={boltCteOverridePerC} onChange={(e) => setBoltCteOverridePerC(Number(e.target.value))} />
+                    <span className="hint">Default 12.0 (typical steel fastener) — override if the bolt is a different material.</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* RIGHT COLUMN — results */}
@@ -969,6 +1045,41 @@ export default function BoltedJointCalculator() {
               )}
             </div>
           </div>
+
+          {result.thermalResult && (
+            <div className="card">
+              <div className="card-title">
+                <span>
+                  Thermal effects: without vs. with
+                  <InfoTooltip>Compares the joint at assembly temperature (no thermal effect — the "Results" above) against operating temperature. Both need to pass for the design to be OK across its full temperature range.</InfoTooltip>
+                </span>
+                <span className={`tag`} style={{ background: result.thermalResult.overallPass ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: result.thermalResult.overallPass ? 'var(--pos)' : 'var(--neg)', borderColor: 'transparent' }}>
+                  {result.thermalResult.overallPass ? 'passes at operating temp' : 'fails at operating temp'}
+                </span>
+              </div>
+              <div className="result-grid">
+                <div className="result-tile">
+                  <div className="label">Preload change (ΔF)</div>
+                  <div className={`value ${result.thermalResult.deltaForceN >= 0 ? 'pos' : 'warn'}`}>{result.thermalResult.deltaForceN >= 0 ? '+' : ''}{fmt(result.thermalResult.deltaForceN, 0)}<span className="unit">N</span></div>
+                  <div className="hint">{result.thermalResult.deltaForceN >= 0 ? 'heating tightens the joint' : 'heating loosens the joint'}</div>
+                </div>
+                <div className="result-tile">
+                  <div className="label">Preload at operating temp</div>
+                  <div className="value">{fmt(result.thermalResult.preloadN, 0)}<span className="unit">N</span></div>
+                  <div className="hint">vs. {fmt(result.preloadN, 0)} N at assembly</div>
+                </div>
+                <div className="result-tile">
+                  <div className="label">Bolt SF at operating temp</div>
+                  <div className={`value ${result.thermalResult.boltStressPass ? 'pos' : 'neg'}`}>{fmt(result.thermalResult.boltStressSafetyFactor, 2)}</div>
+                  <div className="hint">vs. {fmt(result.boltStressSafetyFactor, 2)} at assembly</div>
+                </div>
+                <div className="result-tile">
+                  <div className="label">Joint separates at operating temp?</div>
+                  <div className={`value ${result.thermalResult.jointSeparates ? 'neg' : 'pos'}`}>{result.thermalResult.jointSeparates ? 'Yes' : 'No'}</div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="card">
             <div className="card-title">Joint cross-section</div>

@@ -55,9 +55,16 @@ export interface ClampedSectionInput {
   materialId: ClampedMaterialId;
   customE?: number; // GPa, used when materialId === 'custom'
   customYield?: number; // MPa
+  thermalExpansionPerC?: number; // 1/°C, advanced-mode override of the preset CTE
   thicknessMm: number;
   holeDiameterMm: number;
   outerDiameterMm: number;
+}
+
+export interface ThermalInput {
+  assemblyTempC: number;
+  operatingTempC: number;
+  boltThermalExpansionPerC: number; // 1/°C
 }
 
 export interface JointInput {
@@ -90,6 +97,8 @@ export interface JointInput {
 
   externalAxialLoadN: number;
   safetyFactorTarget: number;
+
+  thermal?: ThermalInput | null;
 }
 
 export interface FrustumSegment {
@@ -150,17 +159,103 @@ export interface BoltedJointResult {
 
   geometryValidity: GeometryValidity;
   overallPass: boolean;
+
+  thermalResult: {
+    deltaForceN: number;
+    preloadN: number;
+    boltStressSafetyFactor: number;
+    boltStressPass: boolean;
+    memberBearingSafetyFactor: number[];
+    memberBearingPass: boolean[];
+    jointSeparates: boolean;
+    overallPass: boolean;
+  } | null;
 }
 
 function resolveSectionMaterial(section: ClampedSectionInput): ClampedMaterial {
   const preset = getClampedMaterial(section.materialId);
-  // customE/customYield override the preset regardless of materialId (not just for
-  // the dedicated 'custom' entry) — this is what powers the page's advanced-mode
-  // per-material property override.
+  // customE/customYield/thermalExpansionPerC override the preset regardless of
+  // materialId (not just for the dedicated 'custom' entry) — this is what powers
+  // the page's advanced-mode per-material property override.
   return {
     ...preset,
     elasticModulusGPa: section.customE ?? preset.elasticModulusGPa,
     yieldStrengthMPa: section.customYield ?? preset.yieldStrengthMPa,
+    thermalExpansionPerC: section.thermalExpansionPerC ?? preset.thermalExpansionPerC,
+  };
+}
+
+interface StressCheckResult {
+  boltForceUnderLoadN: number;
+  memberForceUnderLoadN: number;
+  jointSeparationMarginN: number;
+  jointSeparates: boolean;
+  boltTensileStressMPa: number;
+  boltStressSafetyFactor: number;
+  boltStressPass: boolean;
+  memberBearingStressMPa: number[];
+  memberBearingSafetyFactor: number[];
+  memberBearingPass: boolean[];
+}
+
+// Shared by the baseline (assembly-temperature) solve and, when thermal effects are
+// enabled, a second pass at the thermally-adjusted preload — both need exactly the
+// same stress/bearing checks against a different F.
+function computeStressChecks(
+  preloadN: number,
+  externalAxialLoadN: number,
+  jointStiffnessC: number,
+  clampedSections: ClampedSectionInput[],
+  headBearingDiameterMm: number,
+  nutBearingDiameterMm: number,
+  threadEngagementMode: ThreadEngagementMode,
+  proofStrengthMPa: number,
+  tensileStressAreaMm2: number,
+  safetyFactorTarget: number
+): StressCheckResult {
+  const boltForceUnderLoadN = preloadN + jointStiffnessC * externalAxialLoadN;
+  const memberForceUnderLoadN = preloadN - (1 - jointStiffnessC) * externalAxialLoadN;
+  const jointSeparationMarginN = memberForceUnderLoadN;
+  const jointSeparates = memberForceUnderLoadN <= 0;
+
+  const boltTensileStressMPa = boltForceUnderLoadN / tensileStressAreaMm2;
+  const boltStressSafetyFactor = proofStrengthMPa / boltTensileStressMPa;
+  const boltStressPass = boltStressSafetyFactor >= safetyFactorTarget;
+
+  const memberBearingStressMPa: number[] = [];
+  const memberBearingSafetyFactor: number[] = [];
+  const memberBearingPass: boolean[] = [];
+
+  clampedSections.forEach((section, i) => {
+    const isHeadFace = i === 0;
+    const isNutFace = i === clampedSections.length - 1 && threadEngagementMode === 'nutAndBolt';
+    if (!isHeadFace && !isNutFace) {
+      memberBearingStressMPa.push(NaN);
+      memberBearingSafetyFactor.push(NaN);
+      memberBearingPass.push(true);
+      return;
+    }
+    const bearingDiameterMm = isHeadFace ? headBearingDiameterMm : nutBearingDiameterMm;
+    const bearingAreaMm2 = (Math.PI / 4) * (bearingDiameterMm * bearingDiameterMm - section.holeDiameterMm * section.holeDiameterMm);
+    const stress = boltForceUnderLoadN / bearingAreaMm2;
+    const material = resolveSectionMaterial(section);
+    const sf = material.yieldStrengthMPa / stress;
+    memberBearingStressMPa.push(stress);
+    memberBearingSafetyFactor.push(sf);
+    memberBearingPass.push(sf >= safetyFactorTarget);
+  });
+
+  return {
+    boltForceUnderLoadN,
+    memberForceUnderLoadN,
+    jointSeparationMarginN,
+    jointSeparates,
+    boltTensileStressMPa,
+    boltStressSafetyFactor,
+    boltStressPass,
+    memberBearingStressMPa,
+    memberBearingSafetyFactor,
+    memberBearingPass,
   };
 }
 
@@ -419,40 +514,67 @@ export function solveBoltedJoint(input: JointInput): BoltedJointResult {
 
   const preloadPercentOfProof = (preloadN / (propertyClass.proofStrengthMPa * size.tensileStressAreaMm2)) * 100;
 
-  const boltForceUnderLoadN = preloadN + jointStiffnessC * input.externalAxialLoadN;
-  const memberForceUnderLoadN = preloadN - (1 - jointStiffnessC) * input.externalAxialLoadN;
-  const jointSeparationMarginN = memberForceUnderLoadN;
-  const jointSeparates = memberForceUnderLoadN <= 0;
+  const baseline = computeStressChecks(
+    preloadN,
+    input.externalAxialLoadN,
+    jointStiffnessC,
+    clampedSections,
+    headBearingDiameterMm,
+    nutBearingDiameterMm,
+    input.threadEngagementMode,
+    propertyClass.proofStrengthMPa,
+    size.tensileStressAreaMm2,
+    input.safetyFactorTarget
+  );
+  const {
+    boltForceUnderLoadN,
+    memberForceUnderLoadN,
+    jointSeparationMarginN,
+    jointSeparates,
+    boltTensileStressMPa,
+    boltStressSafetyFactor,
+    boltStressPass,
+    memberBearingStressMPa,
+    memberBearingSafetyFactor,
+    memberBearingPass,
+  } = baseline;
 
-  const boltTensileStressMPa = boltForceUnderLoadN / size.tensileStressAreaMm2;
-  const boltStressSafetyFactor = propertyClass.proofStrengthMPa / boltTensileStressMPa;
-  const boltStressPass = boltStressSafetyFactor >= input.safetyFactorTarget;
-
-  const memberBearingStressMPa: number[] = [];
-  const memberBearingSafetyFactor: number[] = [];
-  const memberBearingPass: boolean[] = [];
-
-  clampedSections.forEach((section, i) => {
-    const isHeadFace = i === 0;
-    // The nut-side bearing face only exists in nutAndBolt mode — a tapped or
-    // threaded-insert joint has no discrete bearing face there (the reaction is
-    // distributed along the engaged threads, covered instead by threadShearCheck).
-    const isNutFace = i === clampedSections.length - 1 && input.threadEngagementMode === 'nutAndBolt';
-    if (!isHeadFace && !isNutFace) {
-      memberBearingStressMPa.push(NaN);
-      memberBearingSafetyFactor.push(NaN);
-      memberBearingPass.push(true);
-      return;
-    }
-    const bearingDiameterMm = isHeadFace ? headBearingDiameterMm : nutBearingDiameterMm;
-    const bearingAreaMm2 = (Math.PI / 4) * (bearingDiameterMm * bearingDiameterMm - section.holeDiameterMm * section.holeDiameterMm);
-    const stress = boltForceUnderLoadN / bearingAreaMm2;
-    const material = resolveSectionMaterial(section);
-    const sf = material.yieldStrengthMPa / stress;
-    memberBearingStressMPa.push(stress);
-    memberBearingSafetyFactor.push(sf);
-    memberBearingPass.push(sf >= input.safetyFactorTarget);
-  });
+  // Thermal effects: differential expansion between the bolt and clamped stack
+  // (assembly -> operating temperature) adds/removes clamping force via the same
+  // combined-stiffness relationship used for the turn-of-nut angle effect. Standard
+  // bolted-joint thermal-loading treatment (VDI 2230's own approach), not a novel
+  // derivation.
+  let thermalResult: BoltedJointResult['thermalResult'] = null;
+  if (input.thermal) {
+    const deltaT = input.thermal.operatingTempC - input.thermal.assemblyTempC;
+    const membersFreeExpansionMm =
+      clampedSections.reduce((sum, section) => sum + resolveSectionMaterial(section).thermalExpansionPerC * section.thicknessMm, 0) * deltaT;
+    const boltFreeExpansionMm = input.thermal.boltThermalExpansionPerC * totalGripMm * deltaT;
+    const deltaForceN = combinedStiffnessNPerMm * (membersFreeExpansionMm - boltFreeExpansionMm);
+    const thermalPreloadN = preloadN + deltaForceN;
+    const thermalChecks = computeStressChecks(
+      thermalPreloadN,
+      input.externalAxialLoadN,
+      jointStiffnessC,
+      clampedSections,
+      headBearingDiameterMm,
+      nutBearingDiameterMm,
+      input.threadEngagementMode,
+      propertyClass.proofStrengthMPa,
+      size.tensileStressAreaMm2,
+      input.safetyFactorTarget
+    );
+    thermalResult = {
+      deltaForceN,
+      preloadN: thermalPreloadN,
+      boltStressSafetyFactor: thermalChecks.boltStressSafetyFactor,
+      boltStressPass: thermalChecks.boltStressPass,
+      memberBearingSafetyFactor: thermalChecks.memberBearingSafetyFactor,
+      memberBearingPass: thermalChecks.memberBearingPass,
+      jointSeparates: thermalChecks.jointSeparates,
+      overallPass: thermalChecks.boltStressPass && thermalChecks.memberBearingPass.every(Boolean) && !thermalChecks.jointSeparates,
+    };
+  }
 
   let threadShearCheck: BoltedJointResult['threadShearCheck'] = null;
   const geometryValidity = checkGeometryValidity(input);
@@ -472,7 +594,8 @@ export function solveBoltedJoint(input: JointInput): BoltedJointResult {
     (threadShearCheck ? threadShearCheck.pass : true) &&
     geometryValidity.holeClearanceOk &&
     geometryValidity.gripLengthExceedsFastenerOk &&
-    !jointSeparates;
+    !jointSeparates &&
+    (thermalResult ? thermalResult.overallPass : true);
 
   return {
     boltSegments,
@@ -504,5 +627,6 @@ export function solveBoltedJoint(input: JointInput): BoltedJointResult {
     threadShearCheck,
     geometryValidity,
     overallPass,
+    thermalResult,
   };
 }
