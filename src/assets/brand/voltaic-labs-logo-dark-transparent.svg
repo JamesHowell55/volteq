@@ -1,7 +1,19 @@
-<svg width="440" height="120" viewBox="0 0 440 120" xmlns="http://www.w3.org/2000/svg">
-  <title>Voltaic Labs</title>
-  <polygon points="60,10 100,33 100,79 60,102 20,79 20,33" fill="#5DCAA5" stroke="#04342C" stroke-width="1.5"/>
-  <path d="M67 24 L44 62 L57 62 L52 88 L78 48 L64 48 Z" fill="#04342C"/>
-  <text x="122" y="56" font-size="34" font-weight="500" fill="#E1F5EE" font-family="'Helvetica Neue', Arial, sans-serif">Voltaic</text>
-  <text x="122" y="90" font-size="34" font-weight="500" fill="#5DCAA5" font-family="'Helvetica Neue', Arial, sans-serif">Labs</text>
+<svg width="460" height="140" viewBox="0 0 460 140" xmlns="http://www.w3.org/2000/svg">
+  <title>Voltaic</title>
+  <g transform="translate(20,10)">
+    <g fill="none" stroke="#5DCAA5" stroke-width="10" stroke-linecap="round">
+      <line x1="32" y1="24" x2="46" y2="56"/>
+      <line x1="46" y1="56" x2="60" y2="92"/>
+      <line x1="88" y1="24" x2="74" y2="56"/>
+      <line x1="74" y1="56" x2="60" y2="92"/>
+    </g>
+    <g fill="#5DCAA5">
+      <circle cx="32" cy="24" r="13"/>
+      <circle cx="88" cy="24" r="13"/>
+      <circle cx="46" cy="56" r="10"/>
+      <circle cx="74" cy="56" r="10"/>
+      <circle cx="60" cy="92" r="12"/>
+    </g>
+  </g>
+  <text x="168" y="98" font-size="58" font-weight="500" fill="#E1F5EE" font-family="'Helvetica Neue', Arial, sans-serif" letter-spacing="0.5">oltaic</text>
 </svg>

@@ -1,5 +1,16 @@
 <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-  <title>Voltaic Labs icon</title>
-  <polygon points="60,6 104,32 104,84 60,110 16,84 16,32" fill="#5DCAA5" stroke="#04342C" stroke-width="2"/>
-  <path d="M68 20 L40 66 L56 66 L50 98 L82 50 L65 50 Z" fill="#04342C"/>
+  <title>Voltaic icon</title>
+  <g fill="none" stroke="#5DCAA5" stroke-width="10" stroke-linecap="round">
+    <line x1="32" y1="24" x2="46" y2="56"/>
+    <line x1="46" y1="56" x2="60" y2="92"/>
+    <line x1="88" y1="24" x2="74" y2="56"/>
+    <line x1="74" y1="56" x2="60" y2="92"/>
+  </g>
+  <g fill="#5DCAA5">
+    <circle cx="32" cy="24" r="13"/>
+    <circle cx="88" cy="24" r="13"/>
+    <circle cx="46" cy="56" r="10"/>
+    <circle cx="74" cy="56" r="10"/>
+    <circle cx="60" cy="92" r="12"/>
+  </g>
 </svg>
