@@ -19,6 +19,7 @@ const PATH_ICON_OVERRIDES: Record<string, string> = {
   '/busbar': '⌁',
   '/creepage-clearance': '⏚',
   '/bolted-joint': '⛭',
+  '/cable-sizing': '⏛',
   '/conversions': '⇄',
 };
 

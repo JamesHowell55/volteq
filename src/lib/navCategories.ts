@@ -31,7 +31,7 @@ export const NAV_CATEGORIES: NavCategory[] = [
       { label: 'Arc Flash Energy', path: '/arc-flash-energy', available: false, description: 'Simplified incident energy estimate for an arc flash event from fault current, voltage, and clearing time — a screening check, not a substitute for a full IEEE 1584 study.' },
       { label: 'Breaker Sizing', path: '/breaker-sizing', available: false, description: 'Select a circuit breaker trip rating and curve from load current, inrush, and downstream protection coordination requirements.' },
       { label: 'Busbar Calculation', path: '/busbar', available: true, description: 'Build a busbar cross-section from multiple bar sections, apply AC or DC current, duration, ambient temperature and material, and calculate steady-state or short-circuit conductor temperature.' },
-      { label: 'Cable Sizing', path: '/cable-sizing', available: false, description: 'Select a power cable cross-section from load current, installation method, grouping/derating, and ambient temperature per standard ampacity tables.' },
+      { label: 'Cable/Wire Sizing (EV Powertrain)', path: '/cable-sizing', available: true, description: 'Ampacity and voltage drop for EV powertrain cables (battery interconnects, battery-to-inverter, inverter-to-motor) from a first-principles steady-state heat balance, ISO 6722 insulation temperature classes, and bundling derating.' },
       { label: 'Cable Voltage Drop', path: '/cable-voltage-drop', available: false, description: 'Voltage drop along a cable run from conductor size, length, current, and power factor, checked against a target percentage.' },
       { label: 'Capacitor Sizing', path: '/capacitor-sizing', available: false, description: 'Size a capacitor for ripple current, bus support, or filtering duty from voltage, current, and frequency requirements.' },
       { label: 'Creepage and Clearance', path: '/creepage-clearance', available: true, description: 'Minimum creepage and clearance distances per IEC 60664-1 — pollution degree, material group (CTI), overvoltage category, and altitude correction from sea level up to 50,000 ft.' },
@@ -43,7 +43,6 @@ export const NAV_CATEGORIES: NavCategory[] = [
       { label: 'Touch Voltage', path: '/touch-voltage', available: false, description: 'Estimate touch and step voltage around an earthing system during a fault, checked against permissible body-current limits.' },
       { label: 'Transformer Losses', path: '/transformer-losses', available: false, description: 'Estimate a transformer\'s no-load (core) and load (copper) losses and overall efficiency at a given loading.' },
       { label: 'Transformer Sizing', path: '/transformer-sizing', available: false, description: 'Size a transformer\'s kVA rating from load profile, inrush, and required voltage regulation.' },
-      { label: 'Wire Sizing', path: '/wire-sizing', available: false, description: 'Select a conductor size from current, ambient temperature, bundling/derating, and allowable voltage drop.' },
     ],
   },
   {

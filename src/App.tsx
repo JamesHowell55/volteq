@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import BusbarCalculator from './pages/BusbarCalculator';
 import CreepageClearanceCalculator from './pages/CreepageClearanceCalculator';
 import BoltedJointCalculator from './pages/BoltedJointCalculator';
+import CableWireSizingCalculator from './pages/CableWireSizingCalculator';
 import ConversionsCalculator from './pages/ConversionsCalculator';
 import ComingSoonCalculator from './pages/ComingSoonCalculator';
 import { ThemeProvider } from './lib/ThemeContext';
@@ -33,6 +34,7 @@ function App() {
           <Route path="/busbar" element={<BusbarCalculator />} />
           <Route path="/creepage-clearance" element={<CreepageClearanceCalculator />} />
           <Route path="/bolted-joint" element={<BoltedJointCalculator />} />
+          <Route path="/cable-sizing" element={<CableWireSizingCalculator />} />
           <Route path="/conversions" element={<ConversionsCalculator />} />
           {placeholderLinks.map((link) => (
             <Route key={link.path} path={link.path} element={<ComingSoonCalculator />} />
