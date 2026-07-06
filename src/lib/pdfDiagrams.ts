@@ -217,6 +217,146 @@ export function renderConductionStackSvg(
   </svg>`;
 }
 
+import type { CoreDimensions } from './chokeCoreGeometry';
+
+/** Choke core cross-section (Toroidal/Oval/U-core/E-core), matching ChokeCoreCrossSection.tsx. */
+export function renderChokeCoreProfileSvg(
+  dims: CoreDimensions,
+  turnsConfig: 'passthrough' | 'wound',
+  turns: number,
+  accentColor: string
+): string {
+  const W = 420;
+  const H = 300;
+  const PAD = 30;
+  const availW = W - 2 * PAD;
+  const availH = H - 2 * PAD - 20;
+  const coreFill = 'color-mix(in srgb, #565C53 15%, white)';
+  const turnColor = accentColor;
+  const passthroughFill = `color-mix(in srgb, ${accentColor} 15%, white)`;
+
+  let body = '';
+  let caption = '';
+
+  if (dims.profile === 'toroidal') {
+    const { outerDiameterMm: od, innerDiameterMm: id, heightMm: h } = dims;
+    const scale = Math.min(availW, availH) / od;
+    const rOuter = (od * scale) / 2;
+    const rInner = (id * scale) / 2;
+    const cx = W / 2;
+    const cy = PAD + availH / 2;
+    const n = Math.min(Math.max(Math.round(turns), 1), 16);
+    const turnMarks = turnsConfig === 'wound'
+      ? Array.from({ length: n }, (_, i) => {
+        const angle = (i / n) * Math.PI * 2;
+        const x1 = cx + Math.cos(angle) * (rInner - 3);
+        const y1 = cy + Math.sin(angle) * (rInner - 3);
+        const x2 = cx + Math.cos(angle) * (rOuter + 3);
+        const y2 = cy + Math.sin(angle) * (rOuter + 3);
+        return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${turnColor}" stroke-width="2" />`;
+      }).join('')
+      : '';
+    body = `
+      <circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="${coreFill}" stroke="${TEXT_2}" stroke-width="1.5" />
+      <circle cx="${cx}" cy="${cy}" r="${rInner}" fill="white" stroke="${TEXT_2}" stroke-width="1.5" />
+      ${turnsConfig === 'passthrough' ? `<rect x="${cx - rInner * 0.55}" y="${cy - rInner * 0.28}" width="${rInner * 1.1}" height="${rInner * 0.56}" fill="${passthroughFill}" stroke="${accentColor}" stroke-width="1.5" />` : ''}
+      ${turnMarks}
+      <text x="${cx}" y="${cy - rOuter - 10}" text-anchor="middle" font-size="10" fill="${TEXT_2}" font-family="ui-monospace, monospace">OD ${od} mm</text>
+      <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="9" fill="${TEXT_2}" font-family="ui-monospace, monospace">ID ${id} mm</text>`;
+    caption = `Toroidal &middot; height (stack) ${h} mm &middot; ${turnsConfig === 'passthrough' ? 'busbar pass-through (N=1)' : `${Math.round(turns)} turns wound`}`;
+  } else if (dims.profile === 'oval') {
+    const { straightLengthMm: s, innerRadiusMm: ri, outerRadiusMm: ro, heightMm: h } = dims;
+    const totalW = s + 2 * ro;
+    const totalH = 2 * ro;
+    const scale = Math.min(availW / totalW, availH / totalH);
+    const sPx = s * scale;
+    const roPx = ro * scale;
+    const riPx = ri * scale;
+    const cx = W / 2;
+    const cy = PAD + availH / 2;
+    const left = cx - sPx / 2;
+    const right = cx + sPx / 2;
+    const outerPath = `M ${left} ${cy - roPx} L ${right} ${cy - roPx} A ${roPx} ${roPx} 0 0 1 ${right} ${cy + roPx} L ${left} ${cy + roPx} A ${roPx} ${roPx} 0 0 1 ${left} ${cy - roPx} Z`;
+    const innerPath = `M ${left} ${cy - riPx} L ${right} ${cy - riPx} A ${riPx} ${riPx} 0 0 1 ${right} ${cy + riPx} L ${left} ${cy + riPx} A ${riPx} ${riPx} 0 0 1 ${left} ${cy - riPx} Z`;
+    const n = Math.min(Math.max(Math.round(turns), 1), 16);
+    const turnMarks = turnsConfig === 'wound'
+      ? Array.from({ length: n }, (_, i) => {
+        const t = i / n;
+        const x = left + t * sPx * 2 > right ? right - (t * sPx * 2 - sPx) : left + t * sPx * 2;
+        return `<line x1="${x}" y1="${cy - riPx + 3}" x2="${x}" y2="${cy - roPx - 3}" stroke="${turnColor}" stroke-width="2" />`;
+      }).join('')
+      : '';
+    body = `
+      <path d="${outerPath}" fill="${coreFill}" stroke="${TEXT_2}" stroke-width="1.5" fill-rule="evenodd" />
+      <path d="${innerPath}" fill="white" stroke="${TEXT_2}" stroke-width="1.5" />
+      ${turnsConfig === 'passthrough' ? `<rect x="${cx - riPx * 0.5}" y="${cy - riPx * 0.25}" width="${riPx}" height="${riPx * 0.5}" fill="${passthroughFill}" stroke="${accentColor}" stroke-width="1.5" />` : ''}
+      ${turnMarks}
+      <text x="${cx}" y="${cy - roPx - 10}" text-anchor="middle" font-size="10" fill="${TEXT_2}" font-family="ui-monospace, monospace">straight ${s} mm</text>
+      <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="9" fill="${TEXT_2}" font-family="ui-monospace, monospace">ri ${ri} / ro ${ro} mm</text>`;
+    caption = `Oval / racetrack &middot; height (stack) ${h} mm &middot; ${turnsConfig === 'passthrough' ? 'busbar pass-through (N=1)' : `${Math.round(turns)} turns wound`}`;
+  } else if (dims.profile === 'ucore') {
+    const { legWidthMm: a, stackDepthMm: d, windowHeightMm: hw, windowWidthMm: ww } = dims;
+    const totalW = ww + 2 * a;
+    const totalH = hw + 2 * a;
+    const scale = Math.min(availW / totalW, availH / totalH);
+    const outerWPx = totalW * scale;
+    const outerHPx = totalH * scale;
+    const aPx = a * scale;
+    const x0 = W / 2 - outerWPx / 2;
+    const y0 = PAD + availH / 2 - outerHPx / 2;
+    const n = Math.min(Math.max(Math.round(turns), 1), 12);
+    const turnMarks = turnsConfig === 'wound'
+      ? Array.from({ length: n }, (_, i) => {
+        const y = y0 + aPx + ((i + 0.5) / n) * (outerHPx - 2 * aPx);
+        return `<line x1="${x0 + aPx * 0.3}" y1="${y}" x2="${x0 + outerWPx - aPx * 0.3}" y2="${y}" stroke="${turnColor}" stroke-width="1.5" opacity="0.7" />`;
+      }).join('')
+      : '';
+    body = `
+      <rect x="${x0}" y="${y0}" width="${outerWPx}" height="${outerHPx}" fill="${coreFill}" stroke="${TEXT_2}" stroke-width="1.5" />
+      <rect x="${x0 + aPx}" y="${y0 + aPx}" width="${outerWPx - 2 * aPx}" height="${outerHPx - 2 * aPx}" fill="white" stroke="${TEXT_2}" stroke-width="1.5" />
+      ${turnsConfig === 'passthrough' ? `<rect x="${x0 + outerWPx / 2 - (outerHPx - 2 * aPx) * 0.18}" y="${y0 + aPx}" width="${(outerHPx - 2 * aPx) * 0.36}" height="${outerHPx - 2 * aPx}" fill="${passthroughFill}" stroke="${accentColor}" stroke-width="1.5" />` : ''}
+      ${turnMarks}
+      <text x="${x0 + outerWPx / 2}" y="${y0 - 10}" text-anchor="middle" font-size="10" fill="${TEXT_2}" font-family="ui-monospace, monospace">leg ${a} mm</text>
+      <text x="${x0 + outerWPx / 2}" y="${y0 + outerHPx / 2 + 3}" text-anchor="middle" font-size="9" fill="${TEXT_2}" font-family="ui-monospace, monospace">window ${ww}&times;${hw} mm</text>`;
+    caption = `U-core &middot; stack depth ${d} mm &middot; ${turnsConfig === 'passthrough' ? 'busbar pass-through (N=1)' : `${Math.round(turns)} turns wound`} &middot; simplified rectangular loop`;
+  } else {
+    const { centerLegWidthMm: a, stackDepthMm: d, windowHeightMm: hw, windowWidthMm: ww } = dims;
+    const outerLegW = a * 0.7;
+    const totalW = ww * 2 + a + 2 * outerLegW;
+    const totalH = hw + 2 * outerLegW;
+    const scale = Math.min(availW / totalW, availH / totalH);
+    const outerWPx = totalW * scale;
+    const outerHPx = totalH * scale;
+    const legPx = outerLegW * scale;
+    const centerLegPx = a * scale;
+    const wwPx = ww * scale;
+    const x0 = W / 2 - outerWPx / 2;
+    const y0 = PAD + availH / 2 - outerHPx / 2;
+    const centerX = x0 + legPx + wwPx;
+    const n = Math.min(Math.max(Math.round(turns), 1), 12);
+    const turnMarks = turnsConfig === 'wound'
+      ? Array.from({ length: n }, (_, i) => {
+        const y = y0 + legPx + ((i + 0.5) / n) * (outerHPx - 2 * legPx);
+        return `<line x1="${centerX - centerLegPx * 0.6}" y1="${y}" x2="${centerX + centerLegPx * 1.6}" y2="${y}" stroke="${turnColor}" stroke-width="1.5" opacity="0.7" />`;
+      }).join('')
+      : '';
+    body = `
+      <rect x="${x0}" y="${y0}" width="${outerWPx}" height="${outerHPx}" fill="${coreFill}" stroke="${TEXT_2}" stroke-width="1.5" />
+      <rect x="${x0 + legPx}" y="${y0 + legPx}" width="${wwPx}" height="${outerHPx - 2 * legPx}" fill="white" stroke="${TEXT_2}" stroke-width="1" />
+      <rect x="${centerX + centerLegPx}" y="${y0 + legPx}" width="${wwPx}" height="${outerHPx - 2 * legPx}" fill="white" stroke="${TEXT_2}" stroke-width="1" />
+      ${turnsConfig === 'passthrough' ? `<rect x="${centerX + centerLegPx * 0.22}" y="${y0 + legPx}" width="${centerLegPx * 0.56}" height="${outerHPx - 2 * legPx}" fill="${passthroughFill}" stroke="${accentColor}" stroke-width="1.5" />` : ''}
+      ${turnMarks}
+      <text x="${centerX + centerLegPx / 2}" y="${y0 - 10}" text-anchor="middle" font-size="10" fill="${TEXT_2}" font-family="ui-monospace, monospace">center leg ${a} mm</text>
+      <text x="${centerX + centerLegPx / 2}" y="${y0 + outerHPx + 16}" text-anchor="middle" font-size="9" fill="${TEXT_2}" font-family="ui-monospace, monospace">window ${ww}&times;${hw} mm (&times;2)</text>`;
+    caption = `E-core &middot; stack depth ${d} mm &middot; ${turnsConfig === 'passthrough' ? 'busbar pass-through (N=1)' : `${Math.round(turns)} turns wound`} &middot; simplified rectangular loop`;
+  }
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%">
+    ${body}
+    <text x="${W / 2}" y="${H - 10}" text-anchor="middle" font-size="9.5" fill="${TEXT_FAINT}" font-family="ui-monospace, monospace">${caption}</text>
+  </svg>`;
+}
+
 export interface PdfSeries {
   label: string;
   color: string;

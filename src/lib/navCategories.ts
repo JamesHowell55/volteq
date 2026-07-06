@@ -34,7 +34,9 @@ export const NAV_CATEGORIES: NavCategory[] = [
   },
   {
     label: 'Power Electronics',
-    links: [],
+    links: [
+      { label: 'Choke Sizing (CM/DM)', path: '/choke-sizing', available: true, description: 'Common-mode and differential-mode choke sizing for an EV motor-controller (inverter) — Toroidal, Oval/racetrack, U-core, or E-core geometry, busbar pass-through or wound turns, sized against a ripple-current or EMC impedance target with saturation, core loss, and window-fit checks.' },
+    ],
   },
   {
     label: 'Motors',
