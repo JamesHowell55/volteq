@@ -20,6 +20,7 @@ const PATH_ICON_OVERRIDES: Record<string, string> = {
   '/creepage-clearance': '⏚',
   '/bolted-joint': '⛭',
   '/cable-sizing': '⏛',
+  '/battery-pack-series-parallel': '⫴',
   '/conversions': '⇄',
 };
 

@@ -6,6 +6,7 @@ import BusbarCalculator from './pages/BusbarCalculator';
 import CreepageClearanceCalculator from './pages/CreepageClearanceCalculator';
 import BoltedJointCalculator from './pages/BoltedJointCalculator';
 import CableWireSizingCalculator from './pages/CableWireSizingCalculator';
+import BatteryPackSeriesParallelCalculator from './pages/BatteryPackSeriesParallelCalculator';
 import ConversionsCalculator from './pages/ConversionsCalculator';
 import ComingSoonCalculator from './pages/ComingSoonCalculator';
 import AccountPage from './pages/AccountPage';
@@ -38,6 +39,7 @@ function App() {
             <Route path="/creepage-clearance" element={<CreepageClearanceCalculator />} />
             <Route path="/bolted-joint" element={<BoltedJointCalculator />} />
             <Route path="/cable-sizing" element={<CableWireSizingCalculator />} />
+            <Route path="/battery-pack-series-parallel" element={<BatteryPackSeriesParallelCalculator />} />
             <Route path="/conversions" element={<ConversionsCalculator />} />
             <Route path="/account" element={<AccountPage />} />
             {placeholderLinks.map((link) => (
