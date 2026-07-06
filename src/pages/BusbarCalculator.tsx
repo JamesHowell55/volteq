@@ -7,7 +7,7 @@ import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepDat
 import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
 import PremiumGate from '../components/PremiumGate';
-import { MATERIALS, EMISSIVITY_PRESETS, COATING_PRESETS } from '../lib/materials';
+import { MATERIALS, EMISSIVITY_PRESETS, COATING_PRESETS, TIM_PRESETS, COOLANT_PRESETS } from '../lib/materials';
 import {
   buildSingleBusbarNodes,
   buildMultipleBarNodes,
@@ -16,6 +16,8 @@ import {
   solveNodalAdiabatic,
   solveMinAreaForFault,
   solveNodalTransient,
+  coldplateConductanceWPerK,
+  coolantTemperatureRiseK,
   resistivityAt,
   skinEffectFactor,
   dcResistancePerMetre,
@@ -81,6 +83,38 @@ export default function BusbarCalculator() {
     }
   };
 
+  // Conductive (coldplate) cooling — applies only to sections ticked "Coldplate" below.
+  const [timPresetId, setTimPresetId] = useState('pad');
+  const [timThicknessMm, setTimThicknessMm] = useState(TIM_PRESETS[0].thicknessMm);
+  const [timConductivity, setTimConductivity] = useState(TIM_PRESETS[0].thermalConductivity);
+  const onTimPresetChange = (id: string) => {
+    setTimPresetId(id);
+    const preset = TIM_PRESETS.find(p => p.id === id);
+    if (preset) {
+      setTimThicknessMm(preset.thicknessMm);
+      setTimConductivity(preset.thermalConductivity);
+    }
+  };
+  const [heatSinkMaterialId, setHeatSinkMaterialId] = useState<'copper' | 'aluminium' | 'custom'>('aluminium');
+  const [heatSinkThicknessMm, setHeatSinkThicknessMm] = useState(5);
+  const [customHeatSinkConductivity, setCustomHeatSinkConductivity] = useState(200);
+  const heatSinkConductivity = heatSinkMaterialId === 'custom' ? customHeatSinkConductivity : MATERIALS[heatSinkMaterialId].thermalConductivity;
+
+  const [coolantPresetId, setCoolantPresetId] = useState('water');
+  const [coolantDensity, setCoolantDensity] = useState(COOLANT_PRESETS[0].densityKgPerM3);
+  const [coolantSpecificHeat, setCoolantSpecificHeat] = useState(COOLANT_PRESETS[0].specificHeatJPerKgK);
+  const onCoolantPresetChange = (id: string) => {
+    setCoolantPresetId(id);
+    const preset = COOLANT_PRESETS.find(p => p.id === id);
+    if (preset) {
+      setCoolantDensity(preset.densityKgPerM3);
+      setCoolantSpecificHeat(preset.specificHeatJPerKgK);
+    }
+  };
+  const [coolantFlowRateLPerMin, setCoolantFlowRateLPerMin] = useState(2);
+  const [coolantInletTempC, setCoolantInletTempC] = useState(25);
+  const [coolantFilmH, setCoolantFilmH] = useState(2000);
+
   const [currentType, setCurrentType] = useState<CurrentType>('ac');
   const [current, setCurrent] = useState(1000);
   const [frequency, setFrequency] = useState(50);
@@ -142,15 +176,24 @@ export default function BusbarCalculator() {
 
   const validGeometry = nodes.length > 0 && nodes.every(n => n.areaMm2 > 0 && n.lengthM > 0);
 
+  const anySectionCooled = busbarType === 'single' && sections.some(s => s.coolingEnabled);
+
+  // 0 for any node without a contact area (coldplateConductanceWPerK short-circuits on
+  // contactAreaM2<=0), so this array is naturally all-zero when nothing is cooled.
+  const coolantConductancePerNode = useMemo(
+    () => nodes.map(n => coldplateConductanceWPerK(n.contactAreaM2, timThicknessMm, timConductivity, heatSinkThicknessMm, heatSinkConductivity, coolantFilmH)),
+    [nodes, timThicknessMm, timConductivity, heatSinkThicknessMm, heatSinkConductivity, coolantFilmH]
+  );
+
   const steady = useMemo(() => {
     if (!validGeometry || durationMode !== 'continuous') return null;
-    return solveNodalSteadyState(nodes, material, current, currentType, effFrequency, ambientC, emissivity, orientation, manualH, coatingThicknessMm, coatingConductivity);
-  }, [validGeometry, durationMode, nodes, material, current, currentType, effFrequency, ambientC, emissivity, orientation, manualH, coatingThicknessMm, coatingConductivity]);
+    return solveNodalSteadyState(nodes, material, current, currentType, effFrequency, ambientC, emissivity, orientation, manualH, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC);
+  }, [validGeometry, durationMode, nodes, material, current, currentType, effFrequency, ambientC, emissivity, orientation, manualH, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC]);
 
   const maxCurrent = useMemo(() => {
     if (!validGeometry || durationMode !== 'continuous') return null;
-    return solveMaxContinuousCurrentNodal(nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, maxContinuousTempC, coatingThicknessMm, coatingConductivity);
-  }, [validGeometry, durationMode, nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, maxContinuousTempC, coatingThicknessMm, coatingConductivity]);
+    return solveMaxContinuousCurrentNodal(nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, maxContinuousTempC, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC);
+  }, [validGeometry, durationMode, nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, maxContinuousTempC, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC]);
 
   const adiabatic = useMemo(() => {
     if (!validGeometry || durationMode !== 'fault') return null;
@@ -164,8 +207,17 @@ export default function BusbarCalculator() {
 
   const transient = useMemo(() => {
     if (!validGeometry || durationMode !== 'profile') return null;
-    return solveNodalTransient(nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, steps.map(s => ({ current: s.current, durationS: s.durationS })), coatingThicknessMm, coatingConductivity);
-  }, [validGeometry, durationMode, nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, steps, coatingThicknessMm, coatingConductivity]);
+    return solveNodalTransient(nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, steps.map(s => ({ current: s.current, durationS: s.durationS })), coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC);
+  }, [validGeometry, durationMode, nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, steps, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC]);
+
+  // Informational only (see the disclosed simplification in the UI note below) —
+  // computed from the continuous steady-state result since that's the only mode
+  // with a ready-made total-heat figure to base an energy balance on.
+  const coolantTotalHeatW = steady ? steady.coolantLossPerNodeW.reduce((a, b) => a + b, 0) : 0;
+  const coolantTempRiseK = useMemo(
+    () => coolantTemperatureRiseK(coolantTotalHeatW, coolantFlowRateLPerMin, { id: coolantPresetId, label: '', densityKgPerM3: coolantDensity, specificHeatJPerKgK: coolantSpecificHeat }),
+    [coolantTotalHeatW, coolantFlowRateLPerMin, coolantPresetId, coolantDensity, coolantSpecificHeat]
+  );
 
   const lossPerNodeW = durationMode === 'continuous' ? steady?.powerLossPerNodeW : undefined;
   const energyPerNodeJ = durationMode === 'fault' ? adiabatic?.energyJPerNode : durationMode === 'profile' ? transient?.energyJPerNode : undefined;
@@ -216,8 +268,16 @@ export default function BusbarCalculator() {
         title: 'Convection + radiation heat balance, solved per node',
         formula: `h = ${manualH !== null ? `${manualH} (manual)` : 'C·(ΔT/L)^0.25'} · P'conv = h·A'surf·ΔT · P'rad = ε·σ·A'surf·[(θ+273)⁴−(θa+273)⁴]${coatingThicknessMm > 0 ? " · R'coat = t/(k·A'surf)" : ''}`,
         substitution: `Solved as a tridiagonal system (Thomas algorithm), re-linearised over ${steady.iterations} iterations${coatingThicknessMm > 0 ? `. Coating: t=${coatingThicknessMm}mm, k=${coatingConductivity} W/(m·K)` : ''}`,
-        result: nodes.map((n, i) => `${n.label}: θ=${fmt(steady.tempsC[i], 1)}°C, Pconv=${fmt(steady.convLossPerNodeW[i], 1)}W, Prad=${fmt(steady.radLossPerNodeW[i], 1)}W`).join(' | '),
+        result: nodes.map((n, i) => `${n.label}: θ=${fmt(steady.tempsC[i], 1)}°C, Pconv=${fmt(steady.convLossPerNodeW[i], 1)}W, Prad=${fmt(steady.radLossPerNodeW[i], 1)}W${anySectionCooled ? `, Pcoolant=${fmt(steady.coolantLossPerNodeW[i], 1)}W` : ''}`).join(' | '),
       });
+      if (anySectionCooled) {
+        stepsOut.push({
+          title: 'Conductive (coldplate) cooling path — parallel sink to the coolant',
+          formula: "R'TIM = t_TIM/(k_TIM·A_contact) · R'plate = t_plate/(k_plate·A_contact) · R'film = 1/(h_coolant·A_contact) · G = 1/(R'TIM+R'plate+R'film)",
+          substitution: `TIM: t=${timThicknessMm}mm, k=${timConductivity} W/(m·K) · Heat sink: t=${heatSinkThicknessMm}mm, k=${fmt(heatSinkConductivity, 0)} W/(m·K) · h_coolant=${coolantFilmH} W/(m²·K) · coolant inlet=${coolantInletTempC}°C`,
+          result: nodes.map((n, i) => coolantConductancePerNode[i] > 0 ? `${n.label}: G=${fmt(coolantConductancePerNode[i], 3)} W/K` : null).filter(Boolean).join(' | ') || 'No section currently ticked "Coldplate".',
+        });
+      }
     }
 
     if (durationMode === 'fault' && adiabatic) {
@@ -249,7 +309,7 @@ export default function BusbarCalculator() {
     }
 
     return stepsOut;
-  }, [nodes, material, rho20, durationMode, steady, frequency, manualH, coatingThicknessMm, coatingConductivity, adiabatic, faultInitialTempC, faultDurationS, minArea, transient, steps]);
+  }, [nodes, material, rho20, durationMode, steady, frequency, manualH, coatingThicknessMm, coatingConductivity, adiabatic, faultInitialTempC, faultDurationS, minArea, transient, steps, anySectionCooled, timThicknessMm, timConductivity, heatSinkThicknessMm, heatSinkConductivity, coolantFilmH, coolantInletTempC, coolantConductancePerNode]);
 
   const inputSections: ReportSection[] = useMemo(() => {
     const geoRows: ReportRow[] = [{ label: 'Busbar type', value: busbarType === 'single' ? 'Single (sections)' : 'Multiple (stacked bars)' }];
@@ -287,12 +347,27 @@ export default function BusbarCalculator() {
       elecRows.push({ label: 'Max allowable temp', value: `${maxContinuousTempC} °C` });
     }
 
-    return [
+    const sectionsOut: ReportSection[] = [
       { heading: 'Busbar configuration', rows: geoRows },
       { heading: 'Material, surface & convection', rows: matRows },
       { heading: 'Electrical load & duration', rows: elecRows },
     ];
-  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, orientation, material, emissivity, convMode, manualHValue, coatingThicknessMm, coatingConductivity, currentType, durationMode, current, frequency, ambientC, maxContinuousTempC, faultDurationS, faultInitialTempC, maxFaultTempC, steps]);
+
+    if (anySectionCooled) {
+      sectionsOut.push({
+        heading: 'Conductive cooling (coldplate)',
+        rows: [
+          { label: 'Cooled sections', value: sections.filter(s => s.coolingEnabled).map((_, i) => `${i + 1}`).join(', ') || 'None' },
+          { label: 'TIM', value: `${timThicknessMm} mm, k=${timConductivity} W/(m·K)` },
+          { label: 'Heat sink', value: `${heatSinkMaterialId}, ${heatSinkThicknessMm} mm, k=${fmt(heatSinkConductivity, 0)} W/(m·K)` },
+          { label: 'Coolant', value: `${coolantPresetId}, ${coolantFlowRateLPerMin} L/min, inlet ${coolantInletTempC} °C` },
+          { label: 'Coolant-side film coefficient', value: `${coolantFilmH} W/(m²·K)` },
+        ],
+      });
+    }
+
+    return sectionsOut;
+  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, orientation, material, emissivity, convMode, manualHValue, coatingThicknessMm, coatingConductivity, currentType, durationMode, current, frequency, ambientC, maxContinuousTempC, faultDurationS, faultInitialTempC, maxFaultTempC, steps, anySectionCooled, timThicknessMm, timConductivity, heatSinkMaterialId, heatSinkThicknessMm, heatSinkConductivity, coolantPresetId, coolantFlowRateLPerMin, coolantInletTempC, coolantFilmH]);
 
   const outputSections: ReportSection[] = useMemo(() => {
     const headline: ReportRow[] = [
@@ -303,19 +378,24 @@ export default function BusbarCalculator() {
     if (durationMode === 'fault') headline.push({ label: 'Min area for this fault', value: minArea !== null ? `${fmt(minArea, 0)} mm²` : '—' });
     if (durationMode === 'profile' && transient) headline.push({ label: 'Profile duration', value: `${fmt(transient.timeS[transient.timeS.length - 1], 0)} s` });
     headline.push({ label: 'Total busbar loss', value: durationMode === 'continuous' ? (totalLossW !== undefined ? `${fmt(totalLossW, 1)} W` : '—') : (totalEnergyJ !== undefined ? `${fmt(totalEnergyJ / 1000, 2)} kJ` : '—') });
+    if (anySectionCooled && durationMode === 'continuous') {
+      headline.push({ label: 'Heat rejected via coldplate', value: `${fmt(coolantTotalHeatW, 1)} W` });
+      headline.push({ label: 'Est. coolant temperature rise', value: `${fmt(coolantTempRiseK, 2)} K (informational, not fed back into the result)` });
+    }
 
     const nodeRows: ReportRow[] = nodes.map((node, i) => {
       const tempC = durationMode === 'continuous' ? steady?.tempsC[i]
         : durationMode === 'fault' ? adiabatic?.finalTempsC[i]
           : transient?.peakTempsC[i];
-      return { label: node.label, value: `${fmt(node.areaMm2, 1)} mm², ${tempC !== undefined ? fmt(tempC, 1) : '—'} °C` };
+      const coolantW = durationMode === 'continuous' && anySectionCooled ? steady?.coolantLossPerNodeW[i] : undefined;
+      return { label: node.label, value: `${fmt(node.areaMm2, 1)} mm², ${tempC !== undefined ? fmt(tempC, 1) : '—'} °C${coolantW !== undefined ? `, coolant ${fmt(coolantW, 1)} W` : ''}` };
     });
 
     return [
       { heading: 'Summary', rows: headline },
       { heading: busbarType === 'single' ? 'Per-section results' : 'Bundle result', rows: nodeRows },
     ];
-  }, [durationMode, worstTempC, referenceTempC, maxCurrent, minArea, transient, totalLossW, totalEnergyJ, nodes, steady, adiabatic, busbarType]);
+  }, [durationMode, worstTempC, referenceTempC, maxCurrent, minArea, transient, totalLossW, totalEnergyJ, nodes, steady, adiabatic, busbarType, anySectionCooled, coolantTotalHeatW, coolantTempRiseK]);
 
   const handleExportPdf = () => {
     exportReportToPdf({
@@ -390,7 +470,13 @@ export default function BusbarCalculator() {
                       <label>Length (mm)</label>
                       <input autoComplete="off" type="number" min={1} value={s.length} onChange={e => updateSection(s.id, { length: Number(e.target.value) })} />
                     </div>
-                    <button className="btn small danger" onClick={() => removeSection(s.id)} disabled={sections.length === 1}>Remove</button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-end' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--text-2)', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                        <input type="checkbox" checked={!!s.coolingEnabled} onChange={e => updateSection(s.id, { coolingEnabled: e.target.checked })} style={{ width: 'auto' }} />
+                        Coldplate
+                      </label>
+                      <button className="btn small danger" onClick={() => removeSection(s.id)} disabled={sections.length === 1}>Remove</button>
+                    </div>
                   </div>
                 ))}
                 <div className="field" style={{ marginTop: '0.6rem' }}>
@@ -635,6 +721,96 @@ export default function BusbarCalculator() {
               </div>
             )}
           </div>
+
+          {anySectionCooled && (
+            <div className="card">
+              <div className="card-title"><span><span className="step-num">4</span>Conductive cooling (coldplate)</span></div>
+              <p className="note" style={{ marginBottom: '0.85rem' }}>
+                Applies to the {sections.filter(s => s.coolingEnabled).length} section(s) ticked "Coldplate" above.
+                Heat leaves that face through the TIM and heat sink to the coolant, in parallel with (reduced)
+                natural convection/radiation from the section's remaining exposed faces.
+              </p>
+              <div className="grid grid-2">
+                <div className="field">
+                  <label>Thermal interface material (TIM)</label>
+                  <select value={timPresetId} onChange={e => onTimPresetChange(e.target.value)}>
+                    {TIM_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                  </select>
+                </div>
+                <div />
+                <div className="field">
+                  <label>TIM thickness (mm)</label>
+                  <input autoComplete="off" type="number" min={0.01} step={0.01} value={timThicknessMm} onChange={e => setTimThicknessMm(Number(e.target.value))} />
+                </div>
+                <div className="field">
+                  <label>TIM thermal conductivity (W/m·K)</label>
+                  <input autoComplete="off" type="number" min={0.01} step={0.1} value={timConductivity} onChange={e => setTimConductivity(Number(e.target.value))} />
+                </div>
+                <div className="field">
+                  <label>Heat sink material</label>
+                  <div className="segmented">
+                    <button className={heatSinkMaterialId === 'aluminium' ? 'active' : ''} onClick={() => setHeatSinkMaterialId('aluminium')}>Aluminium</button>
+                    <button className={heatSinkMaterialId === 'copper' ? 'active' : ''} onClick={() => setHeatSinkMaterialId('copper')}>Copper</button>
+                    <button className={heatSinkMaterialId === 'custom' ? 'active' : ''} onClick={() => setHeatSinkMaterialId('custom')}>Custom</button>
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Heat sink thickness (mm)</label>
+                  <input autoComplete="off" type="number" min={0.1} value={heatSinkThicknessMm} onChange={e => setHeatSinkThicknessMm(Number(e.target.value))} />
+                </div>
+                {heatSinkMaterialId === 'custom' && (
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label>Custom heat sink conductivity (W/m·K)</label>
+                    <input autoComplete="off" type="number" min={1} value={customHeatSinkConductivity} onChange={e => setCustomHeatSinkConductivity(Number(e.target.value))} />
+                  </div>
+                )}
+                <div className="field">
+                  <label>Coolant</label>
+                  <select value={coolantPresetId} onChange={e => onCoolantPresetChange(e.target.value)}>
+                    {COOLANT_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Flow rate (L/min)</label>
+                  <input autoComplete="off" type="number" min={0} step={0.1} value={coolantFlowRateLPerMin} onChange={e => setCoolantFlowRateLPerMin(Number(e.target.value))} />
+                </div>
+                <div className="field">
+                  <label>Coolant inlet temperature (°C)</label>
+                  <input autoComplete="off" type="number" value={coolantInletTempC} onChange={e => setCoolantInletTempC(Number(e.target.value))} />
+                  <span className="hint">Used as the fixed sink temperature for the coldplate path, exactly like ambient air on the convective side.</span>
+                </div>
+                <div className="field">
+                  <label>Coolant-side film coefficient (W/m²·K)</label>
+                  <input autoComplete="off" type="number" min={1} value={coolantFilmH} onChange={e => setCoolantFilmH(Number(e.target.value))} />
+                  <span className="hint">Typical liquid coldplate: ~1000–5000 W/(m²·K). Set directly rather than derived from flow rate — same manual-override approach as the air-side convection coefficient.</span>
+                </div>
+                {coolantPresetId === 'custom' && (
+                  <>
+                    <div className="field">
+                      <label>Coolant density (kg/m³)</label>
+                      <input autoComplete="off" type="number" min={1} value={coolantDensity} onChange={e => setCoolantDensity(Number(e.target.value))} />
+                    </div>
+                    <div className="field">
+                      <label>Coolant specific heat (J/kg·K)</label>
+                      <input autoComplete="off" type="number" min={1} value={coolantSpecificHeat} onChange={e => setCoolantSpecificHeat(Number(e.target.value))} />
+                    </div>
+                  </>
+                )}
+              </div>
+              {durationMode === 'continuous' && (
+                <div className="result-tile" style={{ marginTop: '0.85rem', maxWidth: 340 }}>
+                  <div className="label">Estimated coolant temperature rise</div>
+                  <div className="value">{fmt(coolantTempRiseK, 2)}<span className="unit">K</span></div>
+                  <div className="hint">
+                    Informational — an exact energy balance (ΔT=Q/(ṁ·cp)) on the heat absorbed by the coolant
+                    path, but not fed back into the busbar temperature result above (which uses the fixed inlet
+                    temperature as the sink, same as ambient air). Add this manually to the inlet temperature for
+                    a worst-case check.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* RIGHT COLUMN — results */}
@@ -703,6 +879,7 @@ export default function BusbarCalculator() {
                   {durationMode !== 'profile' && <th>Current density (A/mm²)</th>}
                   {durationMode === 'continuous' && steady && <th>Rac (µΩ)</th>}
                   <th>Loss {durationMode === 'continuous' ? '(W)' : '(kJ)'}</th>
+                  {durationMode === 'continuous' && steady && anySectionCooled && <th>Coolant (W)</th>}
                   <th>{durationMode === 'profile' ? 'Peak temp (°C)' : durationMode === 'fault' ? 'Final temp (°C)' : 'Temp (°C)'}</th>
                   {durationMode === 'fault' && <th>Pass</th>}
                 </tr>
@@ -721,6 +898,7 @@ export default function BusbarCalculator() {
                       {durationMode !== 'profile' && <td>{fmt(current / node.areaMm2, 2)}</td>}
                       {durationMode === 'continuous' && steady && <td>{fmt(steady.racTotalPerNode[i] * 1e6, 1)}</td>}
                       <td>{lossDisplay !== undefined ? fmt(lossDisplay, durationMode === 'continuous' ? 1 : 2) : '—'}</td>
+                      {durationMode === 'continuous' && steady && anySectionCooled && <td>{fmt(steady.coolantLossPerNodeW[i], 1)}</td>}
                       <td>{tempC !== undefined ? fmt(tempC, 1) : '—'}</td>
                       {durationMode === 'fault' && <td className={nodePass ? 'pass' : 'fail'}>{nodePass ? '✓' : '✗'}</td>}
                     </tr>
@@ -733,6 +911,7 @@ export default function BusbarCalculator() {
                     {durationMode !== 'profile' && <td>—</td>}
                     {durationMode === 'continuous' && steady && <td>—</td>}
                     <td><b>{durationMode === 'continuous' ? (totalLossW !== undefined ? fmt(totalLossW, 1) : '—') : (totalEnergyJ !== undefined ? fmt(totalEnergyJ / 1000, 2) : '—')}</b></td>
+                    {durationMode === 'continuous' && steady && anySectionCooled && <td><b>{fmt(coolantTotalHeatW, 1)}</b></td>}
                     <td>—</td>
                     {durationMode === 'fault' && <td>—</td>}
                   </tr>
@@ -786,8 +965,14 @@ export default function BusbarCalculator() {
               copper, 148 aluminium; β = 234.5°C copper, 228°C aluminium) — conduction between sections is neglected
               for faults since it is slow relative to typical fault durations. Multi-bar bundles reduce exposed
               surface area on faces that face a narrow gap; proximity effect on <em>resistance</em> and PWM
-              switching-ripple heating are not modelled. For critical designs, verify against manufacturer test data
-              and, where required, by test.
+              switching-ripple heating are not modelled. A section ticked "Coldplate" loses heat through an
+              additional parallel path — TIM + heat sink + coolant film, same t/(k·A) conduction idiom as the
+              coating — to the specified coolant inlet temperature, and correspondingly loses one full face
+              (width×length) from its air-exposed area. Flow rate and fluid feed one exact, separate calculation
+              (an energy-balance coolant temperature rise) that is informational only and not fed back into the
+              busbar temperature result, which always uses the fixed inlet temperature as the coolant-side sink,
+              the same way ambient air is always treated as a fixed-temperature reservoir. For critical designs,
+              verify against manufacturer test data and, where required, by test.
             </p>
           </div>
         </div>
