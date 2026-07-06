@@ -1,4 +1,4 @@
-import type { Material } from './materials';
+import type { Material, CoolantPreset } from './materials';
 
 export interface BarSection {
   id: string;
@@ -99,6 +99,36 @@ function effectiveAmbientConductance(hEff: number, surfaceAreaM2: number, coatin
   return 1 / (filmR + coatR);
 }
 
+/** Combined conductance (W/K) of a conduction-cooled section's heat path:
+ *  TIM + metallic plate in series, same thickness/(k·A) idiom as
+ *  effectiveAmbientConductance's coating term. The metal's outer face is
+ *  taken to be directly at the coolant inlet temperature (no separate
+ *  coolant-film resistance term) — a disclosed simplification. Returns 0 if
+ *  the section has no contact area (conduction not applied to that section). */
+export function conductionCoolingConductanceWPerK(
+  contactAreaM2: number,
+  timThicknessMm: number,
+  timConductivity: number,
+  metalThicknessMm: number,
+  metalConductivity: number
+): number {
+  if (contactAreaM2 <= 0) return 0;
+  const rTim = (timThicknessMm / 1000) / (timConductivity * contactAreaM2);
+  const rMetal = (metalThicknessMm / 1000) / (metalConductivity * contactAreaM2);
+  return 1 / (rTim + rMetal);
+}
+
+/** Coolant temperature rise across the loop from an energy balance,
+ *  ΔT = Q/(ṁ·cp) — informational only (see BusbarCalculator.tsx): not fed
+ *  back into the node solve, which uses the specified inlet temperature as a
+ *  fixed reservoir, exactly like ambient air. */
+export function coolantTemperatureRiseK(totalHeatW: number, flowRateLPerMin: number, coolant: CoolantPreset): number {
+  if (flowRateLPerMin <= 0) return 0;
+  const massFlowKgPerS = (flowRateLPerMin / 60000) * coolant.densityKgPerM3; // L/min -> m³/s -> kg/s
+  if (massFlowKgPerS <= 0) return 0;
+  return totalHeatW / (massFlowKgPerS * coolant.specificHeatJPerKgK);
+}
+
 export interface AdiabaticInputs {
   material: Material;
   totalAreaMm2: number;
@@ -158,19 +188,29 @@ export interface ThermalNode {
   lengthM: number;       // physical length of this node, m
   surfaceAreaM2: number; // total exposed convective/radiative area, m² (not per metre)
   charLengthM: number;   // characteristic length for the convection correlation, m
+  contactAreaM2: number; // conduction-cooling contact face area, m² (0 if not applied)
 }
 
 export interface SingleSectionInput {
   id: string;
   width: number;  // mm
   length: number; // mm
+  coolingEnabled?: boolean; // "Apply conduction" — mounted via a TIM to a metallic plate + coolant
 }
 
 export function buildSingleBusbarNodes(sections: SingleSectionInput[], thicknessMm: number): ThermalNode[] {
   return sections.map((s, i) => {
     const areaMm2 = s.width * thicknessMm;
-    const perimeterM = (2 * s.width + 2 * thicknessMm) / 1000;
     const lengthM = s.length / 1000;
+    // Conduction is applied to only one face (width×length) per the explicit
+    // spec — that face is removed from the air-exposed perimeter (previously
+    // both large faces + 2 edges; a cooled section keeps one large face + 2
+    // edges), not just given an additional parallel path on top of full air
+    // exposure, since that face physically isn't touching open air anymore.
+    const perimeterM = s.coolingEnabled
+      ? (s.width + 2 * thicknessMm) / 1000
+      : (2 * s.width + 2 * thicknessMm) / 1000;
+    const contactAreaM2 = s.coolingEnabled ? (s.width / 1000) * lengthM : 0;
     return {
       id: s.id,
       label: `Section ${i + 1}`,
@@ -178,6 +218,7 @@ export function buildSingleBusbarNodes(sections: SingleSectionInput[], thickness
       lengthM,
       surfaceAreaM2: perimeterM * lengthM,
       charLengthM: s.width / 1000,
+      contactAreaM2,
     };
   });
 }
@@ -198,6 +239,7 @@ export function buildMultipleBarNodes(profileWidthMm: number, profileThicknessMm
     lengthM: circuitLengthM,
     surfaceAreaM2: surfacePerM * circuitLengthM,
     charLengthM: profileWidthMm / 1000,
+    contactAreaM2: 0, // conduction cooling only applies in single-section mode
   }];
 }
 
@@ -240,6 +282,7 @@ export interface NodalSteadyStateResult {
   powerLossPerNodeW: number[];
   convLossPerNodeW: number[];
   radLossPerNodeW: number[];
+  coolantLossPerNodeW: number[]; // heat leaving via the conduction-cooling path, per node
   conductionFlowsW: number[]; // between node i,i+1 — positive = flowing i -> i+1
   hEffPerNode: number[];
   iterations: number;
@@ -256,10 +299,13 @@ export function solveNodalSteadyState(
   orientation: Orientation,
   manualH: number | null,
   coatingThicknessMm = 0,
-  coatingConductivity = 0.3
+  coatingConductivity = 0.3,
+  coolantConductancePerNode: number[] = [],
+  coolantTempC = 0
 ): NodalSteadyStateResult {
   const n = nodes.length;
   const condG = conductionConductances(nodes, material.thermalConductivity);
+  const gCoolant = (i: number) => coolantConductancePerNode[i] ?? 0;
   let temps = new Array(n).fill(ambientC + 20);
   let iterations = 0;
   const relax = 0.5; // damping factor — the radiation term is nonlinear enough that a direct fixed-point update can oscillate/diverge at high power densities
@@ -284,8 +330,11 @@ export function solveNodalSteadyState(
       const hEff = hConv + hRadLin;
       const gAmb = effectiveAmbientConductance(hEff, node.surfaceAreaM2, coatingThicknessMm, coatingConductivity);
 
-      let diagVal = gAmb;
-      const rhsVal = pGen + gAmb * ambientC;
+      // Two parallel sink paths to two different reservoirs (air, coolant) —
+      // each contributes its own conductance to the diagonal and its own
+      // reservoir·conductance term to the RHS, an exact linear extension.
+      let diagVal = gAmb + gCoolant(i);
+      const rhsVal = pGen + gAmb * ambientC + gCoolant(i) * coolantTempC;
       if (i > 0) { diagVal += condG[i - 1]; lower[i] = -condG[i - 1]; }
       if (i < n - 1) { diagVal += condG[i]; upper[i] = -condG[i]; }
       diag[i] = diagVal;
@@ -305,6 +354,7 @@ export function solveNodalSteadyState(
   const powerLossPerNodeW = new Array(n).fill(0);
   const convLossPerNodeW = new Array(n).fill(0);
   const radLossPerNodeW = new Array(n).fill(0);
+  const coolantLossPerNodeW = new Array(n).fill(0);
   const hEffPerNode = new Array(n).fill(0);
 
   for (let i = 0; i < n; i++) {
@@ -328,6 +378,7 @@ export function solveNodalSteadyState(
     const hRadLin = emissivity * STEFAN_BOLTZMANN * 4 * Math.pow(temps[i] + 273.15, 3);
     convLossPerNodeW[i] = totalLossFinal * (hConv / hEffPerNode[i]);
     radLossPerNodeW[i] = totalLossFinal * (hRadLin / hEffPerNode[i]);
+    coolantLossPerNodeW[i] = gCoolant(i) * (temps[i] - coolantTempC);
   }
 
   const conductionFlowsW: number[] = [];
@@ -335,20 +386,21 @@ export function solveNodalSteadyState(
 
   return {
     tempsC: temps, currentDensities, racTotalPerNode, ksPerNode, powerLossPerNodeW,
-    convLossPerNodeW, radLossPerNodeW, conductionFlowsW, hEffPerNode, iterations,
+    convLossPerNodeW, radLossPerNodeW, coolantLossPerNodeW, conductionFlowsW, hEffPerNode, iterations,
   };
 }
 
 export function solveMaxContinuousCurrentNodal(
   nodes: ThermalNode[], material: Material, currentType: CurrentType, frequencyHz: number,
   ambientC: number, emissivity: number, orientation: Orientation, manualH: number | null, maxTempC: number,
-  coatingThicknessMm = 0, coatingConductivity = 0.3
+  coatingThicknessMm = 0, coatingConductivity = 0.3,
+  coolantConductancePerNode: number[] = [], coolantTempC = 0
 ): number {
   let lo = 0;
   let hi = 500000;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
-    const result = solveNodalSteadyState(nodes, material, mid, currentType, frequencyHz, ambientC, emissivity, orientation, manualH, coatingThicknessMm, coatingConductivity);
+    const result = solveNodalSteadyState(nodes, material, mid, currentType, frequencyHz, ambientC, emissivity, orientation, manualH, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantTempC);
     const worst = Math.max(...result.tempsC);
     if (worst <= maxTempC) lo = mid; else hi = mid; // NaN/Infinity (solver failed to converge) falls through to "exceeds limit"
   }
@@ -398,11 +450,13 @@ export interface TransientResult {
 export function solveNodalTransient(
   nodes: ThermalNode[], material: Material, currentType: CurrentType, frequencyHz: number,
   ambientC: number, emissivity: number, orientation: Orientation, manualH: number | null,
-  steps: LoadStep[], coatingThicknessMm = 0, coatingConductivity = 0.3, substepsPerStep = 25
+  steps: LoadStep[], coatingThicknessMm = 0, coatingConductivity = 0.3,
+  coolantConductancePerNode: number[] = [], coolantTempC = 0, substepsPerStep = 25
 ): TransientResult {
   const n = nodes.length;
   const condG = conductionConductances(nodes, material.thermalConductivity);
   const capacitance = nodes.map(node => material.density * (node.areaMm2 * 1e-6 * node.lengthM) * material.specificHeat);
+  const gCoolant = (i: number) => coolantConductancePerNode[i] ?? 0;
 
   let temps = new Array(n).fill(ambientC);
   const timeS: number[] = [0];
@@ -435,8 +489,8 @@ export function solveNodalTransient(
           const gAmb = effectiveAmbientConductance(hConv + hRadLin, node.surfaceAreaM2, coatingThicknessMm, coatingConductivity);
           const cDt = capacitance[i] / dtSub;
 
-          let diagVal = gAmb + cDt;
-          const rhsVal = pGen + gAmb * ambientC + cDt * temps[i];
+          let diagVal = gAmb + gCoolant(i) + cDt;
+          const rhsVal = pGen + gAmb * ambientC + gCoolant(i) * coolantTempC + cDt * temps[i];
           if (i > 0) { diagVal += condG[i - 1]; lower[i] = -condG[i - 1]; }
           if (i < n - 1) { diagVal += condG[i]; upper[i] = -condG[i]; }
           diag[i] = diagVal;

@@ -41,8 +41,19 @@ export default function BusbarLengthProfile({ sections }: Props) {
 
   return (
     <svg viewBox={`0 0 ${DRAW_W} ${DRAW_H}`} width="100%" style={{ maxHeight: 240 }}>
+      <defs>
+        <pattern id="coolingHatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+          <rect width="7" height="7" fill="var(--blue)" opacity="0.12" />
+          <line x1="0" y1="0" x2="0" y2="7" stroke="var(--blue)" strokeWidth="2.2" />
+        </pattern>
+      </defs>
+
       {rects.map(r => (
         <rect key={r.key} x={r.x} y={r.y} width={r.w} height={r.h} fill="var(--accent-glow)" stroke="var(--accent)" strokeWidth={1.5} rx={1} />
+      ))}
+      {/* blue hatching overlay for sections with "Apply conduction" ticked */}
+      {rects.filter(r => r.section.coolingEnabled).map(r => (
+        <rect key={`hatch-${r.key}`} x={r.x} y={r.y} width={r.w} height={r.h} fill="url(#coolingHatch)" stroke="var(--blue)" strokeWidth={1.5} rx={1} />
       ))}
 
       {/* current-flow arrow */}
@@ -60,6 +71,11 @@ export default function BusbarLengthProfile({ sections }: Props) {
           <text x={r.x + r.w / 2} y={r.y - 6} textAnchor="middle" fill="var(--text-2)">
             {r.section.width}mm
           </text>
+          {r.section.coolingEnabled && (
+            <text x={r.x + r.w / 2} y={r.y + r.h / 2 + 3} textAnchor="middle" fill="var(--blue)" fontWeight={700}>
+              conduction
+            </text>
+          )}
         </g>
       ))}
 
