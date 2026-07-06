@@ -90,8 +90,8 @@ export default function TimeSeriesChart({ timeS, currentA, series, ambientC, max
 
   // Tooltip box sizing/position — clamped so it never clips off either edge.
   const tooltipLines = hover ? 2 + series.length : 0;
-  const tooltipW = 170;
-  const tooltipH = 16 + tooltipLines * 14;
+  const tooltipW = 210;
+  const tooltipH = 20 + tooltipLines * 19;
   const tooltipX = hover ? Math.min(Math.max(hover.x + 10, MARGIN.left), W - MARGIN.right - tooltipW) : 0;
   const tooltipY = MARGIN.top + 6;
 
@@ -157,15 +157,15 @@ export default function TimeSeriesChart({ timeS, currentA, series, ambientC, max
           ))}
 
           <rect x={tooltipX} y={tooltipY} width={tooltipW} height={tooltipH} rx={6} fill="var(--bg-raised)" stroke="var(--border-strong)" strokeWidth={1} />
-          <text x={tooltipX + 10} y={tooltipY + 16} fontSize="10.5" fontWeight={700} fill="var(--text)" fontFamily="ui-monospace, monospace">
+          <text x={tooltipX + 12} y={tooltipY + 20} fontSize="15" fontWeight={700} fill="var(--text)" fontFamily="ui-monospace, monospace">
             t = {fmt1(hover.time)}s
           </text>
-          <text x={tooltipX + 10} y={tooltipY + 30} fontSize="9.5" fill="var(--blue)" fontFamily="ui-monospace, monospace">
+          <text x={tooltipX + 12} y={tooltipY + 40} fontSize="13" fill="var(--blue)" fontFamily="ui-monospace, monospace">
             Current: {fmt1(hover.current)} A
           </text>
           {series.map((s, i) => (
-            <text key={s.label} x={tooltipX + 10} y={tooltipY + 44 + i * 14} fontSize="9.5" fill={s.color} fontFamily="ui-monospace, monospace">
-              {truncate(s.label, 16)}: {fmt1(s.values[hover.idx])}°C
+            <text key={s.label} x={tooltipX + 12} y={tooltipY + 60 + i * 19} fontSize="13" fill={s.color} fontFamily="ui-monospace, monospace">
+              {truncate(s.label, 18)}: {fmt1(s.values[hover.idx])}°C
             </text>
           ))}
         </g>

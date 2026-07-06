@@ -67,7 +67,7 @@ export default function BusbarCalculator() {
 
   const [materialId, setMaterialId] = useState<'copper' | 'aluminium'>('copper');
   const [orientation, setOrientation] = useState<Orientation>('vertical');
-  const [emissivity, setEmissivity] = useState(0.4);
+  const [emissivity, setEmissivity] = useState(0.1); // bright / mill-finish metal, default surface finish
   const [convMode, setConvMode] = useState<'auto' | 'manual'>('auto');
   const [manualHValue, setManualHValue] = useState(DEFAULT_NATURAL_CONVECTION_H);
   const [coatingPresetId, setCoatingPresetId] = useState('none');
@@ -119,6 +119,7 @@ export default function BusbarCalculator() {
   const [current, setCurrent] = useState(1000);
   const [frequency, setFrequency] = useState(50);
   const [showMotorHelper, setShowMotorHelper] = useState(false);
+  const [chartExpanded, setChartExpanded] = useState(false);
   const [motorRpm, setMotorRpm] = useState(6000);
   const [motorPolePairs, setMotorPolePairs] = useState(4);
   const [ambientC, setAmbientC] = useState(35);
@@ -411,6 +412,21 @@ export default function BusbarCalculator() {
     });
   };
 
+  const chartLegend = (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.9rem', marginTop: '0.5rem' }}>
+      {nodes.map((node, i) => (
+        <span key={node.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--text-2)' }}>
+          <span style={{ width: 10, height: 10, borderRadius: 2, background: PALETTE[i % PALETTE.length], display: 'inline-block' }} />
+          {node.label}
+        </span>
+      ))}
+      <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--text-2)' }}>
+        <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--blue)', display: 'inline-block' }} />
+        Current
+      </span>
+    </div>
+  );
+
   return (
     <div className="page">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -428,8 +444,8 @@ export default function BusbarCalculator() {
         </PremiumGate>
       </div>
 
-      <div className="two-col">
-        {/* LEFT COLUMN — inputs */}
+      <div className="three-col">
+        {/* COLUMN 1 — Sections + Material */}
         <div>
           <div className="card">
             <div className="card-title">
@@ -523,38 +539,35 @@ export default function BusbarCalculator() {
                 </div>
               </>
             )}
-
-            <div className="grid grid-2" style={{ marginTop: '0.5rem' }}>
-              <div className="field">
-                <label>Mounting orientation</label>
-                <div className="segmented">
-                  <button className={orientation === 'vertical' ? 'active' : ''} onClick={() => setOrientation('vertical')}>Vertical (edge)</button>
-                  <button className={orientation === 'horizontal' ? 'active' : ''} onClick={() => setOrientation('horizontal')}>Horizontal (flat)</button>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="card">
-            <div className="card-title"><span><span className="step-num">2</span>Material, surface &amp; convection</span></div>
+            <div className="card-title"><span><span className="step-num">2</span>Material</span></div>
+            <div className="field">
+              <label>Material</label>
+              <div className="segmented">
+                <button className={materialId === 'copper' ? 'active' : ''} onClick={() => onMaterialChange('copper')}>Copper</button>
+                <button className={materialId === 'aluminium' ? 'active' : ''} onClick={() => onMaterialChange('aluminium')}>Aluminium</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* COLUMN 2 — Cooling + Loads */}
+        <div>
+          <div className="card">
+            <div className="card-title"><span><span className="step-num">3</span>Cooling</span></div>
+            <div className="field" style={{ marginBottom: '0.85rem' }}>
+              <label>Mounting orientation</label>
+              <div className="segmented">
+                <button className={orientation === 'vertical' ? 'active' : ''} onClick={() => setOrientation('vertical')}>Vertical (edge)</button>
+                <button className={orientation === 'horizontal' ? 'active' : ''} onClick={() => setOrientation('horizontal')}>Horizontal (flat)</button>
+              </div>
+              <span className="hint">Feeds the natural convection correlation below.</span>
+            </div>
             <div className="grid grid-2">
-              <div className="field">
-                <label>Material</label>
-                <div className="segmented">
-                  <button className={materialId === 'copper' ? 'active' : ''} onClick={() => onMaterialChange('copper')}>Copper</button>
-                  <button className={materialId === 'aluminium' ? 'active' : ''} onClick={() => onMaterialChange('aluminium')}>Aluminium</button>
-                </div>
-              </div>
-              <div className="field">
-                <label>Surface finish (emissivity)</label>
-                <select value={emissivity} onChange={e => setEmissivity(Number(e.target.value))}>
-                  {EMISSIVITY_PRESETS.map(p => (
-                    <option key={p.id} value={p.value}>{p.label} (ε={p.value})</option>
-                  ))}
-                </select>
-              </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>Natural convection coefficient</label>
+                <label>Convection</label>
                 <div className="grid grid-2">
                   <div className="segmented">
                     <button className={convMode === 'auto' ? 'active' : ''} onClick={() => setConvMode('auto')}>Auto-calculate</button>
@@ -570,7 +583,15 @@ export default function BusbarCalculator() {
                 </span>
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>Coating</label>
+                <label>Radiation: surface finish (emissivity)</label>
+                <select value={emissivity} onChange={e => setEmissivity(Number(e.target.value))}>
+                  {EMISSIVITY_PRESETS.map(p => (
+                    <option key={p.id} value={p.value}>{p.label} (ε={p.value})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label>Conduction: coating</label>
                 <select value={coatingPresetId} onChange={e => onCoatingPresetChange(e.target.value)}>
                   {COATING_PRESETS.map(p => (
                     <option key={p.id} value={p.id}>{p.label}</option>
@@ -591,10 +612,102 @@ export default function BusbarCalculator() {
                 </span>
               </div>
             </div>
+
+            {anySectionCooled && (
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+                <div className="card-title" style={{ marginBottom: '0.5rem' }}>
+                  <span style={{ fontWeight: 400 }}>Conduction: coldplate (TIM + heat sink + coolant)</span>
+                </div>
+                <p className="note" style={{ marginBottom: '0.85rem' }}>
+                  Applies to the {sections.filter(s => s.coolingEnabled).length} section(s) ticked "Coldplate" in Busbar
+                  configuration. Heat leaves that face through the TIM and heat sink to the coolant, in parallel with
+                  (reduced) natural convection/radiation from the section's remaining exposed faces.
+                </p>
+                <div className="grid grid-2">
+                  <div className="field">
+                    <label>Thermal interface material (TIM)</label>
+                    <select value={timPresetId} onChange={e => onTimPresetChange(e.target.value)}>
+                      {TIM_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                    </select>
+                  </div>
+                  <div />
+                  <div className="field">
+                    <label>TIM thickness (mm)</label>
+                    <input autoComplete="off" type="number" min={0.01} step={0.01} value={timThicknessMm} onChange={e => setTimThicknessMm(Number(e.target.value))} />
+                  </div>
+                  <div className="field">
+                    <label>TIM thermal conductivity (W/m·K)</label>
+                    <input autoComplete="off" type="number" min={0.01} step={0.1} value={timConductivity} onChange={e => setTimConductivity(Number(e.target.value))} />
+                  </div>
+                  <div className="field">
+                    <label>Heat sink material</label>
+                    <div className="segmented">
+                      <button className={heatSinkMaterialId === 'aluminium' ? 'active' : ''} onClick={() => setHeatSinkMaterialId('aluminium')}>Aluminium</button>
+                      <button className={heatSinkMaterialId === 'copper' ? 'active' : ''} onClick={() => setHeatSinkMaterialId('copper')}>Copper</button>
+                      <button className={heatSinkMaterialId === 'custom' ? 'active' : ''} onClick={() => setHeatSinkMaterialId('custom')}>Custom</button>
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>Heat sink thickness (mm)</label>
+                    <input autoComplete="off" type="number" min={0.1} value={heatSinkThicknessMm} onChange={e => setHeatSinkThicknessMm(Number(e.target.value))} />
+                  </div>
+                  {heatSinkMaterialId === 'custom' && (
+                    <div className="field" style={{ gridColumn: '1 / -1' }}>
+                      <label>Custom heat sink conductivity (W/m·K)</label>
+                      <input autoComplete="off" type="number" min={1} value={customHeatSinkConductivity} onChange={e => setCustomHeatSinkConductivity(Number(e.target.value))} />
+                    </div>
+                  )}
+                  <div className="field">
+                    <label>Coolant</label>
+                    <select value={coolantPresetId} onChange={e => onCoolantPresetChange(e.target.value)}>
+                      {COOLANT_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Flow rate (L/min)</label>
+                    <input autoComplete="off" type="number" min={0} step={0.1} value={coolantFlowRateLPerMin} onChange={e => setCoolantFlowRateLPerMin(Number(e.target.value))} />
+                  </div>
+                  <div className="field">
+                    <label>Coolant inlet temperature (°C)</label>
+                    <input autoComplete="off" type="number" value={coolantInletTempC} onChange={e => setCoolantInletTempC(Number(e.target.value))} />
+                    <span className="hint">Used as the fixed sink temperature for the coldplate path, exactly like ambient air on the convective side.</span>
+                  </div>
+                  <div className="field">
+                    <label>Coolant-side film coefficient (W/m²·K)</label>
+                    <input autoComplete="off" type="number" min={1} value={coolantFilmH} onChange={e => setCoolantFilmH(Number(e.target.value))} />
+                    <span className="hint">Typical liquid coldplate: ~1000–5000 W/(m²·K). Set directly rather than derived from flow rate — same manual-override approach as the air-side convection coefficient.</span>
+                  </div>
+                  {coolantPresetId === 'custom' && (
+                    <>
+                      <div className="field">
+                        <label>Coolant density (kg/m³)</label>
+                        <input autoComplete="off" type="number" min={1} value={coolantDensity} onChange={e => setCoolantDensity(Number(e.target.value))} />
+                      </div>
+                      <div className="field">
+                        <label>Coolant specific heat (J/kg·K)</label>
+                        <input autoComplete="off" type="number" min={1} value={coolantSpecificHeat} onChange={e => setCoolantSpecificHeat(Number(e.target.value))} />
+                      </div>
+                    </>
+                  )}
+                </div>
+                {durationMode === 'continuous' && (
+                  <div className="result-tile" style={{ marginTop: '0.85rem', maxWidth: 340 }}>
+                    <div className="label">Estimated coolant temperature rise</div>
+                    <div className="value">{fmt(coolantTempRiseK, 2)}<span className="unit">K</span></div>
+                    <div className="hint">
+                      Informational — an exact energy balance (ΔT=Q/(ṁ·cp)) on the heat absorbed by the coolant
+                      path, but not fed back into the busbar temperature result (which uses the fixed inlet
+                      temperature as the sink, same as ambient air). Add this manually to the inlet temperature for
+                      a worst-case check.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="card">
-            <div className="card-title"><span><span className="step-num">3</span>Electrical load &amp; duration</span></div>
+            <div className="card-title"><span><span className="step-num">4</span>Load &amp; duration</span></div>
             <div className="grid grid-2">
               <div className="field">
                 <label>Current type</label>
@@ -721,99 +834,9 @@ export default function BusbarCalculator() {
               </div>
             )}
           </div>
-
-          {anySectionCooled && (
-            <div className="card">
-              <div className="card-title"><span><span className="step-num">4</span>Conductive cooling (coldplate)</span></div>
-              <p className="note" style={{ marginBottom: '0.85rem' }}>
-                Applies to the {sections.filter(s => s.coolingEnabled).length} section(s) ticked "Coldplate" above.
-                Heat leaves that face through the TIM and heat sink to the coolant, in parallel with (reduced)
-                natural convection/radiation from the section's remaining exposed faces.
-              </p>
-              <div className="grid grid-2">
-                <div className="field">
-                  <label>Thermal interface material (TIM)</label>
-                  <select value={timPresetId} onChange={e => onTimPresetChange(e.target.value)}>
-                    {TIM_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-                  </select>
-                </div>
-                <div />
-                <div className="field">
-                  <label>TIM thickness (mm)</label>
-                  <input autoComplete="off" type="number" min={0.01} step={0.01} value={timThicknessMm} onChange={e => setTimThicknessMm(Number(e.target.value))} />
-                </div>
-                <div className="field">
-                  <label>TIM thermal conductivity (W/m·K)</label>
-                  <input autoComplete="off" type="number" min={0.01} step={0.1} value={timConductivity} onChange={e => setTimConductivity(Number(e.target.value))} />
-                </div>
-                <div className="field">
-                  <label>Heat sink material</label>
-                  <div className="segmented">
-                    <button className={heatSinkMaterialId === 'aluminium' ? 'active' : ''} onClick={() => setHeatSinkMaterialId('aluminium')}>Aluminium</button>
-                    <button className={heatSinkMaterialId === 'copper' ? 'active' : ''} onClick={() => setHeatSinkMaterialId('copper')}>Copper</button>
-                    <button className={heatSinkMaterialId === 'custom' ? 'active' : ''} onClick={() => setHeatSinkMaterialId('custom')}>Custom</button>
-                  </div>
-                </div>
-                <div className="field">
-                  <label>Heat sink thickness (mm)</label>
-                  <input autoComplete="off" type="number" min={0.1} value={heatSinkThicknessMm} onChange={e => setHeatSinkThicknessMm(Number(e.target.value))} />
-                </div>
-                {heatSinkMaterialId === 'custom' && (
-                  <div className="field" style={{ gridColumn: '1 / -1' }}>
-                    <label>Custom heat sink conductivity (W/m·K)</label>
-                    <input autoComplete="off" type="number" min={1} value={customHeatSinkConductivity} onChange={e => setCustomHeatSinkConductivity(Number(e.target.value))} />
-                  </div>
-                )}
-                <div className="field">
-                  <label>Coolant</label>
-                  <select value={coolantPresetId} onChange={e => onCoolantPresetChange(e.target.value)}>
-                    {COOLANT_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label>Flow rate (L/min)</label>
-                  <input autoComplete="off" type="number" min={0} step={0.1} value={coolantFlowRateLPerMin} onChange={e => setCoolantFlowRateLPerMin(Number(e.target.value))} />
-                </div>
-                <div className="field">
-                  <label>Coolant inlet temperature (°C)</label>
-                  <input autoComplete="off" type="number" value={coolantInletTempC} onChange={e => setCoolantInletTempC(Number(e.target.value))} />
-                  <span className="hint">Used as the fixed sink temperature for the coldplate path, exactly like ambient air on the convective side.</span>
-                </div>
-                <div className="field">
-                  <label>Coolant-side film coefficient (W/m²·K)</label>
-                  <input autoComplete="off" type="number" min={1} value={coolantFilmH} onChange={e => setCoolantFilmH(Number(e.target.value))} />
-                  <span className="hint">Typical liquid coldplate: ~1000–5000 W/(m²·K). Set directly rather than derived from flow rate — same manual-override approach as the air-side convection coefficient.</span>
-                </div>
-                {coolantPresetId === 'custom' && (
-                  <>
-                    <div className="field">
-                      <label>Coolant density (kg/m³)</label>
-                      <input autoComplete="off" type="number" min={1} value={coolantDensity} onChange={e => setCoolantDensity(Number(e.target.value))} />
-                    </div>
-                    <div className="field">
-                      <label>Coolant specific heat (J/kg·K)</label>
-                      <input autoComplete="off" type="number" min={1} value={coolantSpecificHeat} onChange={e => setCoolantSpecificHeat(Number(e.target.value))} />
-                    </div>
-                  </>
-                )}
-              </div>
-              {durationMode === 'continuous' && (
-                <div className="result-tile" style={{ marginTop: '0.85rem', maxWidth: 340 }}>
-                  <div className="label">Estimated coolant temperature rise</div>
-                  <div className="value">{fmt(coolantTempRiseK, 2)}<span className="unit">K</span></div>
-                  <div className="hint">
-                    Informational — an exact energy balance (ΔT=Q/(ṁ·cp)) on the heat absorbed by the coolant
-                    path, but not fed back into the busbar temperature result above (which uses the fixed inlet
-                    temperature as the sink, same as ambient air). Add this manually to the inlet temperature for
-                    a worst-case check.
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* RIGHT COLUMN — results */}
+        {/* COLUMN 3 — Results + Graph */}
         <div>
           <div className="card">
             <div className="card-title">Results</div>
@@ -928,7 +951,10 @@ export default function BusbarCalculator() {
 
           {durationMode === 'profile' && transient && (
             <div className="card">
-              <div className="card-title">Current &amp; temperature vs time</div>
+              <div className="card-title">
+                <span>Current &amp; temperature vs time</span>
+                <button className="icon-btn" onClick={() => setChartExpanded(true)} title="Expand chart" aria-label="Expand chart">⛶</button>
+              </div>
               <TimeSeriesChart
                 timeS={transient.timeS}
                 currentA={transient.currentA}
@@ -936,49 +962,39 @@ export default function BusbarCalculator() {
                 maxTempC={maxContinuousTempC}
                 series={nodes.map((node, i) => ({ label: node.label, color: PALETTE[i % PALETTE.length], values: transient.nodeTempsC[i] }))}
               />
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.9rem', marginTop: '0.5rem' }}>
-                {nodes.map((node, i) => (
-                  <span key={node.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--text-2)' }}>
-                    <span style={{ width: 10, height: 10, borderRadius: 2, background: PALETTE[i % PALETTE.length], display: 'inline-block' }} />
-                    {node.label}
-                  </span>
-                ))}
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--text-2)' }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--blue)', display: 'inline-block' }} />
-                  Current
-                </span>
-              </div>
+              {chartLegend}
             </div>
           )}
-
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              Steady-state and load-profile heating are solved with a nodal thermal network: each section (or the
-              stacked-bar bundle, as one lumped node) generates I²R heat, exchanges heat with neighbouring sections
-              by axial conduction (generalised fin equation with internal heat generation, discretised and solved
-              with the Thomas algorithm), and loses heat to ambient by natural convection + radiation, in series with
-              any coating's conduction resistance (t/(k·A), same generalised-fin-style discretisation). Skin effect
-              uses the IEC 60287-1-1 formula. Load profiles are marched forward in time with backward-Euler
-              integration (unconditionally stable) using each material's density and specific heat for thermal
-              capacitance. Short-circuit heating uses the IEC 60865-1 adiabatic method per section (K = 226 A·√s/mm²
-              copper, 148 aluminium; β = 234.5°C copper, 228°C aluminium) — conduction between sections is neglected
-              for faults since it is slow relative to typical fault durations. Multi-bar bundles reduce exposed
-              surface area on faces that face a narrow gap; proximity effect on <em>resistance</em> and PWM
-              switching-ripple heating are not modelled. A section ticked "Coldplate" loses heat through an
-              additional parallel path — TIM + heat sink + coolant film, same t/(k·A) conduction idiom as the
-              coating — to the specified coolant inlet temperature, and correspondingly loses one full face
-              (width×length) from its air-exposed area. Flow rate and fluid feed one exact, separate calculation
-              (an energy-balance coolant temperature rise) that is informational only and not fed back into the
-              busbar temperature result, which always uses the fixed inlet temperature as the coolant-side sink,
-              the same way ambient air is always treated as a fixed-temperature reservoir. For critical designs,
-              verify against manufacturer test data and, where required, by test.
-            </p>
-          </div>
         </div>
       </div>
 
-      {/* CALCULATION STEPS */}
+      {/* FULL WIDTH — Reference & assumptions */}
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          Steady-state and load-profile heating are solved with a nodal thermal network: each section (or the
+          stacked-bar bundle, as one lumped node) generates I²R heat, exchanges heat with neighbouring sections
+          by axial conduction (generalised fin equation with internal heat generation, discretised and solved
+          with the Thomas algorithm), and loses heat to ambient by natural convection + radiation, in series with
+          any coating's conduction resistance (t/(k·A), same generalised-fin-style discretisation). Skin effect
+          uses the IEC 60287-1-1 formula. Load profiles are marched forward in time with backward-Euler
+          integration (unconditionally stable) using each material's density and specific heat for thermal
+          capacitance. Short-circuit heating uses the IEC 60865-1 adiabatic method per section (K = 226 A·√s/mm²
+          copper, 148 aluminium; β = 234.5°C copper, 228°C aluminium) — conduction between sections is neglected
+          for faults since it is slow relative to typical fault durations. Multi-bar bundles reduce exposed
+          surface area on faces that face a narrow gap; proximity effect on <em>resistance</em> and PWM
+          switching-ripple heating are not modelled. A section ticked "Coldplate" loses heat through an
+          additional parallel path — TIM + heat sink + coolant film, same t/(k·A) conduction idiom as the
+          coating — to the specified coolant inlet temperature, and correspondingly loses one full face
+          (width×length) from its air-exposed area. Flow rate and fluid feed one exact, separate calculation
+          (an energy-balance coolant temperature rise) that is informational only and not fed back into the
+          busbar temperature result, which always uses the fixed inlet temperature as the coolant-side sink,
+          the same way ambient air is always treated as a fixed-temperature reservoir. For critical designs,
+          verify against manufacturer test data and, where required, by test.
+        </p>
+      </div>
+
+      {/* FULL WIDTH — CALCULATION STEPS */}
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Calculation steps</div>
 
@@ -999,6 +1015,27 @@ export default function BusbarCalculator() {
           </div>
         )}
       </div>
+
+      {chartExpanded && durationMode === 'profile' && transient && (
+        <div className="chart-modal-backdrop" onClick={() => setChartExpanded(false)}>
+          <div className="chart-modal-panel" onClick={e => e.stopPropagation()}>
+            <div className="card-title">
+              <span>Current &amp; temperature vs time</span>
+              <button className="icon-btn" onClick={() => setChartExpanded(false)} title="Close" aria-label="Close">✕</button>
+            </div>
+            <div className="chart-modal-body">
+              <TimeSeriesChart
+                timeS={transient.timeS}
+                currentA={transient.currentA}
+                ambientC={ambientC}
+                maxTempC={maxContinuousTempC}
+                series={nodes.map((node, i) => ({ label: node.label, color: PALETTE[i % PALETTE.length], values: transient.nodeTempsC[i] }))}
+              />
+            </div>
+            {chartLegend}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
