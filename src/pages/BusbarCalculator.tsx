@@ -4,7 +4,9 @@ import BusbarLengthProfile from '../components/BusbarLengthProfile';
 import ConductionStackCrossSection from '../components/ConductionStackCrossSection';
 import TimeSeriesChart from '../components/TimeSeriesChart';
 import { useTheme } from '../lib/ThemeContext';
-import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
+import { deriveAccentOnLight } from '../lib/theme';
+import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData, type ReportDiagram } from '../lib/pdfExport';
+import { renderLengthProfileSvg, renderCrossSectionSvg, renderConductionStackSvg, renderTimeSeriesChartSvg } from '../lib/pdfDiagrams';
 import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
 import PremiumGate from '../components/PremiumGate';
@@ -357,19 +359,22 @@ export default function BusbarCalculator() {
     ];
 
     if (anySectionCooled) {
+      const coolantLabel = COOLANT_PRESETS.find(p => p.id === coolantPresetId)?.label ?? coolantPresetId;
       sectionsOut.push({
         heading: 'Conduction cooling',
         rows: [
           { label: 'Sections with conduction applied', value: sections.map((s, i) => (s.coolingEnabled ? `${i + 1}` : null)).filter(Boolean).join(', ') || 'None' },
           { label: 'Thermal interface material', value: `${timThicknessMm} mm, k=${timConductivity} W/(m·K)` },
           { label: 'Metallic section', value: `${metalMaterialId}, ${metalThicknessMm} mm, k=${fmt(metalConductivity, 0)} W/(m·K)` },
-          { label: 'Coolant', value: `${coolantPresetId}, ${coolantFlowRateLPerMin} L/min, inlet ${coolantInletTempC} °C` },
+          { label: 'Coolant medium', value: `${coolantLabel} (c=${fmt(coolantSpecificHeat, 0)} J/(kg·K), ρ=${fmt(coolantDensity, 0)} kg/m³)` },
+          { label: 'Flow rate', value: `${coolantFlowRateLPerMin} L/min` },
+          { label: 'Coolant inlet temperature', value: `${coolantInletTempC} °C` },
         ],
       });
     }
 
     return sectionsOut;
-  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, orientation, material, emissivity, convMode, manualHValue, coatingThicknessMm, coatingConductivity, currentType, durationMode, current, frequency, ambientC, maxContinuousTempC, faultDurationS, faultInitialTempC, maxFaultTempC, steps, anySectionCooled, timThicknessMm, timConductivity, metalMaterialId, metalThicknessMm, metalConductivity, coolantPresetId, coolantFlowRateLPerMin, coolantInletTempC]);
+  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, orientation, material, emissivity, convMode, manualHValue, coatingThicknessMm, coatingConductivity, currentType, durationMode, current, frequency, ambientC, maxContinuousTempC, faultDurationS, faultInitialTempC, maxFaultTempC, steps, anySectionCooled, timThicknessMm, timConductivity, metalMaterialId, metalThicknessMm, metalConductivity, coolantPresetId, coolantSpecificHeat, coolantDensity, coolantFlowRateLPerMin, coolantInletTempC]);
 
   const outputSections: ReportSection[] = useMemo(() => {
     const headline: ReportRow[] = [
@@ -400,6 +405,42 @@ export default function BusbarCalculator() {
   }, [durationMode, worstTempC, referenceTempC, maxCurrent, minArea, transient, totalLossW, totalEnergyJ, nodes, steady, adiabatic, busbarType, anySectionCooled, coolantTotalHeatW, coolantTempRiseK]);
 
   const handleExportPdf = () => {
+    const pdfAccent = deriveAccentOnLight(accentHex);
+    const diagrams: ReportDiagram[] = [];
+
+    if (busbarType === 'single') {
+      diagrams.push({ title: 'Busbar length profile (plan view)', svgMarkup: renderLengthProfileSvg(sections, pdfAccent) });
+    } else {
+      diagrams.push({
+        title: 'Busbar cross-section',
+        svgMarkup: renderCrossSectionSvg(
+          Array.from({ length: nBars }, () => ({ width: profileWidth, thickness: profileThickness, gapAfter: barGap })),
+          orientation,
+          pdfAccent
+        ),
+      });
+    }
+
+    if (anySectionCooled) {
+      diagrams.push({
+        title: 'Conduction cooling cross-section',
+        svgMarkup: renderConductionStackSvg(thicknessMm, timThicknessMm, timConductivity, metalThicknessMm, metalConductivity, pdfAccent),
+      });
+    }
+
+    if (durationMode === 'profile' && transient) {
+      diagrams.push({
+        title: 'Current & temperature vs time',
+        svgMarkup: renderTimeSeriesChartSvg(
+          transient.timeS,
+          transient.currentA,
+          nodes.map((node, i) => ({ label: node.label, color: PALETTE[i % PALETTE.length], values: transient.nodeTempsC[i] })),
+          ambientC,
+          maxContinuousTempC
+        ),
+      });
+    }
+
     exportReportToPdf({
       tabName: 'Busbar_Calculator',
       pageTitle: 'Busbar Temperature & Ampacity Calculator',
@@ -408,6 +449,7 @@ export default function BusbarCalculator() {
       inputSections,
       outputSections,
       calculationSteps,
+      diagrams,
       disclaimer: 'Engineering estimation tool. Formulas: IEC 60287-1-1 (skin effect), IEC 60865-1 (short-circuit heating), generalised-fin nodal thermal network. Verify critical designs against the referenced standards and, where required, physical testing.',
       ...branding,
     });
@@ -787,6 +829,7 @@ export default function BusbarCalculator() {
                   <select value={coolantPresetId} onChange={e => onCoolantPresetChange(e.target.value)}>
                     {COOLANT_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
                   </select>
+                  <span className="hint">Specific heat: {fmt(coolantSpecificHeat, 0)} J/(kg·K) · Density: {fmt(coolantDensity, 0)} kg/m³</span>
                 </div>
                 <div className="field">
                   <label>Flow rate (L/min)</label>

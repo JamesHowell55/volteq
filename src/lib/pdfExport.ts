@@ -17,6 +17,11 @@ export interface CalcStepData {
   result: string;
 }
 
+export interface ReportDiagram {
+  title: string;
+  svgMarkup: string; // a complete, self-contained <svg>...</svg> string with literal colors (no CSS vars)
+}
+
 export interface ReportSpec {
   tabName: string; // used in the filename, e.g. 'Busbar_Calculator'
   pageTitle: string;
@@ -26,6 +31,9 @@ export interface ReportSpec {
   outputSections: ReportSection[];
   calculationSteps: CalcStepData[];
   disclaimer: string;
+  // Graphical representations (cross-sections, load-profile chart, etc.) —
+  // rendered on their own page between the summary and the calculation steps.
+  diagrams?: ReportDiagram[];
   // Premium report branding — when present, shown in place of the Voltaic mark.
   companyName?: string;
   companyLogoUrl?: string;
@@ -81,6 +89,12 @@ function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
       </div>`
     : '';
 
+  const diagramsHtml = (spec.diagrams ?? []).map(d => `
+    <div style="break-inside: avoid; margin-bottom:18px;">
+      <div style="font-size:10.5px; font-weight:700; color:#14170F; margin-bottom:6px;">${escapeHtml(d.title)}</div>
+      <div style="border:1px solid #EBEDEA; border-radius:6px; padding:10px; background:#FAFBFA;">${d.svgMarkup}</div>
+    </div>`).join('');
+
   const stepsHtml = spec.calculationSteps.map((s, i) => `
     <div style="break-inside: avoid; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #EBEDEA;">
       <div style="font-size:11px; font-weight:700; color:#14170F; margin-bottom:2px;">${i + 1}. ${escapeHtml(s.title)}</div>
@@ -121,6 +135,10 @@ function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
         ${escapeHtml(spec.disclaimer)}
       </div>
     </div>
+    ${diagramsHtml ? `<div style="break-before: page; padding:28px 32px;">
+      <div style="font-size:13px; font-weight:700; margin-bottom:12px; color:${accent};">Diagrams</div>
+      ${diagramsHtml}
+    </div>` : ''}
     <div style="break-before: page; padding:28px 32px;">
       <div style="font-size:13px; font-weight:700; margin-bottom:12px; color:${accent};">Calculation steps</div>
       ${stepsHtml}
