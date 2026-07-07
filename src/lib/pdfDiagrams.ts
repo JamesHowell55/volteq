@@ -357,6 +357,67 @@ export function renderChokeCoreProfileSvg(
   </svg>`;
 }
 
+export interface PdfLossBar {
+  label: string;
+  conductionChannelW: number;
+  conductionDiodeW: number;
+  deadTimeDiodeW: number;
+  switchingW: number;
+  reverseRecoveryW: number;
+}
+
+/** Stacked per-device loss-breakdown bars, matching LossBreakdownBars.tsx with literal colors. */
+export function renderLossBreakdownSvg(bars: PdfLossBar[], accentColor: string): string {
+  const SEGMENTS: { key: keyof Omit<PdfLossBar, 'label'>; label: string; color: string }[] = [
+    { key: 'conductionChannelW', label: 'Conduction (channel)', color: accentColor },
+    { key: 'conductionDiodeW', label: 'Conduction (body diode)', color: WARN },
+    { key: 'deadTimeDiodeW', label: 'Dead-time diode', color: '#A98307' },
+    { key: 'switchingW', label: 'Switching (Eon+Eoff)', color: BLUE },
+    { key: 'reverseRecoveryW', label: 'Reverse recovery', color: '#7396A8' },
+  ];
+  const BAR_H = 26;
+  const ROW_GAP = 14;
+  const LABEL_W = 110;
+  const VALUE_W = 80;
+  const W = 640;
+  if (bars.length === 0) return `<svg viewBox="0 0 ${W} 60" width="100%"></svg>`;
+
+  const totals = bars.map(b => SEGMENTS.reduce((a, s) => a + (b[s.key] as number), 0));
+  const maxTotal = Math.max(...totals, 1e-9);
+  const plotW = W - LABEL_W - VALUE_W;
+  const legendH = 20;
+  const H = bars.length * (BAR_H + ROW_GAP) + 40 + legendH;
+
+  const barsHtml = bars.map((b, i) => {
+    const y = i * (BAR_H + ROW_GAP) + 8;
+    let x = LABEL_W;
+    const segs = SEGMENTS.map(s => {
+      const v = b[s.key] as number;
+      const w = (v / maxTotal) * plotW;
+      const rect = v > 0 ? `<rect x="${x}" y="${y}" width="${Math.max(w, 0.5)}" height="${BAR_H}" fill="${s.color}" stroke="white" stroke-width="0.5" />` : '';
+      x += w;
+      return rect;
+    }).join('');
+    return `<g>
+      <text x="${LABEL_W - 8}" y="${y + BAR_H / 2 + 4}" text-anchor="end" font-size="11" fill="${TEXT_2}" font-family="ui-monospace, monospace">${escapeXml(b.label)}</text>
+      ${segs}
+      <text x="${x + 8}" y="${y + BAR_H / 2 + 4}" text-anchor="start" font-size="11" fill="#14170F" font-family="ui-monospace, monospace">${totals[i] >= 100 ? totals[i].toFixed(0) : totals[i].toFixed(1)} W</text>
+    </g>`;
+  }).join('');
+
+  const legendHtml = SEGMENTS.map((s, i) => `
+    <g font-size="9" font-family="ui-monospace, monospace">
+      <rect x="${LABEL_W + i * 105}" y="${H - legendH - 4}" width="8" height="8" fill="${s.color}" />
+      <text x="${LABEL_W + i * 105 + 12}" y="${H - legendH + 3}" fill="${TEXT_2}">${escapeXml(s.label)}</text>
+    </g>`).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%">
+    ${barsHtml}
+    ${legendHtml}
+    <text x="${W / 2}" y="${H - 6}" text-anchor="middle" font-size="9.5" fill="${TEXT_FAINT}" font-family="ui-monospace, monospace">per-device die losses &middot; shared scale across bars</text>
+  </svg>`;
+}
+
 export interface PdfSeries {
   label: string;
   color: string;

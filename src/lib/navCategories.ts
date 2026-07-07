@@ -36,6 +36,7 @@ export const NAV_CATEGORIES: NavCategory[] = [
     label: 'Power Electronics',
     links: [
       { label: 'Choke Sizing (CM/DM)', path: '/choke-sizing', available: true, description: 'Common-mode and differential-mode choke sizing for an EV motor-controller (inverter) — Toroidal, Oval/racetrack, U-core, or E-core geometry, busbar pass-through or wound turns, sized against a ripple-current or EMC impedance target with saturation, core loss, and window-fit checks.' },
+      { label: 'MOSFET Loss (SiC Inverter)', path: '/mosfet-loss', available: true, description: 'Conduction, switching, reverse-recovery, dead-time, and gate losses for an EV traction inverter — 1200 V SiC devices from Wolfspeed, Infineon, ST, and Hitachi Energy (discrete, top-side-cooled, half-bridge, and six-pack packages), with parallel devices, motoring/generating operation, junction-temperature iteration, and duty-cycle profiles.' },
     ],
   },
   {

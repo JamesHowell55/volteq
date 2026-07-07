@@ -9,6 +9,7 @@ import CableWireSizingCalculator from './pages/CableWireSizingCalculator';
 import BatteryPackSeriesParallelCalculator from './pages/BatteryPackSeriesParallelCalculator';
 import MotorTorquePowerSpeedCalculator from './pages/MotorTorquePowerSpeedCalculator';
 import ChokeSizingCalculator from './pages/ChokeSizingCalculator';
+import MosfetLossCalculator from './pages/MosfetLossCalculator';
 import ConversionsCalculator from './pages/ConversionsCalculator';
 import ComingSoonCalculator from './pages/ComingSoonCalculator';
 import AccountPage from './pages/AccountPage';
@@ -44,6 +45,7 @@ function App() {
             <Route path="/battery-pack-series-parallel" element={<BatteryPackSeriesParallelCalculator />} />
             <Route path="/speed-torque-power" element={<MotorTorquePowerSpeedCalculator />} />
             <Route path="/choke-sizing" element={<ChokeSizingCalculator />} />
+            <Route path="/mosfet-loss" element={<MosfetLossCalculator />} />
             <Route path="/conversions" element={<ConversionsCalculator />} />
             <Route path="/account" element={<AccountPage />} />
             {placeholderLinks.map((link) => (
