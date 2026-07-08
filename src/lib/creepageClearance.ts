@@ -1,7 +1,8 @@
 // Data sourced from IEC 60664-1 (Insulation coordination for equipment within
-// low-voltage supply systems) and IEC 60335-1:2001+A1:2004 Tables 16-18, which
-// reproduce the IEC 60664-1 creepage/clearance methodology (material group CTI
-// bands per IEC 60664-1 subclause 2.7.1.3). See the in-app reference notes.
+// low-voltage supply systems) — clearance from Table F.2, creepage from
+// Table F.4, altitude correction from Table F.10 — plus IEC 60335-1's
+// household-appliance-specific creepage relaxation (Table 18, opt-in only,
+// see its own doc comment below for caveats). See the in-app reference notes.
 
 export type PollutionDegree = 1 | 2 | 3 | 4;
 export type MaterialGroup = 'I' | 'II' | 'IIIa' | 'IIIb';
@@ -143,40 +144,62 @@ interface CreepageRow {
   pd3: { I: number; II: number; IIIab: number };
 }
 
-/** IEC 60335-1 Table 17 — creepage for basic/supplementary insulation. This
- *  table explicitly cross-references IEC 60664-1's CTI/pollution-degree
- *  methodology (subclause 2.7.1.3) and is used here as the general-purpose
- *  table for all insulation types except where the appliance-specific
- *  functional-insulation allowance below is deliberately opted into. */
+/** IEC 60664-1 Table F.4 ("Creepage distances to avoid failure due to
+ *  tracking") — the standard's own general-purpose creepage table, re-verified
+ *  directly against the full text of IEC 60664-1:2007 (not the IEC 60335-1
+ *  Table 17 derivation used previously in this file, which turned out to have
+ *  every row from 630 V up mislabeled one voltage bracket too high — e.g. its
+ *  "800 V" row actually held Table F.4's 630 V values. Confirmed against the
+ *  standard's real 800 V/1000 V Pollution-Degree-2/Material-Group-II entries,
+ *  5.6 mm and 7.1 mm, which the previous table had at 1000 V/1250 V instead.
+ *  Only the Material Group III column exists here (not split IIIa/IIIb) —
+ *  matches how this file already buckets both together for PD2/PD3 lookups. */
 export const CREEPAGE_TABLE_BASIC: CreepageRow[] = [
-  { maxV: 50, pd1: 0.2, pd2: { I: 0.6, II: 0.9, IIIab: 1.2 }, pd3: { I: 1.5, II: 1.7, IIIab: 1.9 } },
-  { maxV: 125, pd1: 0.3, pd2: { I: 0.8, II: 1.1, IIIab: 1.5 }, pd3: { I: 1.9, II: 2.1, IIIab: 2.4 } },
-  { maxV: 250, pd1: 0.6, pd2: { I: 1.3, II: 1.8, IIIab: 2.5 }, pd3: { I: 3.2, II: 3.6, IIIab: 4.0 } },
+  { maxV: 10, pd1: 0.080, pd2: { I: 0.400, II: 0.400, IIIab: 0.400 }, pd3: { I: 1.000, II: 1.000, IIIab: 1.000 } },
+  { maxV: 12.5, pd1: 0.090, pd2: { I: 0.420, II: 0.420, IIIab: 0.420 }, pd3: { I: 1.050, II: 1.050, IIIab: 1.050 } },
+  { maxV: 16, pd1: 0.100, pd2: { I: 0.450, II: 0.450, IIIab: 0.450 }, pd3: { I: 1.100, II: 1.100, IIIab: 1.100 } },
+  { maxV: 20, pd1: 0.110, pd2: { I: 0.480, II: 0.480, IIIab: 0.480 }, pd3: { I: 1.200, II: 1.200, IIIab: 1.200 } },
+  { maxV: 25, pd1: 0.125, pd2: { I: 0.500, II: 0.500, IIIab: 0.500 }, pd3: { I: 1.250, II: 1.250, IIIab: 1.250 } },
+  { maxV: 32, pd1: 0.14, pd2: { I: 0.53, II: 0.53, IIIab: 0.53 }, pd3: { I: 1.30, II: 1.30, IIIab: 1.30 } },
+  { maxV: 40, pd1: 0.16, pd2: { I: 0.56, II: 0.80, IIIab: 1.10 }, pd3: { I: 1.40, II: 1.60, IIIab: 1.80 } },
+  { maxV: 50, pd1: 0.18, pd2: { I: 0.60, II: 0.85, IIIab: 1.20 }, pd3: { I: 1.50, II: 1.70, IIIab: 1.90 } },
+  { maxV: 63, pd1: 0.20, pd2: { I: 0.63, II: 0.90, IIIab: 1.25 }, pd3: { I: 1.60, II: 1.80, IIIab: 2.00 } },
+  { maxV: 80, pd1: 0.22, pd2: { I: 0.67, II: 0.95, IIIab: 1.30 }, pd3: { I: 1.70, II: 1.90, IIIab: 2.10 } },
+  { maxV: 100, pd1: 0.25, pd2: { I: 0.71, II: 1.00, IIIab: 1.40 }, pd3: { I: 1.80, II: 2.00, IIIab: 2.20 } },
+  { maxV: 125, pd1: 0.28, pd2: { I: 0.75, II: 1.05, IIIab: 1.50 }, pd3: { I: 1.90, II: 2.10, IIIab: 2.40 } },
+  { maxV: 160, pd1: 0.32, pd2: { I: 0.80, II: 1.10, IIIab: 1.60 }, pd3: { I: 2.00, II: 2.20, IIIab: 2.50 } },
+  { maxV: 200, pd1: 0.42, pd2: { I: 1.00, II: 1.40, IIIab: 2.00 }, pd3: { I: 2.50, II: 2.80, IIIab: 3.20 } },
+  { maxV: 250, pd1: 0.56, pd2: { I: 1.25, II: 1.80, IIIab: 2.50 }, pd3: { I: 3.20, II: 3.60, IIIab: 4.00 } },
+  { maxV: 320, pd1: 0.75, pd2: { I: 1.60, II: 2.20, IIIab: 3.20 }, pd3: { I: 4.00, II: 4.50, IIIab: 5.00 } },
   { maxV: 400, pd1: 1.0, pd2: { I: 2.0, II: 2.8, IIIab: 4.0 }, pd3: { I: 5.0, II: 5.6, IIIab: 6.3 } },
   { maxV: 500, pd1: 1.3, pd2: { I: 2.5, II: 3.6, IIIab: 5.0 }, pd3: { I: 6.3, II: 7.1, IIIab: 8.0 } },
-  { maxV: 800, pd1: 1.8, pd2: { I: 3.2, II: 4.5, IIIab: 6.3 }, pd3: { I: 8.0, II: 9.0, IIIab: 10.0 } },
-  { maxV: 1000, pd1: 2.4, pd2: { I: 4.0, II: 5.6, IIIab: 8.0 }, pd3: { I: 10.0, II: 11.0, IIIab: 12.5 } },
-  { maxV: 1250, pd1: 3.2, pd2: { I: 5.0, II: 7.1, IIIab: 10.0 }, pd3: { I: 12.5, II: 14.0, IIIab: 16.0 } },
-  { maxV: 1600, pd1: 4.2, pd2: { I: 6.3, II: 9.0, IIIab: 12.5 }, pd3: { I: 16.0, II: 18.0, IIIab: 20.0 } },
-  { maxV: 2000, pd1: 5.6, pd2: { I: 8.0, II: 11.0, IIIab: 16.0 }, pd3: { I: 20.0, II: 22.0, IIIab: 25.0 } },
-  { maxV: 2500, pd1: 7.5, pd2: { I: 10.0, II: 14.0, IIIab: 20.0 }, pd3: { I: 25.0, II: 28.0, IIIab: 32.0 } },
-  { maxV: 3200, pd1: 10.0, pd2: { I: 12.5, II: 18.0, IIIab: 25.0 }, pd3: { I: 32.0, II: 36.0, IIIab: 40.0 } },
-  { maxV: 4000, pd1: 12.5, pd2: { I: 16.0, II: 22.0, IIIab: 32.0 }, pd3: { I: 40.0, II: 45.0, IIIab: 50.0 } },
-  { maxV: 5000, pd1: 16.0, pd2: { I: 20.0, II: 28.0, IIIab: 40.0 }, pd3: { I: 50.0, II: 56.0, IIIab: 63.0 } },
-  { maxV: 6300, pd1: 20.0, pd2: { I: 25.0, II: 36.0, IIIab: 50.0 }, pd3: { I: 63.0, II: 71.0, IIIab: 80.0 } },
-  { maxV: 8000, pd1: 25.0, pd2: { I: 32.0, II: 45.0, IIIab: 63.0 }, pd3: { I: 80.0, II: 90.0, IIIab: 100.0 } },
-  { maxV: 10000, pd1: 32.0, pd2: { I: 40.0, II: 56.0, IIIab: 80.0 }, pd3: { I: 100.0, II: 110.0, IIIab: 125.0 } },
-  { maxV: 12500, pd1: 40.0, pd2: { I: 50.0, II: 71.0, IIIab: 100.0 }, pd3: { I: 125.0, II: 140.0, IIIab: 160.0 } },
+  { maxV: 630, pd1: 1.8, pd2: { I: 3.2, II: 4.5, IIIab: 6.3 }, pd3: { I: 8.0, II: 9.0, IIIab: 10.0 } },
+  { maxV: 800, pd1: 2.4, pd2: { I: 4.0, II: 5.6, IIIab: 8.0 }, pd3: { I: 10.0, II: 11.0, IIIab: 12.5 } },
+  { maxV: 1000, pd1: 3.2, pd2: { I: 5.0, II: 7.1, IIIab: 10.0 }, pd3: { I: 12.5, II: 14.0, IIIab: 16.0 } },
+  { maxV: 1250, pd1: 4.2, pd2: { I: 6.3, II: 9.0, IIIab: 12.5 }, pd3: { I: 16.0, II: 18.0, IIIab: 20.0 } },
+  { maxV: 1600, pd1: 5.6, pd2: { I: 8.0, II: 11.0, IIIab: 16.0 }, pd3: { I: 20.0, II: 22.0, IIIab: 25.0 } },
+  { maxV: 2000, pd1: 7.5, pd2: { I: 10.0, II: 14.0, IIIab: 20.0 }, pd3: { I: 25.0, II: 28.0, IIIab: 32.0 } },
+  { maxV: 2500, pd1: 10.0, pd2: { I: 12.5, II: 18.0, IIIab: 25.0 }, pd3: { I: 32.0, II: 36.0, IIIab: 40.0 } },
+  { maxV: 3200, pd1: 12.5, pd2: { I: 16.0, II: 22.0, IIIab: 32.0 }, pd3: { I: 40.0, II: 45.0, IIIab: 50.0 } },
+  { maxV: 4000, pd1: 16.0, pd2: { I: 20.0, II: 28.0, IIIab: 40.0 }, pd3: { I: 50.0, II: 56.0, IIIab: 63.0 } },
+  { maxV: 5000, pd1: 20.0, pd2: { I: 25.0, II: 36.0, IIIab: 50.0 }, pd3: { I: 63.0, II: 71.0, IIIab: 80.0 } },
+  { maxV: 6300, pd1: 25.0, pd2: { I: 32.0, II: 45.0, IIIab: 63.0 }, pd3: { I: 80.0, II: 90.0, IIIab: 100.0 } },
+  { maxV: 8000, pd1: 32.0, pd2: { I: 40.0, II: 56.0, IIIab: 80.0 }, pd3: { I: 100.0, II: 110.0, IIIab: 125.0 } },
+  { maxV: 10000, pd1: 40.0, pd2: { I: 50.0, II: 71.0, IIIab: 100.0 }, pd3: { I: 125.0, II: 140.0, IIIab: 160.0 } },
 ];
 
 /** IEC 60335-1 Table 18 — a household-appliance-specific relaxation permitting
- *  smaller creepage for functional insulation at lower voltages (converging
- *  with Table 17 from 800 V up). This is NOT confirmed to be IEC 60664-1's own
- *  general position — IEC 60664-1's own Annex F lists a single Table F.5, and
- *  its clause 5.3.4 (functional) vs 5.3.5 (basic/supplementary/reinforced)
- *  split could not be confirmed from open sources to use different numeric
- *  values rather than just a different voltage basis. Only apply this outside
- *  an appliance context if your specific product standard permits it. */
+ *  smaller creepage for functional insulation at lower voltages. This is NOT
+ *  confirmed to be IEC 60664-1's own general position — IEC 60664-1's own
+ *  Annex F lists a single Table F.5, and its clause 5.3.4 (functional) vs
+ *  5.3.5 (basic/supplementary/reinforced) split could not be confirmed from
+ *  open sources to use different numeric values rather than just a different
+ *  voltage basis. Rows below 800 V were sourced independently; rows at 800 V
+ *  and above still hold the values that used to be (incorrectly) shared with
+ *  CREEPAGE_TABLE_BASIC before that table was corrected against the real
+ *  IEC 60664-1 Table F.4 — these upper rows have NOT been independently
+ *  re-verified and this whole table remains opt-in only. Only apply this
+ *  outside an appliance context if your specific product standard permits it. */
 export const CREEPAGE_TABLE_APPLIANCE_FUNCTIONAL_ALLOWANCE: CreepageRow[] = [
   { maxV: 50, pd1: 0.2, pd2: { I: 0.6, II: 0.8, IIIab: 1.1 }, pd3: { I: 1.4, II: 1.6, IIIab: 1.8 } },
   { maxV: 125, pd1: 0.3, pd2: { I: 0.7, II: 1.0, IIIab: 1.4 }, pd3: { I: 1.8, II: 2.0, IIIab: 2.2 } },
@@ -283,7 +306,7 @@ function creepageColumn(table: CreepageRow[], pollutionDegree: 1 | 2 | 3, materi
   return table.map(r => ({ x: r.maxV, y: pollutionDegree === 1 ? r.pd1 : (pollutionDegree === 2 ? r.pd2[bucket] : r.pd3[bucket]) }));
 }
 
-/** Creepage per IEC 60335-1 Table 17 (default) — power-law interpolated
+/** Creepage per IEC 60664-1 Table F.4 (default) — power-law interpolated
  *  between the standard's tabulated voltage-band points rather than taking
  *  the next-higher band's value, so a working voltage between two tabulated
  *  points (e.g. 900 V, between the 800 V and 1000 V rows) gets its own

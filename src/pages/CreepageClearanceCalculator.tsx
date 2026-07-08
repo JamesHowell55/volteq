@@ -122,7 +122,7 @@ export default function CreepageClearanceCalculator() {
 
     if (pollutionDegree !== 4 && creepageResult && creepageHvResult) {
       stepsOut.push({
-        title: `Required creepage distance (IEC 60335-1 Table ${useApplianceFunctionalAllowance ? '18' : '17'}, functional insulation) + safety factor`,
+        title: `Required creepage distance (${useApplianceFunctionalAllowance ? 'IEC 60335-1 Table 18' : 'IEC 60664-1 Table F.4'}, functional insulation) + safety factor`,
         formula: 'Creepage = f(working voltage, pollution degree, material group)^b (power-law interpolated between tabulated voltage bands) × (1 + FoS)',
         substitution: `PD${pollutionDegree}, ${MATERIAL_GROUP_CTI[materialGroup].label}${useApplianceFunctionalAllowance ? ' (household-appliance functional-insulation allowance applied)' : ''}`,
         result: `Working voltage (${workingVoltage} V): base ${fmt(creepageResult.mm, 3)} mm, with margin = ${fmt(creepageWithMargin ?? 0, 3)} mm. HV to chassis (${fmt(hvToChassis, 0)} V): base ${fmt(creepageHvResult.mm, 3)} mm, with margin = ${fmt(creepageHvWithMargin ?? 0, 3)} mm`,
@@ -239,7 +239,7 @@ export default function CreepageClearanceCalculator() {
               <div className="field">
                 <label style={{ display: 'flex', alignItems: 'center' }}>
                   Household-appliance allowance
-                  <InfoTooltip>IEC 60335-1 Table 18 permits smaller creepage for functional insulation at lower voltages than the general Table 17. IEC 60664-1's own Annex F lists a single creepage table and this couldn't be confirmed to differ numerically by insulation type from open sources — so this relaxation is opt-in, not default. Only use it if your product standard permits it.</InfoTooltip>
+                  <InfoTooltip>IEC 60335-1 Table 18 permits smaller creepage for functional insulation at lower voltages than the general IEC 60664-1 Table F.4. This couldn't be confirmed to differ numerically by insulation type from open sources at every voltage — so this relaxation is opt-in, not default. Only use it if your product standard permits it.</InfoTooltip>
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-2)', fontWeight: 400 }}>
                   <input type="checkbox" checked={useApplianceFunctionalAllowance} onChange={e => setUseApplianceFunctionalAllowance(e.target.checked)} style={{ width: 'auto' }} />
@@ -472,8 +472,8 @@ export default function CreepageClearanceCalculator() {
               through an overvoltage category / rated impulse withstand voltage (IEC 60664-1 Table F.1) first, which
               is a deliberate simplification that will understate required clearance for circuits exposed to
               significant transient overvoltages (e.g. direct mains connection) — add your own margin for those.
-              Creepage uses the IEC 60664-1 CTI/pollution-degree methodology (subclause 2.7.1.3) as tabulated in IEC
-              60335-1 Table 17, assuming <strong>functional insulation throughout</strong> (this tool does not model
+              Creepage uses the IEC 60664-1 CTI/pollution-degree methodology (subclause 2.7.1.3) as tabulated in
+              Table F.4, assuming <strong>functional insulation throughout</strong> (this tool does not model
               basic/supplementary/reinforced insulation separately). Both creepage and clearance are now power-law
               interpolated between the standard's tabulated voltage points (rather than taking the next-higher
               band's more conservative value), since these tables approximate a power law, not a straight line, or a
