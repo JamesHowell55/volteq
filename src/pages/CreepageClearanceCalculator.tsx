@@ -3,7 +3,7 @@ import PaschenChart from '../components/PaschenChart';
 import ComparisonGrid from '../components/ComparisonGrid';
 import InfoTooltip from '../components/InfoTooltip';
 import { useTheme } from '../lib/ThemeContext';
-import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
+import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData, type ReportGridTable } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import PremiumGate from '../components/PremiumGate';
 import {
@@ -30,6 +30,21 @@ const FT_PER_M = 3.28084;
 const MATERIAL_GROUPS: MaterialGroup[] = ['I', 'II', 'IIIa', 'IIIb'];
 const GRID_PDS: (1 | 2 | 3)[] = [1, 2, 3];
 const FIELD_CASES: FieldCondition[] = ['A', 'B'];
+const GRID_COL_LABELS = ['PD1', 'PD2', 'PD3'];
+
+function buildGridTable(
+  title: string, rowLabels: string[], colLabels: string[],
+  getValue: (rowIdx: number, colIdx: number) => number, highlightRow: number, highlightCol: number,
+): ReportGridTable {
+  return {
+    title,
+    rowLabels,
+    colLabels,
+    cellValues: rowLabels.map((_, ri) => colLabels.map((_, ci) => `${fmt(getValue(ri, ci), 2)} mm`)),
+    highlightRow,
+    highlightCol,
+  };
+}
 
 export default function CreepageClearanceCalculator() {
   const { accentHex } = useTheme();
@@ -89,6 +104,14 @@ export default function CreepageClearanceCalculator() {
   const creepageHighlightRow = MATERIAL_GROUPS.indexOf(materialGroup);
   const clearanceHighlightCol = GRID_PDS.indexOf(pollutionDegree as 1 | 2 | 3);
   const clearanceHighlightRow = FIELD_CASES.indexOf(fieldCondition);
+
+  const gridTables: ReportGridTable[] = useMemo(() => [
+    buildGridTable(`Creepage @ Working Voltage (${fmt(workingVoltage, 0)} V)`, MATERIAL_GROUPS, GRID_COL_LABELS, creepageGridValue(workingVoltage), creepageHighlightRow, creepageHighlightCol),
+    buildGridTable(`Creepage @ HV to Chassis (${fmt(hvToChassis, 0)} V)`, MATERIAL_GROUPS, GRID_COL_LABELS, creepageGridValue(hvToChassis), creepageHighlightRow, creepageHighlightCol),
+    buildGridTable(`Clearance @ Working Voltage (${fmt(workingVoltageForClearanceKV, 3)} kV, altitude-adjusted)`, ['Case A', 'Case B'], GRID_COL_LABELS, clearanceGridValue(workingVoltageForClearanceKV), clearanceHighlightRow, clearanceHighlightCol),
+    buildGridTable(`Clearance @ HV to Chassis (${fmt(hvToChassisForClearanceKV, 3)} kV, altitude-adjusted)`, ['Case A', 'Case B'], GRID_COL_LABELS, clearanceGridValue(hvToChassisForClearanceKV), clearanceHighlightRow, clearanceHighlightCol),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [workingVoltage, hvToChassis, workingVoltageForClearanceKV, hvToChassisForClearanceKV, marginFactor, creepageHighlightRow, creepageHighlightCol, clearanceHighlightRow, clearanceHighlightCol]);
 
   const calculationSteps: CalcStepData[] = useMemo(() => {
     const stepsOut: CalcStepData[] = [
@@ -179,6 +202,7 @@ export default function CreepageClearanceCalculator() {
       inputSections,
       outputSections,
       calculationSteps,
+      gridTables,
       disclaimer: 'Engineering estimation tool. Standard: IEC 60664-1 (clearance from Table F.2/altitude from Table F.10, creepage from Table F.4). Clearance is driven directly by the working voltage (no overvoltage-category / Table F.1 Un->Uimp step-up) — this is a deliberate tool-scope simplification and will understate the required clearance for circuits exposed to significant transient overvoltages (e.g. direct mains connection); reintroduce an impulse-withstand-voltage margin manually for such designs. Assumes functional insulation throughout. Verify exact values against the current official IEC 60664-1 text, and any applicable product standard, before certification use.',
       ...branding,
     });
@@ -324,7 +348,7 @@ export default function CreepageClearanceCalculator() {
             <ComparisonGrid
               title={`Creepage @ Working Voltage (${fmt(workingVoltage, 0)} V)`}
               rowLabels={MATERIAL_GROUPS}
-              colLabels={['PD1', 'PD2', 'PD3']}
+              colLabels={GRID_COL_LABELS}
               getValue={creepageGridValue(workingVoltage)}
               highlightRow={creepageHighlightRow}
               highlightCol={creepageHighlightCol}
@@ -332,7 +356,7 @@ export default function CreepageClearanceCalculator() {
             <ComparisonGrid
               title={`Creepage @ HV to Chassis (${fmt(hvToChassis, 0)} V)`}
               rowLabels={MATERIAL_GROUPS}
-              colLabels={['PD1', 'PD2', 'PD3']}
+              colLabels={GRID_COL_LABELS}
               getValue={creepageGridValue(hvToChassis)}
               highlightRow={creepageHighlightRow}
               highlightCol={creepageHighlightCol}
@@ -340,7 +364,7 @@ export default function CreepageClearanceCalculator() {
             <ComparisonGrid
               title={`Clearance @ Working Voltage (${fmt(workingVoltageForClearanceKV, 3)} kV, altitude-adjusted)`}
               rowLabels={['Case A', 'Case B']}
-              colLabels={['PD1', 'PD2', 'PD3']}
+              colLabels={GRID_COL_LABELS}
               getValue={clearanceGridValue(workingVoltageForClearanceKV)}
               highlightRow={clearanceHighlightRow}
               highlightCol={clearanceHighlightCol}
@@ -348,7 +372,7 @@ export default function CreepageClearanceCalculator() {
             <ComparisonGrid
               title={`Clearance @ HV to Chassis (${fmt(hvToChassisForClearanceKV, 3)} kV, altitude-adjusted)`}
               rowLabels={['Case A', 'Case B']}
-              colLabels={['PD1', 'PD2', 'PD3']}
+              colLabels={GRID_COL_LABELS}
               getValue={clearanceGridValue(hvToChassisForClearanceKV)}
               highlightRow={clearanceHighlightRow}
               highlightCol={clearanceHighlightCol}

@@ -22,6 +22,15 @@ export interface ReportDiagram {
   svgMarkup: string; // a complete, self-contained <svg>...</svg> string with literal colors (no CSS vars)
 }
 
+export interface ReportGridTable {
+  title: string;
+  rowLabels: string[];
+  colLabels: string[];
+  cellValues: string[][]; // [rowIdx][colIdx], already formatted for display (e.g. "5.97 mm")
+  highlightRow?: number; // -1 or omitted = no highlight
+  highlightCol?: number;
+}
+
 export interface ReportSpec {
   tabName: string; // used in the filename, e.g. 'Busbar_Calculator'
   pageTitle: string;
@@ -34,6 +43,9 @@ export interface ReportSpec {
   // Graphical representations (cross-sections, load-profile chart, etc.) —
   // rendered on their own page between the summary and the calculation steps.
   diagrams?: ReportDiagram[];
+  // Row x column reference tables (e.g. Material Group x Pollution Degree) —
+  // rendered on their own page, after diagrams and before calculation steps.
+  gridTables?: ReportGridTable[];
   // Premium report branding — when present, shown in place of the Voltaic mark.
   companyName?: string;
   companyLogoUrl?: string;
@@ -77,6 +89,31 @@ function renderTwoColumnSections(sections: ReportSection[]): string {
   </div>`;
 }
 
+function renderGridTable(grid: ReportGridTable, accent: string): string {
+  const headerCells = grid.colLabels.map(c => `
+    <th style="padding:4px 8px; text-align:center; font-size:9px; text-transform:uppercase; letter-spacing:0.03em; color:#797D74; border-bottom:1px solid #EBEDEA;">${escapeHtml(c)}</th>`).join('');
+  const bodyRows = grid.rowLabels.map((rowLabel, ri) => {
+    const isRowHighlighted = ri === grid.highlightRow;
+    const cells = grid.colLabels.map((_, ci) => {
+      const isHighlighted = isRowHighlighted && ci === grid.highlightCol;
+      return `
+      <td style="padding:4px 8px; text-align:center; font-family:'SFMono-Regular',Consolas,monospace; font-size:10px; border-bottom:1px solid #F5F6F4; ${isHighlighted ? `color:${accent}; font-weight:700;` : ''}">${escapeHtml(grid.cellValues[ri]?.[ci] ?? '')}</td>`;
+    }).join('');
+    return `
+    <tr>
+      <td style="padding:4px 8px; font-size:10px; color:${isRowHighlighted ? accent : '#565C53'}; font-weight:${isRowHighlighted ? 700 : 400}; border-bottom:1px solid #F5F6F4;">${escapeHtml(rowLabel)}</td>${cells}
+    </tr>`;
+  }).join('');
+  return `
+    <div style="break-inside: avoid; margin-bottom:16px;">
+      <div style="font-size:10.5px; font-weight:700; color:#14170F; margin-bottom:6px;">${escapeHtml(grid.title)}</div>
+      <table style="width:100%; border-collapse:collapse;">
+        <thead><tr><th></th>${headerCells}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>`;
+}
+
 function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
   const accent = deriveAccentOnLight(spec.accentHex);
   const now = new Date();
@@ -88,6 +125,8 @@ function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
         ${spec.passStatus.pass ? '✓' : '✗'} ${escapeHtml(spec.passStatus.label)}
       </div>`
     : '';
+
+  const gridTablesHtml = (spec.gridTables ?? []).map(g => renderGridTable(g, accent)).join('');
 
   const diagramsHtml = (spec.diagrams ?? []).map(d => `
     <div style="break-inside: avoid; margin-bottom:18px;">
@@ -138,6 +177,10 @@ function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
     ${diagramsHtml ? `<div style="break-before: page; padding:28px 32px;">
       <div style="font-size:13px; font-weight:700; margin-bottom:12px; color:${accent};">Diagrams</div>
       ${diagramsHtml}
+    </div>` : ''}
+    ${gridTablesHtml ? `<div style="break-before: page; padding:28px 32px;">
+      <div style="font-size:13px; font-weight:700; margin-bottom:12px; color:${accent};">Reference tables</div>
+      ${gridTablesHtml}
     </div>` : ''}
     <div style="break-before: page; padding:28px 32px;">
       <div style="font-size:13px; font-weight:700; margin-bottom:12px; color:${accent};">Calculation steps</div>
