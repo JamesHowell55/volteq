@@ -557,7 +557,7 @@ export default function MosfetLossCalculator() {
           {isDuty && (
             <div className="card">
               <div className="card-title">Duty cycle steps</div>
-              <table className="results-table" style={{ width: '100%', fontSize: '0.8rem' }}>
+              <table className="data-table" style={{ width: '100%', fontSize: '0.8rem' }}>
                 <thead>
                   <tr><th>Step</th><th>Load</th><th>Loss (W)</th><th>Tj (°C)</th><th>η (%)</th></tr>
                 </thead>

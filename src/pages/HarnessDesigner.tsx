@@ -278,7 +278,7 @@ export default function HarnessDesigner() {
           <div className="card">
             <div className="card-title">{active.name} pinout</div>
             <div style={{ overflowX: 'auto' }}>
-              <table className="results-table" style={{ width: '100%', fontSize: '0.78rem' }}>
+              <table className="data-table" style={{ width: '100%', fontSize: '0.78rem' }}>
                 <thead>
                   <tr><th>Pin</th><th>Signal</th><th>Wire</th><th>AWG</th><th>I (A)</th><th>Destination</th></tr>
                 </thead>
