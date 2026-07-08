@@ -3,10 +3,8 @@
 // reproduce the IEC 60664-1 creepage/clearance methodology (material group CTI
 // bands per IEC 60664-1 subclause 2.7.1.3). See the in-app reference notes.
 
-export type OvervoltageCategory = 'I' | 'II' | 'III' | 'IV';
 export type PollutionDegree = 1 | 2 | 3 | 4;
 export type MaterialGroup = 'I' | 'II' | 'IIIa' | 'IIIb';
-export type InsulationType = 'functional' | 'basicOrSupplementary' | 'reinforced';
 
 export const MATERIAL_GROUP_CTI: Record<MaterialGroup, { min: number; max: number | null; label: string }> = {
   I: { min: 600, max: null, label: 'Group I (CTI ≥ 600)' },
@@ -22,19 +20,33 @@ export function materialGroupFromCti(cti: number): MaterialGroup {
   return 'IIIb';
 }
 
-/** IEC 60664-1 Table F.1 — rated impulse withstand voltage (V) for equipment
- *  energised directly from the mains, vs nominal mains voltage and overvoltage category. */
-export const IMPULSE_VOLTAGE_TABLE: { un: number; I: number; II: number; III: number; IV: number }[] = [
-  { un: 50, I: 330, II: 500, III: 800, IV: 1500 },
-  { un: 100, I: 500, II: 800, III: 1500, IV: 2500 },
-  { un: 150, I: 800, II: 1500, III: 2500, IV: 4000 },
-  { un: 300, I: 1500, II: 2500, III: 4000, IV: 6000 },
-  { un: 600, I: 2500, II: 4000, III: 6000, IV: 8000 },
-  { un: 1250, I: 4000, II: 6000, III: 8000, IV: 12000 },
-  { un: 1500, I: 6000, II: 8000, III: 10000, IV: 15000 },
-];
+/** IEC 60664-1 clause 4.8.1.3 — verbatim: "materials are classified into four
+ *  groups according to their CTI values [per IEC 60112 using solution A]." */
+export const MATERIAL_GROUP_DESCRIPTION =
+  'IEC 60664-1 classifies insulating materials into four groups by their Comparative Tracking Index (CTI, per IEC 60112 using solution A) — a measure of resistance to surface tracking (the progressive formation of a conductive path from electrical stress + surface contamination): Group I (CTI ≥ 600), Group II (400 ≤ CTI < 600), Group IIIa (175 ≤ CTI < 400), Group IIIb (100 ≤ CTI < 175). Lower CTI (IIIb) needs more creepage distance for the same voltage/pollution degree. Use Group IIIb if the material is unknown.';
+
+/** IEC 60664-1 clause 4.6.2 — verbatim wording for each of the four pollution degrees. */
+export const POLLUTION_DEGREE_DESCRIPTIONS: Record<PollutionDegree, string> = {
+  1: 'No pollution or only dry, non-conductive pollution occurs. The pollution has no influence.',
+  2: 'Only non-conductive pollution occurs except that occasionally a temporary conductivity caused by condensation is to be expected.',
+  3: 'Conductive pollution occurs or dry non-conductive pollution occurs which becomes conductive due to condensation which is to be expected.',
+  4: 'Continuous conductivity occurs due to conductive dust, rain or other wet conditions.',
+};
 
 export type FieldCondition = 'A' | 'B';
+
+/** IEC 60664-1 clause 3.14/3.15 — verbatim definitions (verified against the
+ *  full standard text), used for the in-app tooltips. */
+export const FIELD_CONDITION_DESCRIPTIONS: Record<FieldCondition, { title: string; body: string }> = {
+  A: {
+    title: 'Inhomogeneous field (Case A)',
+    body: '"Electric field which does not have an essentially constant voltage gradient between electrodes (non-uniform field)" (clause 3.15). Represented by a 30 μm-radius point electrode against a 1 m × 1 m plane — the worst case for voltage withstand. Clearances at or above the Case A values in Table F.2 can be used for any electrode shape/arrangement, without a voltage-withstand test (clause 5.1.3.2) — the safe default.',
+  },
+  B: {
+    title: 'Homogeneous field (Case B)',
+    body: '"Electric field which has an essentially constant voltage gradient between electrodes (uniform field), such as that between two spheres where the radius of each sphere is greater than the distance between them" (clause 3.14). Case B permits smaller clearances, but only where the geometry is specifically designed to achieve this uniform field, and the standard requires it to be verified by an actual voltage-withstand test (clause 5.1.3.3) — don\'t select it just because the numbers are smaller.',
+  },
+};
 
 /** IEC 60664-1 Table F.2 — minimum clearance (mm) vs required impulse
  *  withstand voltage (kV), at the 2000 m reference altitude. Verified against
@@ -238,37 +250,49 @@ function linearInterpolate(points: { x: number; y: number }[], x: number): { y: 
   return { y: last.y, extrapolated: true };
 }
 
-/** Rated impulse withstand voltage for an arbitrary Un, found by power-law
- *  interpolation/extrapolation across IEC 60664-1 Table F.1's preferred values. */
-export function getRatedImpulseVoltage(un: number, category: OvervoltageCategory): { v: number; extrapolated: boolean } {
-  const points = IMPULSE_VOLTAGE_TABLE.map(r => ({ x: r.un, y: r[category] }));
-  const { y, extrapolated } = powerLawInterpolate(points, un);
-  return { v: y, extrapolated };
-}
-
 export function getAltitudeCorrectionFactor(altitudeM: number): { factor: number; extrapolated: boolean } {
   if (altitudeM <= 2000) return { factor: 1.0, extrapolated: false };
   const { y, extrapolated } = linearInterpolate(ALTITUDE_CORRECTION_TABLE.map(r => ({ x: r.m, y: r.factor })), altitudeM);
   return { factor: y, extrapolated };
 }
 
-export function getClearance(requiredVoltageKV: number, fieldCondition: FieldCondition = 'A'): { mm: number; extrapolated: boolean } {
+/** IEC 60664-1 Table F.2's own footnote 6 gives pollution degree 4 as "the
+ *  same as pollution degree 3, except that the minimum clearance is 1,6 mm";
+ *  footnote 4 similarly floors pollution degrees 2/3 at 0,2 mm / 0,8 mm
+ *  ("based on the reduced withstand characteristics of the associated
+ *  creepage distance under humidity conditions") wherever the voltage-based
+ *  curve would otherwise give a smaller value — small clearances can be
+ *  bridged completely by particles/condensation regardless of the transient
+ *  voltage the gap otherwise has to withstand (clause 4.6.1). Applied
+ *  identically to both field cases here since the standard's own text ties
+ *  the floor to particle-bridging risk, not field homogeneity, though the
+ *  exact case-by-case breakpoints were not fully resolvable from the
+ *  available table layout — flagged as a disclosed simplification. */
+export const CLEARANCE_POLLUTION_FLOOR_MM: Record<PollutionDegree, number> = { 1: 0, 2: 0.2, 3: 0.8, 4: 1.6 };
+
+export function getClearance(requiredVoltageKV: number, fieldCondition: FieldCondition = 'A', pollutionDegree: PollutionDegree = 1): { mm: number; extrapolated: boolean; floorApplied: boolean } {
   const table = fieldCondition === 'B' ? CLEARANCE_TABLE_CASE_B : CLEARANCE_TABLE_CASE_A;
   const { y, extrapolated } = powerLawInterpolate(table.map(r => ({ x: r.kV, y: r.mm })), requiredVoltageKV);
-  return { mm: y, extrapolated };
+  const floor = CLEARANCE_POLLUTION_FLOOR_MM[pollutionDegree];
+  const mm = Math.max(y, floor);
+  return { mm, extrapolated, floorApplied: floor > y };
 }
 
-export function getCreepage(workingVoltageV: number, pollutionDegree: 1 | 2 | 3, materialGroup: MaterialGroup, insulationType: InsulationType, useApplianceFunctionalAllowance = false): { mm: number; rowMaxV: number } {
-  const table = insulationType === 'functional' && useApplianceFunctionalAllowance
-    ? CREEPAGE_TABLE_APPLIANCE_FUNCTIONAL_ALLOWANCE
-    : CREEPAGE_TABLE_BASIC;
-  const row = table.find(r => workingVoltageV <= r.maxV) ?? table[table.length - 1];
-  let mm: number;
-  if (pollutionDegree === 1) mm = row.pd1;
-  else {
-    const group = materialGroup === 'I' ? 'I' : materialGroup === 'II' ? 'II' : 'IIIab';
-    mm = pollutionDegree === 2 ? row.pd2[group] : row.pd3[group];
-  }
-  if (insulationType === 'reinforced') mm *= 2;
-  return { mm, rowMaxV: row.maxV };
+function creepageColumn(table: CreepageRow[], pollutionDegree: 1 | 2 | 3, materialGroup: MaterialGroup): { x: number; y: number }[] {
+  const bucket = materialGroup === 'I' ? 'I' : materialGroup === 'II' ? 'II' : 'IIIab';
+  return table.map(r => ({ x: r.maxV, y: pollutionDegree === 1 ? r.pd1 : (pollutionDegree === 2 ? r.pd2[bucket] : r.pd3[bucket]) }));
+}
+
+/** Creepage per IEC 60335-1 Table 17 (default) — power-law interpolated
+ *  between the standard's tabulated voltage-band points rather than taking
+ *  the next-higher band's value, so a working voltage between two tabulated
+ *  points (e.g. 900 V, between the 800 V and 1000 V rows) gets its own
+ *  interpolated value instead of the more conservative 1000 V-band figure.
+ *  This tool assumes functional insulation throughout (no basic/
+ *  supplementary/reinforced distinction) — see the in-app reference notes
+ *  for why IEC 60664-1's own functional-vs-other split isn't applied here. */
+export function getCreepage(workingVoltageV: number, pollutionDegree: 1 | 2 | 3, materialGroup: MaterialGroup, useApplianceFunctionalAllowance = false): { mm: number; extrapolated: boolean } {
+  const table = useApplianceFunctionalAllowance ? CREEPAGE_TABLE_APPLIANCE_FUNCTIONAL_ALLOWANCE : CREEPAGE_TABLE_BASIC;
+  const { y, extrapolated } = powerLawInterpolate(creepageColumn(table, pollutionDegree, materialGroup), workingVoltageV);
+  return { mm: y, extrapolated };
 }
