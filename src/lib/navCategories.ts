@@ -30,6 +30,8 @@ export const NAV_CATEGORIES: NavCategory[] = [
       { label: 'Busbar Calculation', path: '/busbar', available: true, description: 'Build a busbar cross-section from multiple bar sections, apply AC or DC current, duration, ambient temperature and material, and calculate steady-state or short-circuit conductor temperature.' },
       { label: 'Cable/Wire Sizing (EV Powertrain)', path: '/cable-sizing', available: true, description: 'Ampacity and voltage drop for EV powertrain cables (battery interconnects, battery-to-inverter, inverter-to-motor) from a first-principles steady-state heat balance, ISO 6722 insulation temperature classes, and bundling derating.' },
       { label: 'Creepage and Clearance', path: '/creepage-clearance', available: true, description: 'Minimum creepage and clearance distances per IEC 60664-1 — pollution degree, material group (CTI), overvoltage category, and altitude correction from sea level up to 50,000 ft.' },
+      { label: 'Harness Bundle Diameter', path: '/harness-bundle-diameter', available: true, description: 'Wire bundle diameter and cross-section for mixed-gauge, mixed-construction harnesses — aerospace M22759/Spec 55 wire, shielded/twisted-pair/CAN bus, plus overbraid, heat-shrink (RNF-100/RNF-3000/HTAT), and Nomex sleeve coverings, cross-checked against the published Glenair bundle-diameter method.' },
+      { label: 'Harness Designer', path: '/harness-designer', available: true, description: 'MIL-DTL-38999 Series III connector selection (shell size, contact size, salt-spray finish, mounting type), per-connector pinout tables across multiple branches, and an auto-generated point-to-point wiring schematic with connector naming, pin numbers, and wire specs.' },
     ],
   },
   {

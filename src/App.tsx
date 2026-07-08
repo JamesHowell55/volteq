@@ -10,6 +10,8 @@ import BatteryPackSeriesParallelCalculator from './pages/BatteryPackSeriesParall
 import MotorTorquePowerSpeedCalculator from './pages/MotorTorquePowerSpeedCalculator';
 import ChokeSizingCalculator from './pages/ChokeSizingCalculator';
 import MosfetLossCalculator from './pages/MosfetLossCalculator';
+import BundleDiameterCalculator from './pages/BundleDiameterCalculator';
+import HarnessDesigner from './pages/HarnessDesigner';
 import ConversionsCalculator from './pages/ConversionsCalculator';
 import ComingSoonCalculator from './pages/ComingSoonCalculator';
 import AccountPage from './pages/AccountPage';
@@ -46,6 +48,8 @@ function App() {
             <Route path="/speed-torque-power" element={<MotorTorquePowerSpeedCalculator />} />
             <Route path="/choke-sizing" element={<ChokeSizingCalculator />} />
             <Route path="/mosfet-loss" element={<MosfetLossCalculator />} />
+            <Route path="/harness-bundle-diameter" element={<BundleDiameterCalculator />} />
+            <Route path="/harness-designer" element={<HarnessDesigner />} />
             <Route path="/conversions" element={<ConversionsCalculator />} />
             <Route path="/account" element={<AccountPage />} />
             {placeholderLinks.map((link) => (

@@ -474,3 +474,132 @@ export function renderTimeSeriesChartSvg(timeS: number[], currentA: number[], se
     ${legendHtml}
   </svg>`;
 }
+
+import type { WireCategory } from './harnessWireTypes';
+import type { SchematicLayout } from './harnessSchematicLayout';
+
+export interface PdfBundleWire {
+  id: number;
+  x: number;
+  y: number;
+  d: number;
+  category: WireCategory;
+}
+
+const CATEGORY_LABELS: Record<WireCategory, string> = {
+  single: 'Single conductor',
+  twistedPair: 'Twisted pair',
+  shielded: 'Shielded single',
+  twistedShieldedPair: 'Twisted shielded pair',
+  canBus: 'CAN bus (120 Ω pair)',
+};
+
+/** Bundle cross-section (every wire drawn to scale + covering rings), matching BundleCrossSection.tsx. */
+export function renderBundleCrossSectionSvg(
+  wires: PdfBundleWire[],
+  bundleDiameterMm: number,
+  overbraidThicknessMm: number,
+  finishedOuterDiameterMm: number | null,
+  coveringLabel: string | undefined,
+  accentColor: string
+): string {
+  const DRAW_SIZE = 420;
+  const PAD = 56;
+  const CATEGORY_COLORS: Record<WireCategory, string> = {
+    single: accentColor,
+    twistedPair: BLUE,
+    shielded: WARN,
+    twistedShieldedPair: `color-mix(in srgb, ${BLUE} 55%, ${WARN})`,
+    canBus: `color-mix(in srgb, ${accentColor} 50%, ${BLUE})`,
+  };
+
+  const outerDiameterMm = finishedOuterDiameterMm ?? (bundleDiameterMm + 2 * overbraidThicknessMm);
+  const avail = DRAW_SIZE - 2 * PAD;
+  const scale = outerDiameterMm > 0 ? avail / outerDiameterMm : 1;
+  const cx = DRAW_SIZE / 2;
+  const cy = DRAW_SIZE / 2;
+  const bundleRadiusPx = (bundleDiameterMm / 2) * scale;
+  const overbraidRadiusPx = bundleRadiusPx + overbraidThicknessMm * scale;
+  const outerRadiusPx = (outerDiameterMm / 2) * scale;
+  const categoriesPresent = Array.from(new Set(wires.map((w) => w.category)));
+
+  const outerRing = finishedOuterDiameterMm !== null
+    ? `<circle cx="${cx}" cy="${cy}" r="${outerRadiusPx}" fill="color-mix(in srgb, ${TEXT_2} 12%, transparent)" stroke="${BORDER_STRONG}" stroke-width="1.5" stroke-dasharray="4,3" />`
+    : '';
+  const braidRing = overbraidThicknessMm > 0
+    ? `<circle cx="${cx}" cy="${cy}" r="${overbraidRadiusPx}" fill="color-mix(in srgb, ${TEXT_2} 18%, white)" stroke="${TEXT_2}" stroke-width="1.2" />`
+    : '';
+
+  const wiresHtml = wires.map((w) => `<circle cx="${cx + w.x * scale}" cy="${cy + w.y * scale}" r="${Math.max((w.d / 2) * scale, 1)}" fill="${CATEGORY_COLORS[w.category]}" stroke="white" stroke-width="0.6" />`).join('');
+  const legendHtml = categoriesPresent.map((cat, i) => `
+    <g font-size="9" font-family="ui-monospace, monospace">
+      <rect x="8" y="${8 + i * 14}" width="9" height="9" fill="${CATEGORY_COLORS[cat]}" />
+      <text x="21" y="${16 + i * 14}" fill="${TEXT_2}">${escapeXml(CATEGORY_LABELS[cat])}</text>
+    </g>`).join('');
+
+  return `<svg viewBox="0 0 ${DRAW_SIZE} ${DRAW_SIZE}" width="100%">
+    ${outerRing}
+    ${braidRing}
+    <circle cx="${cx}" cy="${cy}" r="${bundleRadiusPx}" fill="none" stroke="${TEXT_FAINT}" stroke-width="1" stroke-dasharray="2,3" />
+    ${wiresHtml}
+    <text x="${cx}" y="${cy - bundleRadiusPx - 8}" text-anchor="middle" font-size="10" fill="${TEXT_2}" font-family="ui-monospace, monospace">bundle &empty;${bundleDiameterMm.toFixed(2)} mm</text>
+    ${finishedOuterDiameterMm !== null ? `<text x="${cx}" y="${cy + outerRadiusPx + 16}" text-anchor="middle" font-size="10" fill="${TEXT_2}" font-family="ui-monospace, monospace">finished &empty;${finishedOuterDiameterMm.toFixed(2)} mm${coveringLabel ? ` (${escapeXml(coveringLabel)})` : ''}</text>` : ''}
+    ${legendHtml}
+  </svg>`;
+}
+
+/** Point-to-point wiring schematic, matching HarnessSchematicDiagram.tsx. */
+export function renderHarnessSchematicSvg(layout: SchematicLayout, accentColor: string): string {
+  const connectedPins = new Set<string>();
+  for (const w of layout.wires) {
+    for (const part of w.netId.split('|')) connectedPins.add(part);
+  }
+  for (const g of layout.grounds) connectedPins.add(`${g.connectorId}:${g.pin}`);
+
+  const wiresHtml = layout.wires.map((w) => {
+    const midX = (w.x1 + w.x2) / 2;
+    const midY = (w.y1 + w.y2) / 2;
+    return `<g>
+      <line x1="${w.x1}" y1="${w.y1}" x2="${w.x2}" y2="${w.y2}" stroke="${accentColor}" stroke-width="1.5" />
+      <rect x="${midX - w.label.length * 2.6}" y="${midY - 12}" width="${w.label.length * 5.2}" height="12" fill="white" opacity="0.9" />
+      <text x="${midX}" y="${midY - 3}" text-anchor="middle" font-size="8.5" fill="${TEXT_2}" font-family="ui-monospace, monospace">${escapeXml(w.label)}</text>
+    </g>`;
+  }).join('');
+
+  const groundsHtml = layout.grounds.map((g) => `<g>
+    <line x1="${g.stubX1}" y1="${g.stubY1}" x2="${g.x}" y2="${g.y}" stroke="${TEXT_2}" stroke-width="1.5" />
+    <line x1="${g.x}" y1="${g.y - 8}" x2="${g.x}" y2="${g.y + 8}" stroke="#14170F" stroke-width="1.5" />
+    <line x1="${g.x + 4}" y1="${g.y - 5}" x2="${g.x + 4}" y2="${g.y + 5}" stroke="#14170F" stroke-width="1.3" />
+    <line x1="${g.x + 8}" y1="${g.y - 2}" x2="${g.x + 8}" y2="${g.y + 2}" stroke="#14170F" stroke-width="1" />
+    <text x="${g.x + 12}" y="${g.y + 3}" font-size="8" fill="${TEXT_2}" font-family="ui-monospace, monospace">GND</text>
+  </g>`).join('');
+
+  const boxesHtml = layout.connectors.map((box) => {
+    const pinsHtml = box.pins.map((p) => {
+      const connected = connectedPins.has(`${box.id}:${p.pin}`);
+      const dotColor = connected ? accentColor : TEXT_FAINT;
+      const textColor = connected ? '#14170F' : TEXT_FAINT;
+      return `<g>
+        <line x1="${box.x}" x2="${box.x + box.width}" y1="${p.y}" y2="${p.y}" stroke="${BORDER_STRONG}" stroke-width="0.5" />
+        <circle cx="${box.x}" cy="${p.y}" r="2.5" fill="${dotColor}" />
+        <circle cx="${box.x + box.width}" cy="${p.y}" r="2.5" fill="${dotColor}" />
+        <text x="${box.x + 6}" y="${p.y + 3}" font-size="7.5" fill="${TEXT_FAINT}" font-family="ui-monospace, monospace">${p.pin}</text>
+        <text x="${box.x + box.width / 2}" y="${p.y + 3}" text-anchor="middle" font-size="8" fill="${textColor}" font-family="ui-monospace, monospace">${escapeXml(p.signalName)}</text>
+        <text x="${box.x + box.width - 6}" y="${p.y + 3}" text-anchor="end" font-size="7.5" fill="${TEXT_FAINT}" font-family="ui-monospace, monospace">${p.pin}</text>
+      </g>`;
+    }).join('');
+    return `<g>
+      <rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="4" fill="#FAFBFA" stroke="${BORDER_STRONG}" stroke-width="1.5" />
+      <rect x="${box.x}" y="${box.y}" width="${box.width}" height="30" rx="4" fill="color-mix(in srgb, ${accentColor} 12%, white)" stroke="${BORDER_STRONG}" stroke-width="1" />
+      <text x="${box.x + box.width / 2}" y="${box.y + 14}" text-anchor="middle" font-size="11" font-weight="700" fill="#14170F" font-family="ui-monospace, monospace">${escapeXml(box.name)}</text>
+      <text x="${box.x + box.width / 2}" y="${box.y + 25}" text-anchor="middle" font-size="8" fill="${TEXT_2}" font-family="ui-monospace, monospace">${escapeXml(box.shellLabel)}</text>
+      ${pinsHtml}
+    </g>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${layout.width} ${layout.height}" width="100%">
+    ${wiresHtml}
+    ${groundsHtml}
+    ${boxesHtml}
+  </svg>`;
+}
