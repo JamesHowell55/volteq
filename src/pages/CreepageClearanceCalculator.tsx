@@ -51,9 +51,6 @@ export default function CreepageClearanceCalculator() {
   const [safetyFactorPercent, setSafetyFactorPercent] = useState(20);
   const [fieldCondition, setFieldCondition] = useState<FieldCondition>('A');
 
-  const [actualClearanceMm, setActualClearanceMm] = useState<number | ''>('');
-  const [actualCreepageMm, setActualCreepageMm] = useState<number | ''>('');
-
   const altitudeM = altitudeUnit === 'ft' ? altitude / FT_PER_M : altitude;
   const altCorrection = useMemo(() => getAltitudeCorrectionFactor(altitudeM), [altitudeM]);
 
@@ -73,15 +70,9 @@ export default function CreepageClearanceCalculator() {
   const creepageWithMargin = creepageResult ? creepageResult.mm * (1 + safetyFactorPercent / 100) : null;
   const creepageHvWithMargin = creepageHvResult ? creepageHvResult.mm * (1 + safetyFactorPercent / 100) : null;
 
-  const clearancePass = actualClearanceMm !== '' ? actualClearanceMm >= clearanceWithMargin : null;
-  const creepagePass = actualCreepageMm !== '' && creepageWithMargin !== null ? actualCreepageMm >= creepageWithMargin : null;
-  const overallPass = clearancePass !== null || creepagePass !== null
-    ? (clearancePass !== false) && (creepagePass !== false)
-    : null;
-
-  // Paschen's Law cross-check, using the actual clearance if supplied, else the derived (with-margin) clearance.
+  // Paschen's Law cross-check, using the derived (with-margin) clearance.
   // The comparison voltage is now the working voltage directly (matching the simplified clearance methodology above).
-  const paschenGapMm = actualClearanceMm !== '' ? actualClearanceMm : clearanceWithMargin;
+  const paschenGapMm = clearanceWithMargin;
   const pressureKPa = useMemo(() => pressureAtAltitude(altitudeM), [altitudeM]);
   const paschenPd = pressureKPa * (paschenGapMm / 10);
   const paschenV = breakdownVoltage(pressureKPa, paschenGapMm / 10);
@@ -89,10 +80,11 @@ export default function CreepageClearanceCalculator() {
   const paschenPass = paschenV >= workingVoltage;
   const paschenMinPd = paschenMinimum().pd;
 
+  const marginFactor = 1 + safetyFactorPercent / 100;
   const creepageGridValue = (voltage: number) => (rowIdx: number, colIdx: number) =>
-    getCreepage(voltage, GRID_PDS[colIdx], MATERIAL_GROUPS[rowIdx], useApplianceFunctionalAllowance).mm;
+    getCreepage(voltage, GRID_PDS[colIdx], MATERIAL_GROUPS[rowIdx], useApplianceFunctionalAllowance).mm * marginFactor;
   const clearanceGridValue = (voltageKV: number) => (rowIdx: number, colIdx: number) =>
-    getClearance(voltageKV, FIELD_CASES[rowIdx], GRID_PDS[colIdx]).mm;
+    getClearance(voltageKV, FIELD_CASES[rowIdx], GRID_PDS[colIdx]).mm * marginFactor;
 
   const creepageHighlightCol = GRID_PDS.indexOf(pollutionDegree as 1 | 2 | 3);
   const creepageHighlightRow = MATERIAL_GROUPS.indexOf(materialGroup);
@@ -152,14 +144,12 @@ export default function CreepageClearanceCalculator() {
       { label: 'Material group', value: MATERIAL_GROUP_CTI[materialGroup].label },
       { label: 'Altitude', value: `${altitude} ${altitudeUnit}` },
     ];
-    if (actualClearanceMm !== '') envRows.push({ label: 'Actual clearance', value: `${actualClearanceMm} mm` });
-    if (actualCreepageMm !== '') envRows.push({ label: 'Actual creepage', value: `${actualCreepageMm} mm` });
 
     return [
       { heading: 'Electrical parameters', rows: elecRows },
-      { heading: 'Environment & design check', rows: envRows },
+      { heading: 'Environment', rows: envRows },
     ];
-  }, [workingVoltage, hvToChassis, hvToChassisOverride, safetyFactorPercent, fieldCondition, pollutionDegree, materialGroup, altitude, altitudeUnit, actualClearanceMm, actualCreepageMm]);
+  }, [workingVoltage, hvToChassis, hvToChassisOverride, safetyFactorPercent, fieldCondition, pollutionDegree, materialGroup, altitude, altitudeUnit]);
 
   const outputSections: ReportSection[] = useMemo(() => [
     {
@@ -186,7 +176,7 @@ export default function CreepageClearanceCalculator() {
       tabName: 'Creepage_Clearance_Calculator',
       pageTitle: 'Creepage & Clearance Distance Calculator',
       accentHex,
-      passStatus: overallPass !== null ? { pass: overallPass, label: overallPass ? 'Design meets minimum requirements' : 'Design does not meet minimum requirements' } : null,
+      passStatus: null,
       inputSections,
       outputSections,
       calculationSteps,
@@ -312,7 +302,10 @@ export default function CreepageClearanceCalculator() {
             </div>
             <div className="grid grid-2" style={{ marginTop: '0.85rem' }}>
               <div className="field">
-                <label>Altitude</label>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>Altitude</span>
+                  <span className="tag">correction k = {fmt(altCorrection.factor, 3)}</span>
+                </label>
                 <div className="grid grid-2">
                   <input autoComplete="off" type="number" min={0} value={altitude} onChange={e => setAltitude(Number(e.target.value))} />
                   <div className="segmented">
@@ -323,77 +316,21 @@ export default function CreepageClearanceCalculator() {
                 <span className="hint">
                   No correction below 2000 m (6562 ft) — that is the standard's native reference condition. Correction
                   applies to clearance only; creepage (a surface-tracking property) is not altitude-dependent.
+                  {altCorrection.extrapolated && <span style={{ color: 'var(--warn)' }}> Beyond tabulated range — extrapolated.</span>}
                 </span>
               </div>
             </div>
-          </div>
-
-          <div className="card">
-            <div className="card-title"><span><span className="step-num">3</span>Your design (optional — checks pass/fail)</span></div>
-            <div className="grid grid-2">
-              <div className="field">
-                <label>Actual clearance (mm)</label>
-                <input autoComplete="off" type="number" min={0} step={0.01} value={actualClearanceMm} onChange={e => setActualClearanceMm(e.target.value === '' ? '' : Number(e.target.value))} />
-              </div>
-              <div className="field">
-                <label>Actual creepage distance (mm)</label>
-                <input autoComplete="off" type="number" min={0} step={0.01} value={actualCreepageMm} onChange={e => setActualCreepageMm(e.target.value === '' ? '' : Number(e.target.value))} />
-              </div>
-            </div>
-            <span className="hint">Checked against the working-voltage scenario (not HV to chassis).</span>
           </div>
         </div>
 
         {/* RIGHT COLUMN — results */}
         <div>
           <div className="card">
-            <div className="card-title">Results</div>
-
-            {overallPass !== null && (
-              <div className={`status-banner ${overallPass ? 'pass' : 'fail'}`}>
-                {overallPass ? '✓ Design meets minimum requirements' : '✗ Design does not meet minimum requirements'}
-              </div>
-            )}
-
-            <div className="result-grid">
-              <div className="result-tile">
-                <div className="label">Required clearance, working V (with margin)</div>
-                <div className={`value ${clearancePass === false ? 'neg' : clearancePass === true ? 'pos' : ''}`}>
-                  {fmt(clearanceWithMargin, 2)}<span className="unit">mm</span>
-                </div>
-                <div className="hint">base {fmt(clearanceResult.mm, 2)} mm{clearanceResult.floorApplied ? ' · PD floor' : ''}</div>
-              </div>
-              <div className="result-tile">
-                <div className="label">Required clearance, HV to chassis (with margin)</div>
-                <div className="value">{fmt(clearanceHvWithMargin, 2)}<span className="unit">mm</span></div>
-                <div className="hint">base {fmt(clearanceHvResult.mm, 2)} mm{clearanceHvResult.floorApplied ? ' · PD floor' : ''}</div>
-              </div>
-              <div className="result-tile">
-                <div className="label">Required creepage, working V (with margin)</div>
-                <div className={`value ${creepagePass === false ? 'neg' : creepagePass === true ? 'pos' : ''}`}>
-                  {pollutionDegree === 4 ? 'N/A' : fmt(creepageWithMargin ?? 0, 2)}<span className="unit">{pollutionDegree === 4 ? '' : 'mm'}</span>
-                </div>
-                {pollutionDegree !== 4 && <div className="hint">base {fmt(creepageResult?.mm ?? 0, 2)} mm</div>}
-              </div>
-              <div className="result-tile">
-                <div className="label">Required creepage, HV to chassis (with margin)</div>
-                <div className="value">{pollutionDegree === 4 ? 'N/A' : fmt(creepageHvWithMargin ?? 0, 2)}<span className="unit">{pollutionDegree === 4 ? '' : 'mm'}</span></div>
-                {pollutionDegree !== 4 && <div className="hint">base {fmt(creepageHvResult?.mm ?? 0, 2)} mm</div>}
-              </div>
-              <div className="result-tile">
-                <div className="label">Altitude correction factor</div>
-                <div className="value">{fmt(altCorrection.factor, 2)}</div>
-                {altCorrection.extrapolated && <div className="hint" style={{ color: 'var(--warn)' }}>Beyond tabulated range — extrapolated</div>}
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
             <div className="card-title">Reference tables</div>
             <p className="note" style={{ marginBottom: '0.9rem' }}>
-              Base values (before the {safetyFactorPercent}% safety margin) at your current working voltage and HV-to-chassis
-              voltage, across every Material Group / Case × Pollution Degree combination — the highlighted cell matches
-              your current selection.
+              Required distances (including the {safetyFactorPercent}% factor of safety) at your current working voltage and
+              HV-to-chassis voltage, across every Material Group / Case × Pollution Degree combination — the highlighted
+              cell matches your current selection.
             </p>
             <ComparisonGrid
               title={`Creepage @ Working Voltage (${fmt(workingVoltage, 0)} V)`}
