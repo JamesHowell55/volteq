@@ -1,8 +1,6 @@
 // Data sourced from IEC 60664-1 (Insulation coordination for equipment within
 // low-voltage supply systems) — clearance from Table F.2, creepage from
-// Table F.4, altitude correction from Table F.10 — plus IEC 60335-1's
-// household-appliance-specific creepage relaxation (Table 18, opt-in only,
-// see its own doc comment below for caveats). See the in-app reference notes.
+// Table F.4, altitude correction from Table F.10. See the in-app reference notes.
 
 export type PollutionDegree = 1 | 2 | 3 | 4;
 export type MaterialGroup = 'I' | 'II' | 'IIIa' | 'IIIb';
@@ -188,39 +186,6 @@ export const CREEPAGE_TABLE_BASIC: CreepageRow[] = [
   { maxV: 10000, pd1: 40.0, pd2: { I: 50.0, II: 71.0, IIIab: 100.0 }, pd3: { I: 125.0, II: 140.0, IIIab: 160.0 } },
 ];
 
-/** IEC 60335-1 Table 18 — a household-appliance-specific relaxation permitting
- *  smaller creepage for functional insulation at lower voltages. This is NOT
- *  confirmed to be IEC 60664-1's own general position — IEC 60664-1's own
- *  Annex F lists a single Table F.5, and its clause 5.3.4 (functional) vs
- *  5.3.5 (basic/supplementary/reinforced) split could not be confirmed from
- *  open sources to use different numeric values rather than just a different
- *  voltage basis. Rows below 800 V were sourced independently; rows at 800 V
- *  and above still hold the values that used to be (incorrectly) shared with
- *  CREEPAGE_TABLE_BASIC before that table was corrected against the real
- *  IEC 60664-1 Table F.4 — these upper rows have NOT been independently
- *  re-verified and this whole table remains opt-in only. Only apply this
- *  outside an appliance context if your specific product standard permits it. */
-export const CREEPAGE_TABLE_APPLIANCE_FUNCTIONAL_ALLOWANCE: CreepageRow[] = [
-  { maxV: 50, pd1: 0.2, pd2: { I: 0.6, II: 0.8, IIIab: 1.1 }, pd3: { I: 1.4, II: 1.6, IIIab: 1.8 } },
-  { maxV: 125, pd1: 0.3, pd2: { I: 0.7, II: 1.0, IIIab: 1.4 }, pd3: { I: 1.8, II: 2.0, IIIab: 2.2 } },
-  { maxV: 250, pd1: 0.4, pd2: { I: 1.0, II: 1.4, IIIab: 2.0 }, pd3: { I: 2.5, II: 2.8, IIIab: 3.2 } },
-  { maxV: 400, pd1: 0.8, pd2: { I: 1.6, II: 2.2, IIIab: 3.2 }, pd3: { I: 4.0, II: 4.5, IIIab: 5.0 } },
-  { maxV: 500, pd1: 1.0, pd2: { I: 2.0, II: 2.8, IIIab: 4.0 }, pd3: { I: 5.0, II: 5.6, IIIab: 6.3 } },
-  { maxV: 800, pd1: 1.8, pd2: { I: 3.2, II: 4.5, IIIab: 6.3 }, pd3: { I: 8.0, II: 9.0, IIIab: 10.0 } },
-  { maxV: 1000, pd1: 2.4, pd2: { I: 4.0, II: 5.6, IIIab: 8.0 }, pd3: { I: 10.0, II: 11.0, IIIab: 12.5 } },
-  { maxV: 1250, pd1: 3.2, pd2: { I: 5.0, II: 7.1, IIIab: 10.0 }, pd3: { I: 12.5, II: 14.0, IIIab: 16.0 } },
-  { maxV: 1600, pd1: 4.2, pd2: { I: 6.3, II: 9.0, IIIab: 12.5 }, pd3: { I: 16.0, II: 18.0, IIIab: 20.0 } },
-  { maxV: 2000, pd1: 5.6, pd2: { I: 8.0, II: 11.0, IIIab: 16.0 }, pd3: { I: 20.0, II: 22.0, IIIab: 25.0 } },
-  { maxV: 2500, pd1: 7.5, pd2: { I: 10.0, II: 14.0, IIIab: 20.0 }, pd3: { I: 25.0, II: 28.0, IIIab: 32.0 } },
-  { maxV: 3200, pd1: 10.0, pd2: { I: 12.5, II: 18.0, IIIab: 25.0 }, pd3: { I: 32.0, II: 36.0, IIIab: 40.0 } },
-  { maxV: 4000, pd1: 12.5, pd2: { I: 16.0, II: 22.0, IIIab: 32.0 }, pd3: { I: 40.0, II: 45.0, IIIab: 50.0 } },
-  { maxV: 5000, pd1: 16.0, pd2: { I: 20.0, II: 28.0, IIIab: 40.0 }, pd3: { I: 50.0, II: 56.0, IIIab: 63.0 } },
-  { maxV: 6300, pd1: 20.0, pd2: { I: 25.0, II: 36.0, IIIab: 50.0 }, pd3: { I: 63.0, II: 71.0, IIIab: 80.0 } },
-  { maxV: 8000, pd1: 25.0, pd2: { I: 32.0, II: 45.0, IIIab: 63.0 }, pd3: { I: 80.0, II: 90.0, IIIab: 100.0 } },
-  { maxV: 10000, pd1: 32.0, pd2: { I: 40.0, II: 56.0, IIIab: 80.0 }, pd3: { I: 100.0, II: 110.0, IIIab: 125.0 } },
-  { maxV: 12500, pd1: 40.0, pd2: { I: 50.0, II: 71.0, IIIab: 100.0 }, pd3: { I: 125.0, II: 140.0, IIIab: 160.0 } },
-];
-
 /** Power-law (log-log / "ratio-preserving") interpolation and extrapolation.
  *  Finds the bracketing table pair, derives the local scaling exponent
  *  implied by their ratio (b = ln(y1/y0)/ln(x1/x0)), and applies
@@ -306,7 +271,7 @@ function creepageColumn(table: CreepageRow[], pollutionDegree: 1 | 2 | 3, materi
   return table.map(r => ({ x: r.maxV, y: pollutionDegree === 1 ? r.pd1 : (pollutionDegree === 2 ? r.pd2[bucket] : r.pd3[bucket]) }));
 }
 
-/** Creepage per IEC 60664-1 Table F.4 (default) — power-law interpolated
+/** Creepage per IEC 60664-1 Table F.4 — power-law interpolated
  *  between the standard's tabulated voltage-band points rather than taking
  *  the next-higher band's value, so a working voltage between two tabulated
  *  points (e.g. 900 V, between the 800 V and 1000 V rows) gets its own
@@ -314,8 +279,7 @@ function creepageColumn(table: CreepageRow[], pollutionDegree: 1 | 2 | 3, materi
  *  This tool assumes functional insulation throughout (no basic/
  *  supplementary/reinforced distinction) — see the in-app reference notes
  *  for why IEC 60664-1's own functional-vs-other split isn't applied here. */
-export function getCreepage(workingVoltageV: number, pollutionDegree: 1 | 2 | 3, materialGroup: MaterialGroup, useApplianceFunctionalAllowance = false): { mm: number; extrapolated: boolean } {
-  const table = useApplianceFunctionalAllowance ? CREEPAGE_TABLE_APPLIANCE_FUNCTIONAL_ALLOWANCE : CREEPAGE_TABLE_BASIC;
-  const { y, extrapolated } = powerLawInterpolate(creepageColumn(table, pollutionDegree, materialGroup), workingVoltageV);
+export function getCreepage(workingVoltageV: number, pollutionDegree: 1 | 2 | 3, materialGroup: MaterialGroup): { mm: number; extrapolated: boolean } {
+  const { y, extrapolated } = powerLawInterpolate(creepageColumn(CREEPAGE_TABLE_BASIC, pollutionDegree, materialGroup), workingVoltageV);
   return { mm: y, extrapolated };
 }

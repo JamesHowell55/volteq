@@ -38,7 +38,6 @@ export default function CreepageClearanceCalculator() {
   const [workingVoltage, setWorkingVoltage] = useState(300);
   const [hvToChassisOverride, setHvToChassisOverride] = useState<number | null>(null);
   const hvToChassis = hvToChassisOverride ?? workingVoltage * 0.5;
-  const [useApplianceFunctionalAllowance, setUseApplianceFunctionalAllowance] = useState(false);
 
   const [pollutionDegree, setPollutionDegree] = useState<PollutionDegree>(2);
   const [materialGroup, setMaterialGroup] = useState<MaterialGroup>('IIIb');
@@ -65,8 +64,8 @@ export default function CreepageClearanceCalculator() {
   const clearanceWithMargin = clearanceResult.mm * (1 + safetyFactorPercent / 100);
   const clearanceHvWithMargin = clearanceHvResult.mm * (1 + safetyFactorPercent / 100);
 
-  const creepageResult = useMemo(() => (pollutionDegree === 4 ? null : getCreepage(workingVoltage, pollutionDegree, materialGroup, useApplianceFunctionalAllowance)), [workingVoltage, pollutionDegree, materialGroup, useApplianceFunctionalAllowance]);
-  const creepageHvResult = useMemo(() => (pollutionDegree === 4 ? null : getCreepage(hvToChassis, pollutionDegree, materialGroup, useApplianceFunctionalAllowance)), [hvToChassis, pollutionDegree, materialGroup, useApplianceFunctionalAllowance]);
+  const creepageResult = useMemo(() => (pollutionDegree === 4 ? null : getCreepage(workingVoltage, pollutionDegree, materialGroup)), [workingVoltage, pollutionDegree, materialGroup]);
+  const creepageHvResult = useMemo(() => (pollutionDegree === 4 ? null : getCreepage(hvToChassis, pollutionDegree, materialGroup)), [hvToChassis, pollutionDegree, materialGroup]);
   const creepageWithMargin = creepageResult ? creepageResult.mm * (1 + safetyFactorPercent / 100) : null;
   const creepageHvWithMargin = creepageHvResult ? creepageHvResult.mm * (1 + safetyFactorPercent / 100) : null;
 
@@ -82,7 +81,7 @@ export default function CreepageClearanceCalculator() {
 
   const marginFactor = 1 + safetyFactorPercent / 100;
   const creepageGridValue = (voltage: number) => (rowIdx: number, colIdx: number) =>
-    getCreepage(voltage, GRID_PDS[colIdx], MATERIAL_GROUPS[rowIdx], useApplianceFunctionalAllowance).mm * marginFactor;
+    getCreepage(voltage, GRID_PDS[colIdx], MATERIAL_GROUPS[rowIdx]).mm * marginFactor;
   const clearanceGridValue = (voltageKV: number) => (rowIdx: number, colIdx: number) =>
     getClearance(voltageKV, FIELD_CASES[rowIdx], GRID_PDS[colIdx]).mm * marginFactor;
 
@@ -114,9 +113,9 @@ export default function CreepageClearanceCalculator() {
 
     if (pollutionDegree !== 4 && creepageResult && creepageHvResult) {
       stepsOut.push({
-        title: `Required creepage distance (${useApplianceFunctionalAllowance ? 'IEC 60335-1 Table 18' : 'IEC 60664-1 Table F.4'}, functional insulation) + safety factor`,
+        title: 'Required creepage distance (IEC 60664-1 Table F.4, functional insulation) + safety factor',
         formula: 'Creepage = f(working voltage, pollution degree, material group)^b (power-law interpolated between tabulated voltage bands) × (1 + FoS)',
-        substitution: `PD${pollutionDegree}, ${MATERIAL_GROUP_CTI[materialGroup].label}${useApplianceFunctionalAllowance ? ' (household-appliance functional-insulation allowance applied)' : ''}`,
+        substitution: `PD${pollutionDegree}, ${MATERIAL_GROUP_CTI[materialGroup].label}`,
         result: `Working voltage (${workingVoltage} V): base ${fmt(creepageResult.mm, 3)} mm, with margin = ${fmt(creepageWithMargin ?? 0, 3)} mm. HV to chassis (${fmt(hvToChassis, 0)} V): base ${fmt(creepageHvResult.mm, 3)} mm, with margin = ${fmt(creepageHvWithMargin ?? 0, 3)} mm`,
       });
     }
@@ -129,7 +128,7 @@ export default function CreepageClearanceCalculator() {
     });
 
     return stepsOut;
-  }, [altitude, altitudeUnit, altitudeM, altCorrection, workingVoltage, hvToChassis, workingVoltageForClearanceKV, hvToChassisForClearanceKV, fieldCondition, pollutionDegree, clearanceResult, clearanceHvResult, safetyFactorPercent, clearanceWithMargin, clearanceHvWithMargin, creepageResult, creepageHvResult, useApplianceFunctionalAllowance, materialGroup, creepageWithMargin, creepageHvWithMargin, pressureKPa, paschenGapMm, paschenPd, paschenV, paschenPass]);
+  }, [altitude, altitudeUnit, altitudeM, altCorrection, workingVoltage, hvToChassis, workingVoltageForClearanceKV, hvToChassisForClearanceKV, fieldCondition, pollutionDegree, clearanceResult, clearanceHvResult, safetyFactorPercent, clearanceWithMargin, clearanceHvWithMargin, creepageResult, creepageHvResult, materialGroup, creepageWithMargin, creepageHvWithMargin, pressureKPa, paschenGapMm, paschenPd, paschenV, paschenPass]);
 
   const inputSections: ReportSection[] = useMemo(() => {
     const elecRows: ReportRow[] = [
@@ -180,7 +179,7 @@ export default function CreepageClearanceCalculator() {
       inputSections,
       outputSections,
       calculationSteps,
-      disclaimer: 'Engineering estimation tool. Standards: IEC 60664-1 (clearance/altitude), IEC 60335-1 (creepage). Clearance is driven directly by the working voltage (no overvoltage-category / Table F.1 Un->Uimp step-up) — this is a deliberate tool-scope simplification and will understate the required clearance for circuits exposed to significant transient overvoltages (e.g. direct mains connection); reintroduce an impulse-withstand-voltage margin manually for such designs. Assumes functional insulation throughout. Verify exact values against the current official IEC 60664-1 text, and any applicable product standard, before certification use.',
+      disclaimer: 'Engineering estimation tool. Standard: IEC 60664-1 (clearance from Table F.2/altitude from Table F.10, creepage from Table F.4). Clearance is driven directly by the working voltage (no overvoltage-category / Table F.1 Un->Uimp step-up) — this is a deliberate tool-scope simplification and will understate the required clearance for circuits exposed to significant transient overvoltages (e.g. direct mains connection); reintroduce an impulse-withstand-voltage margin manually for such designs. Assumes functional insulation throughout. Verify exact values against the current official IEC 60664-1 text, and any applicable product standard, before certification use.',
       ...branding,
     });
   };
@@ -225,16 +224,6 @@ export default function CreepageClearanceCalculator() {
                 <label>Factor of safety (%)</label>
                 <input autoComplete="off" type="number" min={0} step={5} value={safetyFactorPercent} onChange={e => setSafetyFactorPercent(Number(e.target.value))} />
                 <span className="hint">Applied as a margin on top of the standard's calculated minimum distances (default 20%).</span>
-              </div>
-              <div className="field">
-                <label style={{ display: 'flex', alignItems: 'center' }}>
-                  Household-appliance allowance
-                  <InfoTooltip>IEC 60335-1 Table 18 permits smaller creepage for functional insulation at lower voltages than the general IEC 60664-1 Table F.4. This couldn't be confirmed to differ numerically by insulation type from open sources at every voltage — so this relaxation is opt-in, not default. Only use it if your product standard permits it.</InfoTooltip>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-2)', fontWeight: 400 }}>
-                  <input type="checkbox" checked={useApplianceFunctionalAllowance} onChange={e => setUseApplianceFunctionalAllowance(e.target.checked)} style={{ width: 'auto' }} />
-                  Apply IEC 60335-1 Table 18 (household appliances)
-                </label>
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'flex', alignItems: 'center' }}>
