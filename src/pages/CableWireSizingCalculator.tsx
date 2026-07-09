@@ -447,26 +447,27 @@ export default function CableWireSizingCalculator() {
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              This tool is scoped to EV powertrain cabling (battery interconnects, battery-to-inverter,
-              inverter-to-motor) — it does not use a household/building wiring ampacity table (e.g. NEC Table
-              310). Instead, ampacity/conductor temperature come from a first-principles steady-state heat
-              balance: AC resistance (with the IEC 60287-1-1 skin-effect formula, reused from this site's Busbar
-              calculator), conduction through the insulation wall, and natural convection + radiation from the
-              round outer surface using the Churchill-Chu correlation for a horizontal cylinder (the correct
-              correlation for round cable — flat-plate correlations, like the one used for busbars, don't apply
-              here). The insulation's ISO 6722 temperature class sets the maximum allowable conductor
-              temperature. ISO 6722's own numeric current-rating tables sit behind the paywalled standard text
-              and weren't accessible during development — this tool computes from physics instead of
-              transcribing an unverifiable table. Bundling derating reuses the widely-published NEC
-              310.15(B)(3)(a) adjustment factors as a disclosed standard reference, not a first-principles
-              model of mutual heating between bundled cables. Treat this as a screening/estimation tool, not a
-              substitute for the OEM harness qualification testing real cable assemblies undergo.
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          This tool is scoped to EV powertrain cabling (battery interconnects, battery-to-inverter,
+          inverter-to-motor) — it does not use a household/building wiring ampacity table (e.g. NEC Table
+          310). Instead, ampacity/conductor temperature come from a first-principles steady-state heat
+          balance: AC resistance (with the IEC 60287-1-1 skin-effect formula, reused from this site's Busbar
+          calculator), conduction through the insulation wall, and natural convection + radiation from the
+          round outer surface using the Churchill-Chu correlation for a horizontal cylinder (the correct
+          correlation for round cable — flat-plate correlations, like the one used for busbars, don't apply
+          here). The insulation's ISO 6722 temperature class sets the maximum allowable conductor
+          temperature. ISO 6722's own numeric current-rating tables sit behind the paywalled standard text
+          and weren't accessible during development — this tool computes from physics instead of
+          transcribing an unverifiable table. Bundling derating reuses the widely-published NEC
+          310.15(B)(3)(a) adjustment factors as a disclosed standard reference, not a first-principles
+          model of mutual heating between bundled cables. Treat this as a screening/estimation tool, not a
+          substitute for the OEM harness qualification testing real cable assemblies undergo.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

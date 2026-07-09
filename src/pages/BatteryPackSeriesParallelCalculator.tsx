@@ -267,19 +267,20 @@ export default function BatteryPackSeriesParallelCalculator() {
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              Standard series/parallel circuit combination applied to a single cell's spec: cells in series add
-              voltage (and their internal resistances add), cells in parallel add capacity (and their internal
-              resistances combine as R/P). Cell presets are representative typical values for common formats
-              (18650/21700 Li-ion, pouch, LiFePO4 prismatic) — real cells vary by manufacturer and specific part
-              number, so check the actual datasheet before finalizing a design. This tool does not model
-              cell-to-cell manufacturing variation/imbalance, temperature effects on resistance/capacity, or
-              aging/cycle life — all of which matter for a real pack design and BMS sizing.
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          Standard series/parallel circuit combination applied to a single cell's spec: cells in series add
+          voltage (and their internal resistances add), cells in parallel add capacity (and their internal
+          resistances combine as R/P). Cell presets are representative typical values for common formats
+          (18650/21700 Li-ion, pouch, LiFePO4 prismatic) — real cells vary by manufacturer and specific part
+          number, so check the actual datasheet before finalizing a design. This tool does not model
+          cell-to-cell manufacturing variation/imbalance, temperature effects on resistance/capacity, or
+          aging/cycle life — all of which matter for a real pack design and BMS sizing.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

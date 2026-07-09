@@ -1132,25 +1132,26 @@ export default function BoltedJointCalculator() {
             </p>
           </div>
 
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              Clamped-member stiffness uses the standard simplified two-cone (nut &amp; bolt) or single-cone (tapped/
-              threaded-insert) frustum method — a 30° half-angle cone of compression spreading from each bearing face,
-              chained across multiple clamped sections where the mid-plane (or, for tapped joints, the mid-point of
-              thread engagement) falls inside a plate. This is the standard textbook realization (Shigley's Mechanical
-              Engineering Design) of VDI 2230's cone-of-compression concept; VDI 2230's own full multi-segment method
-              may give different results on stacks with many plates of sharply different diameters — treat this as a
-              good general-purpose estimate, not a replacement for full VDI 2230 analysis on complex stacks. Bearing/
-              yield stress is checked only at the two outer bearing faces, not interior plate-to-plate interfaces.
-              Minimum thread engagement length is a first-principles-scaled estimate (proof-strength-to-yield-strength
-              ratio, floored at 1× nominal diameter), not a full thread-shear-area derivation. Property-class strength
-              values (ISO 898-1 designation formula, SAE J429 typical published grades), all-metal prevailing-torque
-              nut torques, and tightening-method scatter factors (αA) are typical/representative — verify against the
-              current official standards and, where required, physical testing before certification use.
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          Clamped-member stiffness uses the standard simplified two-cone (nut &amp; bolt) or single-cone (tapped/
+          threaded-insert) frustum method — a 30° half-angle cone of compression spreading from each bearing face,
+          chained across multiple clamped sections where the mid-plane (or, for tapped joints, the mid-point of
+          thread engagement) falls inside a plate. This is the standard textbook realization (Shigley's Mechanical
+          Engineering Design) of VDI 2230's cone-of-compression concept; VDI 2230's own full multi-segment method
+          may give different results on stacks with many plates of sharply different diameters — treat this as a
+          good general-purpose estimate, not a replacement for full VDI 2230 analysis on complex stacks. Bearing/
+          yield stress is checked only at the two outer bearing faces, not interior plate-to-plate interfaces.
+          Minimum thread engagement length is a first-principles-scaled estimate (proof-strength-to-yield-strength
+          ratio, floored at 1× nominal diameter), not a full thread-shear-area derivation. Property-class strength
+          values (ISO 898-1 designation formula, SAE J429 typical published grades), all-metal prevailing-torque
+          nut torques, and tightening-method scatter factors (αA) are typical/representative — verify against the
+          current official standards and, where required, physical testing before certification use.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

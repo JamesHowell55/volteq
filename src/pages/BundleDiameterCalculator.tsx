@@ -330,21 +330,22 @@ export default function BundleDiameterCalculator() {
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              Bundle diameter is computed two independent ways: a real 2D circle-packing algorithm (drives the
-              cross-section diagram — a heuristic greedy tangent-placement packing, not a proven-optimal
-              solution) and the published Glenair Wire Bundle Diameter Calculator multiplication-factor table
-              (a statistical industry cross-check, arithmetic-mean diameter × a count-dependent factor). Wire
-              electrical ratings (M22759, Spec 55) are sourced from manufacturer datasheets; wall thicknesses
-              and most covering-family size tables are representative class figures — see each item's notes and
-              refine against the specific product datasheet before cutting stock. A covering's finished OD
-              assumes the tubing/sleeve wraps snugly against the bundle, a first-order estimate. Actual bundle
-              diameter also depends on lay length and tie/lace spacing — treat this as a planning estimate.
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          Bundle diameter is computed two independent ways: a real 2D circle-packing algorithm (drives the
+          cross-section diagram — a heuristic greedy tangent-placement packing, not a proven-optimal
+          solution) and the published Glenair Wire Bundle Diameter Calculator multiplication-factor table
+          (a statistical industry cross-check, arithmetic-mean diameter × a count-dependent factor). Wire
+          electrical ratings (M22759, Spec 55) are sourced from manufacturer datasheets; wall thicknesses
+          and most covering-family size tables are representative class figures — see each item's notes and
+          refine against the specific product datasheet before cutting stock. A covering's finished OD
+          assumes the tubing/sleeve wraps snugly against the bundle, a first-order estimate. Actual bundle
+          diameter also depends on lay length and tie/lace spacing — treat this as a planning estimate.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

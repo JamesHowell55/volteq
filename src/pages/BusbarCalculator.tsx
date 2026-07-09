@@ -1035,33 +1035,34 @@ export default function BusbarCalculator() {
             </div>
           )}
 
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              Steady-state and load-profile heating are solved with a nodal thermal network: each section (or the
-              stacked-bar bundle, as one lumped node) generates I²R heat, exchanges heat with neighbouring sections
-              by axial conduction (generalised fin equation with internal heat generation, discretised and solved
-              with the Thomas algorithm), and loses heat to ambient by natural convection + radiation, in series with
-              any coating's conduction resistance (t/(k·A), same generalised-fin-style discretisation). Skin effect
-              uses the IEC 60287-1-1 formula. Load profiles are marched forward in time with backward-Euler
-              integration (unconditionally stable) using each material's density and specific heat for thermal
-              capacitance. Short-circuit heating uses the IEC 60865-1 adiabatic method per section (K = 226 A·√s/mm²
-              copper, 148 aluminium; β = 234.5°C copper, 228°C aluminium) — conduction between sections is neglected
-              for faults since it is slow relative to typical fault durations. Multi-bar bundles reduce exposed
-              surface area on faces that face a narrow gap; proximity effect on <em>resistance</em> and PWM
-              switching-ripple heating are not modelled. A section with "Apply conduction" ticked loses heat
-              through an additional parallel path — thermal interface material + metallic section, same
-              t/(k·A) conduction idiom as the coating — applied to exactly one face (width×length) of that
-              section, which is correspondingly removed from its air-exposed area. The metallic section's outer
-              face is taken to be directly at the coolant's inlet temperature (no separate coolant-film
-              resistance term is modelled). Flow rate and coolant medium feed one exact, separate calculation
-              (an energy-balance coolant temperature rise) that is informational only and not fed back into the
-              busbar temperature result, which always uses the fixed inlet temperature as the coolant-side sink,
-              the same way ambient air is always treated as a fixed-temperature reservoir. For critical designs,
-              verify against manufacturer test data and, where required, by test.
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          Steady-state and load-profile heating are solved with a nodal thermal network: each section (or the
+          stacked-bar bundle, as one lumped node) generates I²R heat, exchanges heat with neighbouring sections
+          by axial conduction (generalised fin equation with internal heat generation, discretised and solved
+          with the Thomas algorithm), and loses heat to ambient by natural convection + radiation, in series with
+          any coating's conduction resistance (t/(k·A), same generalised-fin-style discretisation). Skin effect
+          uses the IEC 60287-1-1 formula. Load profiles are marched forward in time with backward-Euler
+          integration (unconditionally stable) using each material's density and specific heat for thermal
+          capacitance. Short-circuit heating uses the IEC 60865-1 adiabatic method per section (K = 226 A·√s/mm²
+          copper, 148 aluminium; β = 234.5°C copper, 228°C aluminium) — conduction between sections is neglected
+          for faults since it is slow relative to typical fault durations. Multi-bar bundles reduce exposed
+          surface area on faces that face a narrow gap; proximity effect on <em>resistance</em> and PWM
+          switching-ripple heating are not modelled. A section with "Apply conduction" ticked loses heat
+          through an additional parallel path — thermal interface material + metallic section, same
+          t/(k·A) conduction idiom as the coating — applied to exactly one face (width×length) of that
+          section, which is correspondingly removed from its air-exposed area. The metallic section's outer
+          face is taken to be directly at the coolant's inlet temperature (no separate coolant-film
+          resistance term is modelled). Flow rate and coolant medium feed one exact, separate calculation
+          (an energy-balance coolant temperature rise) that is informational only and not fed back into the
+          busbar temperature result, which always uses the fixed inlet temperature as the coolant-side sink,
+          the same way ambient air is always treated as a fixed-temperature reservoir. For critical designs,
+          verify against manufacturer test data and, where required, by test.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

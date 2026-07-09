@@ -585,26 +585,27 @@ export default function MosfetLossCalculator() {
             </div>
           )}
 
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              Standard analytical loss equations for a 2-level, 3-phase, sinusoidal-PWM voltage-source inverter.
-              With synchronous rectification on (the normal way to run SiC), each leg device conducts half the
-              fundamental period through its channel, so total losses are symmetric between motoring and
-              generating — the motor/generator distinction appears explicitly in the classic channel/body-diode
-              split when sync rect is off, and in the duty-cycle profile either way. Switching energies scale
-              linearly with current and by (Vdc/Vtest)^kv with voltage from the datasheet test point, and are
-              held temperature-independent (SiC Eon/Eoff vary only weakly with Tvj — e.g. CAB450M12XM3 shows
-              25.4→24.4 mJ across 25→175°C). Reverse recovery uses datasheet Err where published, else the
-              standard Qrr·Vdc/4 soft-recovery approximation. Gate-drive loss is dissipated in the driver and
-              gate resistors, not the die, and is excluded from the junction-temperature solve. Devices flagged
-              with ⚠ carry verified headline specifications (part number, package, RDS(on), rating) but
-              representative loss parameters — transcribe the real datasheet values (the field-mapping guide
-              lives at the top of sicDevices.ts) before trusting absolute numbers. Screening tool — not a
-              substitute for double-pulse characterisation or calorimetric inverter testing.
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          Standard analytical loss equations for a 2-level, 3-phase, sinusoidal-PWM voltage-source inverter.
+          With synchronous rectification on (the normal way to run SiC), each leg device conducts half the
+          fundamental period through its channel, so total losses are symmetric between motoring and
+          generating — the motor/generator distinction appears explicitly in the classic channel/body-diode
+          split when sync rect is off, and in the duty-cycle profile either way. Switching energies scale
+          linearly with current and by (Vdc/Vtest)^kv with voltage from the datasheet test point, and are
+          held temperature-independent (SiC Eon/Eoff vary only weakly with Tvj — e.g. CAB450M12XM3 shows
+          25.4→24.4 mJ across 25→175°C). Reverse recovery uses datasheet Err where published, else the
+          standard Qrr·Vdc/4 soft-recovery approximation. Gate-drive loss is dissipated in the driver and
+          gate resistors, not the die, and is excluded from the junction-temperature solve. Devices flagged
+          with ⚠ carry verified headline specifications (part number, package, RDS(on), rating) but
+          representative loss parameters — transcribe the real datasheet values (the field-mapping guide
+          lives at the top of sicDevices.ts) before trusting absolute numbers. Screening tool — not a
+          substitute for double-pulse characterisation or calorimetric inverter testing.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

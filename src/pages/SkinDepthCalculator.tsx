@@ -271,29 +271,30 @@ export default function SkinDepthCalculator() {
             <SkinDepthCrossSection radiusMm={radiusMm} skinDepthMm={skinDepthMmValue} isIllustrative={!hasConductorSize} />
           </div>
 
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              Skin effect is the tendency of AC current to concentrate near a conductor's surface as frequency
-              rises, driven by the conductor's own changing magnetic field inducing eddy currents that oppose
-              current flow in its centre. Skin depth δ is the depth at which current density has fallen to 1/e
-              (about 37%) of its value at the surface — it is a property of the material and frequency alone
-              (via resistivity ρ and relative permeability µr), <strong>not of the conductor's size or shape</strong>.
-              δ = √(ρ/(π·f·µ₀·µr)), with µ₀ = 4π×10⁻⁷ H/m the permeability of free space. Non-magnetic conductors
-              (copper, aluminium, silver, gold, brass, austenitic stainless) have µr = 1; ferromagnetic materials
-              (steel, nickel) have µr {'>'} 1, which sharply reduces skin depth — but µr for these materials is not a
-              fixed constant: it depends on field strength, saturates well below the values often quoted for DC,
-              and is itself somewhat frequency-dependent, so any result for a magnetic material here should be
-              treated as illustrative only. The effective-conduction-area figure (shown when a conductor diameter
-              is entered) is a simplified geometric approximation — the true current-density profile falls off
-              smoothly rather than as a step function, and real AC/DC resistance ratios for a given conductor
-              geometry require a full Bessel-function solution. For an exact busbar or cable AC resistance ratio,
-              use this site's Busbar Calculator or Cable/Wire Sizing tool, both of which apply the IEC 60287-1-1
-              empirical kₛ correction for a real conductor cross-section. This tool supports engineering
-              estimation — verify against manufacturer/material data for critical designs.
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          Skin effect is the tendency of AC current to concentrate near a conductor's surface as frequency
+          rises, driven by the conductor's own changing magnetic field inducing eddy currents that oppose
+          current flow in its centre. Skin depth δ is the depth at which current density has fallen to 1/e
+          (about 37%) of its value at the surface — it is a property of the material and frequency alone
+          (via resistivity ρ and relative permeability µr), <strong>not of the conductor's size or shape</strong>.
+          δ = √(ρ/(π·f·µ₀·µr)), with µ₀ = 4π×10⁻⁷ H/m the permeability of free space. Non-magnetic conductors
+          (copper, aluminium, silver, gold, brass, austenitic stainless) have µr = 1; ferromagnetic materials
+          (steel, nickel) have µr {'>'} 1, which sharply reduces skin depth — but µr for these materials is not a
+          fixed constant: it depends on field strength, saturates well below the values often quoted for DC,
+          and is itself somewhat frequency-dependent, so any result for a magnetic material here should be
+          treated as illustrative only. The effective-conduction-area figure (shown when a conductor diameter
+          is entered) is a simplified geometric approximation — the true current-density profile falls off
+          smoothly rather than as a step function, and real AC/DC resistance ratios for a given conductor
+          geometry require a full Bessel-function solution. For an exact busbar or cable AC resistance ratio,
+          use this site's Busbar Calculator or Cable/Wire Sizing tool, both of which apply the IEC 60287-1-1
+          empirical kₛ correction for a real conductor cross-section. This tool supports engineering
+          estimation — verify against manufacturer/material data for critical designs.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

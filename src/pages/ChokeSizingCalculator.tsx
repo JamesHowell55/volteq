@@ -688,25 +688,26 @@ export default function ChokeSizingCalculator() {
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              Toroidal and Oval/racetrack core geometry is exact closed-form from the entered dimensions.
-              U-core and E-core geometry is approximated as a simple rectangular magnetic loop — real datasheets
-              publish part-specific Ae/le/Wa, and there is no single universal formula for those families the
-              way there is for a toroid, so cross-check against manufacturer data for a final design. Toroidal
-              Ae assumes a rectangular (square-cut) annulus — exact for ferrite/tape-wound/nanocrystalline
-              toroids; rounded-cross-section powder toroids (MPP/Kool Mµ) typically have ~15-30% less real Ae
-              than this estimate for the same OD/ID/height. Core loss uses a Steinmetz-style estimate with
-              representative, editable coefficients, not manufacturer-verified loss curves. The CISPR 25 class
-              selector sets a suggested starting target common-mode impedance — a filter-design rule of thumb,
-              not a direct CISPR 25 clause value. CM saturation is driven by a user-editable worst-case DC
-              imbalance/common-mode current, since a correctly wound balanced multi-phase CM choke has its
-              load-current flux cancel. Treat this as a screening/estimation tool, not a substitute for
-              prototype/EMC test-house qualification.
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          Toroidal and Oval/racetrack core geometry is exact closed-form from the entered dimensions.
+          U-core and E-core geometry is approximated as a simple rectangular magnetic loop — real datasheets
+          publish part-specific Ae/le/Wa, and there is no single universal formula for those families the
+          way there is for a toroid, so cross-check against manufacturer data for a final design. Toroidal
+          Ae assumes a rectangular (square-cut) annulus — exact for ferrite/tape-wound/nanocrystalline
+          toroids; rounded-cross-section powder toroids (MPP/Kool Mµ) typically have ~15-30% less real Ae
+          than this estimate for the same OD/ID/height. Core loss uses a Steinmetz-style estimate with
+          representative, editable coefficients, not manufacturer-verified loss curves. The CISPR 25 class
+          selector sets a suggested starting target common-mode impedance — a filter-design rule of thumb,
+          not a direct CISPR 25 clause value. CM saturation is driven by a user-editable worst-case DC
+          imbalance/common-mode current, since a correctly wound balanced multi-phase CM choke has its
+          load-current flux cancel. Treat this as a screening/estimation tool, not a substitute for
+          prototype/EMC test-house qualification.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

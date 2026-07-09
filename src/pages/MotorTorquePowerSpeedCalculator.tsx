@@ -263,18 +263,19 @@ export default function MotorTorquePowerSpeedCalculator() {
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              The core relationship P = T × ω (power = torque × angular velocity) is exact for any rotating
-              shaft, independent of motor type. The optional torque-from-current cross-check (T = Kt × I) is
-              specific to permanent-magnet machines and assumes an ideal, linear torque constant — real motors
-              deviate from this near magnetic saturation or at very high current. The optional efficiency-
-              adjusted electrical input power assumes motoring operation (input greater than output); for
-              regenerative/generating operation the relationship inverts.
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          The core relationship P = T × ω (power = torque × angular velocity) is exact for any rotating
+          shaft, independent of motor type. The optional torque-from-current cross-check (T = Kt × I) is
+          specific to permanent-magnet machines and assumes an ideal, linear torque constant — real motors
+          deviate from this near magnetic saturation or at very high current. The optional efficiency-
+          adjusted electrical input power assumes motoring operation (input greater than output); for
+          regenerative/generating operation the relationship inverts.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

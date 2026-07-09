@@ -536,44 +536,45 @@ export default function CreepageClearanceCalculator() {
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-title">Reference &amp; assumptions</div>
-            <p className="note">
-              Clearance uses IEC 60664-1 Table F.2 (verified against the standard's full text), with a choice of
-              Case A (inhomogeneous field, always usable) or Case B (homogeneous field, smaller clearances but
-              requires geometry designed for a uniform field and verification by voltage-withstand test), plus the
-              table's own footnoted pollution-degree floors (PD2 ≥ 0.2 mm, PD3 ≥ 0.8 mm, PD4 ≥ 1.6 mm — small gaps
-              can be bridged completely by particles/condensation regardless of the voltage a gap otherwise has to
-              withstand). <strong>Clearance is driven directly by the working voltage</strong> (and separately by the
-              working voltage to chassis), altitude-corrected — this tool does not step the working voltage up
-              through an overvoltage category / rated impulse withstand voltage (IEC 60664-1 Table F.1) first, which
-              is a deliberate simplification that will understate required clearance for circuits exposed to
-              significant transient overvoltages (e.g. direct mains connection) — add your own margin for those.
-              Creepage uses the IEC 60664-1 CTI/pollution-degree methodology (subclause 2.7.1.3) as tabulated in
-              Table F.4, assuming <strong>functional insulation throughout</strong> (this tool does not model
-              basic/supplementary/reinforced insulation separately). Both creepage and clearance are now power-law
-              interpolated between the standard's tabulated voltage points (rather than taking the next-higher
-              band's more conservative value), since these tables approximate a power law, not a straight line, or a
-              step function. Altitude correction (IEC 60664-1 Table F.10 / Table A.2) is applied only to clearance —
-              cross-checked against standard-atmosphere barometric pressure, and against Paschen's Law directly.
-              Paschen's Law assumes an idealised uniform field between clean electrodes; real-world breakdown
-              voltage is typically lower due to field non-uniformity, surface roughness and humidity — treat it as a
-              physics sanity check, not a substitute for the standard's tested margins. Pollution degree 4 has no
-              creepage table value (enclosure/coating design required) but clearance still computes via its
-              footnoted floor. This tool supports engineering estimation — verify exact values against the current
-              official IEC 60664-1 text, and any applicable product standard, before certification use.
-              {ed332Advanced && (
-                <> <strong>ED-332 advanced mode</strong> (read from a licensed copy of EUROCAE ED-332, 22 January 2025)
-                adds a fifth clearance scenario driven by the standard's worst-case abnormal voltage transient
-                (Table 2-2) — a sustained 1-second overvoltage, not a true IEC 60664-1 impulse waveform, so treat it
-                as a conservative proxy rather than a literal substitution — and can default the HV-to-chassis
-                voltage from the standard's abnormal common-mode condition (REQ[009]). The Dielectric Withstanding
-                Voltage (REQ[0030]) and insulation resistance (REQ[0031]) requirements are shown for reference only
-                and are not computed by this tool.</>
-              )}
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Reference &amp; assumptions</div>
+        <p className="note">
+          Clearance uses IEC 60664-1 Table F.2 (verified against the standard's full text), with a choice of
+          Case A (inhomogeneous field, always usable) or Case B (homogeneous field, smaller clearances but
+          requires geometry designed for a uniform field and verification by voltage-withstand test), plus the
+          table's own footnoted pollution-degree floors (PD2 ≥ 0.2 mm, PD3 ≥ 0.8 mm, PD4 ≥ 1.6 mm — small gaps
+          can be bridged completely by particles/condensation regardless of the voltage a gap otherwise has to
+          withstand). <strong>Clearance is driven directly by the working voltage</strong> (and separately by the
+          working voltage to chassis), altitude-corrected — this tool does not step the working voltage up
+          through an overvoltage category / rated impulse withstand voltage (IEC 60664-1 Table F.1) first, which
+          is a deliberate simplification that will understate required clearance for circuits exposed to
+          significant transient overvoltages (e.g. direct mains connection) — add your own margin for those.
+          Creepage uses the IEC 60664-1 CTI/pollution-degree methodology (subclause 2.7.1.3) as tabulated in
+          Table F.4, assuming <strong>functional insulation throughout</strong> (this tool does not model
+          basic/supplementary/reinforced insulation separately). Both creepage and clearance are now power-law
+          interpolated between the standard's tabulated voltage points (rather than taking the next-higher
+          band's more conservative value), since these tables approximate a power law, not a straight line, or a
+          step function. Altitude correction (IEC 60664-1 Table F.10 / Table A.2) is applied only to clearance —
+          cross-checked against standard-atmosphere barometric pressure, and against Paschen's Law directly.
+          Paschen's Law assumes an idealised uniform field between clean electrodes; real-world breakdown
+          voltage is typically lower due to field non-uniformity, surface roughness and humidity — treat it as a
+          physics sanity check, not a substitute for the standard's tested margins. Pollution degree 4 has no
+          creepage table value (enclosure/coating design required) but clearance still computes via its
+          footnoted floor. This tool supports engineering estimation — verify exact values against the current
+          official IEC 60664-1 text, and any applicable product standard, before certification use.
+          {ed332Advanced && (
+            <> <strong>ED-332 advanced mode</strong> (read from a licensed copy of EUROCAE ED-332, 22 January 2025)
+            adds a fifth clearance scenario driven by the standard's worst-case abnormal voltage transient
+            (Table 2-2) — a sustained 1-second overvoltage, not a true IEC 60664-1 impulse waveform, so treat it
+            as a conservative proxy rather than a literal substitution — and can default the HV-to-chassis
+            voltage from the standard's abnormal common-mode condition (REQ[009]). The Dielectric Withstanding
+            Voltage (REQ[0030]) and insulation resistance (REQ[0031]) requirements are shown for reference only
+            and are not computed by this tool.</>
+          )}
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}
