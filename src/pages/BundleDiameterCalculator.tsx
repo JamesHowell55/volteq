@@ -65,8 +65,13 @@ export default function BundleDiameterCalculator() {
   const packed = useMemo(() => packCircles(diametersMm), [diametersMm]);
   const glenair = useMemo(() => glenairFactorEstimate(diametersMm), [diametersMm]);
 
+  // packCircles() places wires relative to wherever the first circle happened
+  // to land, then separately computes the enclosing circle's true center —
+  // the two are not the same point, so positions must be re-centered onto
+  // (centerX, centerY) before drawing them relative to the boundary circles,
+  // which are always drawn at the diagram's fixed centre.
   const wireVisuals: BundleWireVisual[] = useMemo(
-    () => packed.positions.map((p) => ({ id: p.id, x: p.x, y: p.y, d: p.d, category: allWires[p.id]?.construction.category ?? 'single' })),
+    () => packed.positions.map((p) => ({ id: p.id, x: p.x - packed.centerX, y: p.y - packed.centerY, d: p.d, category: allWires[p.id]?.construction.category ?? 'single' })),
     [packed, allWires]
   );
 
