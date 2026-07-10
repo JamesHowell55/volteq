@@ -1,8 +1,7 @@
-# Voltaic Labs — Engineering Calculators
+# Volteq — Engineering Calculators
 
-A React + TypeScript site for first-principles engineering calculators, branded for Voltaic Labs. Dark,
-technical UI with a teal brand accent (`src/assets/brand/` has the source logo files and
-`voltaic-labs-brand.md` — kept alongside for reference — has the full palette).
+A React + TypeScript site for first-principles engineering calculators, branded for Volteq. Dark,
+technical UI with a teal brand accent (`src/assets/brand/` has the source logo files).
 
 Built with Vite + React 19 + react-router-dom.
 
@@ -27,13 +26,13 @@ The header/navbar is always black (fixed `--navbar-*` tokens in `src/index.css`,
 else supports light/dark mode plus a custom accent colour, via the "Theme" control in the navbar
 (`src/components/ThemeControls.tsx`). State (`mode`, `accentHex`) lives in `src/lib/ThemeContext.tsx`, persisted to
 `localStorage`; `src/lib/theme.ts` derives the full on-dark/on-light accent variants from a single hex (HSL-based)
-and applies them as runtime CSS custom-property overrides. Defaults to the Voltaic Labs teal (`#5DCAA5`).
+and applies them as runtime CSS custom-property overrides. Defaults to the Volteq teal (`#5DCAA5`).
 
 ## PDF export
 
 Each calculator has an "Export PDF" button. `src/lib/pdfExport.ts` builds an off-screen, print-styled report
 (inputs + outputs + a small disclaimer on page 1, calculation steps on page 2 via `break-before: page`) and
-renders it with `html2pdf.js`. Filenames follow `YYYYMMDD_HH_MM_VoltaicLabs_<Tab_Name>.pdf`
+renders it with `html2pdf.js`. Filenames follow `YYYYMMDD_HH_MM_Volteq_<Tab_Name>.pdf`
 (`buildPdfFilename()`). Each calculator page builds its own `inputSections`/`outputSections`/`calculationSteps`
 data from current state — see `BusbarCalculator.tsx` or `CreepageClearanceCalculator.tsx` for the pattern.
 
@@ -53,7 +52,7 @@ shipped to the browser).
 1. Create a Supabase project, then run [supabase/migration.sql](supabase/migration.sql) in its SQL editor
    (creates `entitlements` + `branding` tables with row-level security, and a public `branding-logos` storage
    bucket).
-2. Create a Stripe account/product ("Voltaic Premium") with 3 Prices: monthly recurring, annual recurring, and
+2. Create a Stripe account/product ("Volteq Premium") with 3 Prices: monthly recurring, annual recurring, and
    one-time (lifetime). Note the 3 price IDs and the secret key.
 3. Add a Stripe webhook endpoint at `https://<your-domain>/api/stripe-webhook` for events
    `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`. Note the

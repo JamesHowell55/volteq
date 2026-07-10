@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
-   Voltaic — Engineering Calculators — Design System
-   Dark technical UI. Accent: teal (#5DCAA5), per the Voltaic
+   Volteq — Engineering Calculators — Design System
+   Dark technical UI. Accent: teal (#5DCAA5), per the Volteq
    brand palette — used sparingly for the mark, links and primary CTAs.
 ═══════════════════════════════════════════════════════════════ */
 
 /* --accent-on-dark / --accent-on-light are set at runtime by ThemeContext
-   (src/lib/theme.ts) from the user's chosen hex, defaulting to Voltaic teal.
+   (src/lib/theme.ts) from the user's chosen hex, defaulting to Volteq teal.
    --accent picks whichever is right for the current theme; --navbar-* never
    change with theme, since the header stays black regardless. */
 :root {

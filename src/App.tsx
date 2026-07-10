@@ -16,6 +16,7 @@ import SkinDepthCalculator from './pages/SkinDepthCalculator';
 import ConversionsCalculator from './pages/ConversionsCalculator';
 import ComingSoonCalculator from './pages/ComingSoonCalculator';
 import AccountPage from './pages/AccountPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { ThemeProvider } from './lib/ThemeContext';
 import { AuthProvider } from './lib/AuthContext';
 import { NAV_CATEGORIES } from './lib/navCategories';
@@ -54,6 +55,7 @@ function App() {
             <Route path="/skin-depth" element={<SkinDepthCalculator />} />
             <Route path="/conversions" element={<ConversionsCalculator />} />
             <Route path="/account" element={<AccountPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             {placeholderLinks.map((link) => (
               <Route key={link.path} path={link.path} element={<ComingSoonCalculator />} />
             ))}

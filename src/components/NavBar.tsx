@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import voltaicLogo from '../assets/brand/voltaic-logo.svg';
+import volteqLogo from '../assets/brand/volteq-logo.svg';
 import ThemeControls from './ThemeControls';
 import NavDropdown from './NavDropdown';
 import { NAV_CATEGORIES, CONVERSIONS_LINK } from '../lib/navCategories';
@@ -13,7 +13,7 @@ export default function NavBar() {
   return (
     <header className="navbar">
       <NavLink to="/" className="navbar-brand" onClick={() => setMobileOpen(false)}>
-        <img src={voltaicLogo} alt="Voltaic" className="navbar-logo" />
+        <img src={volteqLogo} alt="Volteq" className="navbar-logo" />
         <span className="brand-sub">Engineering Calculators</span>
       </NavLink>
 

@@ -58,7 +58,7 @@ export default function ThemeControls() {
             </div>
             {!draftValid && <span className="hint" style={{ color: 'var(--neg)' }}>Enter a valid hex code, e.g. #5DCAA5</span>}
             <button className="btn small" style={{ marginTop: '0.6rem' }} onClick={resetAccent} disabled={accentHex === DEFAULT_ACCENT}>
-              Reset to Voltaic default
+              Reset to Volteq default
             </button>
           </div>
         </div>

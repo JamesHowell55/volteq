@@ -23,17 +23,27 @@ async function callApi(path: string, body: unknown): Promise<{ url?: string; err
 
 function AuthForm() {
   const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+  const [mode, setMode] = useState<'signIn' | 'signUp' | 'forgotPassword'>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [signedUpMessage, setSignedUpMessage] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setBusy(true);
+    if (mode === 'forgotPassword') {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      setBusy(false);
+      if (err) { setError(err.message); return; }
+      setResetSent(true);
+      return;
+    }
     const result = mode === 'signIn' ? await signIn(email, password) : await signUp(email, password);
     setBusy(false);
     if (result.error) {
@@ -45,31 +55,40 @@ function AuthForm() {
 
   return (
     <div className="card" style={{ maxWidth: 420 }}>
-      <div className="card-title">{mode === 'signIn' ? 'Log in' : 'Create an account'}</div>
+      <div className="card-title">{mode === 'signIn' ? 'Log in' : mode === 'signUp' ? 'Create an account' : 'Reset password'}</div>
       {signedUpMessage ? (
         <p className="note">Check your email for a confirmation link from Supabase, then log in. If you don't see it, check your spam folder.</p>
+      ) : resetSent ? (
+        <p className="note">Check your email for a password reset link from Supabase. If you don't see it, check your spam folder.</p>
       ) : (
         <form onSubmit={handleSubmit}>
           <div className="field">
             <label>Email</label>
             <input autoComplete="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
-          <div className="field">
-            <label>Password</label>
-            <input autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'} type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-          </div>
+          {mode !== 'forgotPassword' && (
+            <div className="field">
+              <label>Password</label>
+              <input autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'} type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+          )}
           {error && <p className="note" style={{ color: 'var(--neg)' }}>{error}</p>}
           <button className="btn primary" type="submit" disabled={busy} style={{ width: '100%', marginTop: '0.5rem' }}>
-            {busy ? 'Please wait…' : mode === 'signIn' ? 'Log in' : 'Sign up'}
+            {busy ? 'Please wait…' : mode === 'signIn' ? 'Log in' : mode === 'signUp' ? 'Sign up' : 'Send reset link'}
           </button>
         </form>
       )}
-      <button className="btn small" style={{ marginTop: '0.75rem' }} onClick={() => { setMode(m => (m === 'signIn' ? 'signUp' : 'signIn')); setError(null); setSignedUpMessage(false); }}>
-        {mode === 'signIn' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
+      {mode === 'signIn' && !signedUpMessage && (
+        <button className="btn small" style={{ marginTop: '0.5rem' }} onClick={() => { setMode('forgotPassword'); setError(null); }}>
+          Forgot password?
+        </button>
+      )}
+      <button className="btn small" style={{ marginTop: mode === 'signIn' && !signedUpMessage ? '0.25rem' : '0.75rem' }} onClick={() => { setMode(m => (m === 'signUp' ? 'signIn' : 'signUp')); setError(null); setSignedUpMessage(false); setResetSent(false); }}>
+        {mode === 'signUp' ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
       </button>
       <p className="hint" style={{ marginTop: '0.75rem', lineHeight: 1.5 }}>
         Authentication is managed securely by <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Supabase</a>, an
-        open-source platform with enterprise-grade security. Your password is never stored by Voltaic — all
+        open-source platform with enterprise-grade security. Your password is never stored by Volteq — all
         credentials are handled directly by Supabase's authentication service. Confirmation emails will come
         from a Supabase address (noreply@mail.supabase.io).
       </p>
@@ -121,7 +140,7 @@ function BrandingSection() {
   return (
     <div className="card">
       <div className="card-title">Report branding</div>
-      <p className="note" style={{ marginBottom: '0.85rem' }}>Shown on exported PDF reports in place of the Voltaic mark.</p>
+      <p className="note" style={{ marginBottom: '0.85rem' }}>Shown on exported PDF reports in place of the Volteq mark.</p>
       <div className="grid grid-2">
         <div className="field">
           <label>Company name</label>
@@ -258,7 +277,7 @@ export default function AccountPage() {
         <div className="page-header">
           <div className="eyebrow">● Account</div>
           <h1>Log in or sign up</h1>
-          <p>Manage your Voltaic account and premium features (PDF export, custom report branding, advanced calculation modes).</p>
+          <p>Manage your Volteq account and premium features (PDF export, custom report branding, advanced calculation modes).</p>
         </div>
         <AuthForm />
       </div>

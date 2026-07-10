@@ -46,7 +46,7 @@ export interface ReportSpec {
   // Row x column reference tables (e.g. Material Group x Pollution Degree) —
   // rendered on their own page, after diagrams and before calculation steps.
   gridTables?: ReportGridTable[];
-  // Premium report branding — when present, shown in place of the Voltaic mark.
+  // Premium report branding — when present, shown in place of the Volteq mark.
   companyName?: string;
   companyLogoUrl?: string;
 }
@@ -58,7 +58,7 @@ export function buildPdfFilename(tabName: string, date: Date = new Date()): stri
   const d = pad(date.getDate());
   const hh = pad(date.getHours());
   const mm = pad(date.getMinutes());
-  return `${y}${m}${d}_${hh}_${mm}_Voltaic_${tabName}.pdf`;
+  return `${y}${m}${d}_${hh}_${mm}_Volteq_${tabName}.pdf`;
 }
 
 function escapeHtml(s: string): string {
@@ -156,13 +156,13 @@ function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
         <div>
           <div style="display:flex; align-items:center; gap:8px;">
             ${spec.companyLogoUrl ? `<img src="${spec.companyLogoUrl}" style="height:20px; max-width:120px; object-fit:contain;" />` : ''}
-            <div style="font-size:12px; font-weight:700; letter-spacing:0.05em; color:${accent};">${escapeHtml(spec.companyName || 'VOLTAIC')}</div>
+            <div style="font-size:12px; font-weight:700; letter-spacing:0.05em; color:${accent};">${escapeHtml(spec.companyName || 'VOLTEQ')}</div>
           </div>
           <div style="font-size:16px; font-weight:700; margin-top:2px;">${escapeHtml(spec.pageTitle)}</div>
         </div>
         <div style="font-size:9.5px; color:#797D74; text-align:right;">
           Generated ${escapeHtml(timestamp)}
-          ${spec.companyName ? `<div style="margin-top:2px;">via Voltaic</div>` : ''}
+          ${spec.companyName ? `<div style="margin-top:2px;">via Volteq</div>` : ''}
         </div>
       </div>
       ${passBadge}

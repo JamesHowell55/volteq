@@ -9,7 +9,7 @@ export interface Branding {
 }
 
 // Only premium users' saved branding is ever returned — free users always get
-// an empty object, so their exports fall back to the default Voltaic mark
+// an empty object, so their exports fall back to the default Volteq mark
 // (see pdfExport.ts: companyName/companyLogoUrl are optional).
 export function useBranding(): Branding {
   const { user } = useAuth();

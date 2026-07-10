@@ -1,16 +1,17 @@
 <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-  <title>Voltaic icon</title>
-  <g fill="none" stroke="#5DCAA5" stroke-width="10" stroke-linecap="round">
-    <line x1="32" y1="24" x2="46" y2="56"/>
-    <line x1="46" y1="56" x2="60" y2="92"/>
-    <line x1="88" y1="24" x2="74" y2="56"/>
-    <line x1="74" y1="56" x2="60" y2="92"/>
+  <title>Volteq icon</title>
+  <g fill="none" stroke="#5DCAA5" stroke-width="18" stroke-linecap="round">
+    <line x1="30" y1="18" x2="46" y2="54"/>
+    <line x1="46" y1="54" x2="60" y2="94"/>
+    <line x1="90" y1="18" x2="74" y2="54"/>
+    <line x1="74" y1="54" x2="60" y2="94"/>
   </g>
   <g fill="#5DCAA5">
-    <circle cx="32" cy="24" r="13"/>
-    <circle cx="88" cy="24" r="13"/>
-    <circle cx="46" cy="56" r="10"/>
-    <circle cx="74" cy="56" r="10"/>
-    <circle cx="60" cy="92" r="12"/>
+    <circle cx="30" cy="18" r="13"/>
+    <circle cx="90" cy="18" r="13"/>
+    <circle cx="46" cy="54" r="10"/>
+    <circle cx="74" cy="54" r="10"/>
+    <circle cx="60" cy="94" r="12"/>
+    <circle cx="60" cy="112" r="5"/>
   </g>
 </svg>
