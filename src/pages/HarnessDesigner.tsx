@@ -229,7 +229,7 @@ export default function HarnessDesigner() {
       </div>
 
       <div className="two-col">
-        {/* LEFT COLUMN — connector settings + pinout */}
+        {/* LEFT COLUMN — connector settings */}
         <div>
           <div className="card">
             <div className="card-title">
@@ -255,102 +255,6 @@ export default function HarnessDesigner() {
               </div>
             </div>
           </div>
-
-          <div className="card">
-            <div className="card-title">{active.name} pinout</div>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table" style={{ width: '100%', fontSize: '0.78rem' }}>
-                <thead>
-                  <tr><th>Pin</th><th>Signal</th><th>Wire</th><th>AWG</th><th>Twisted w/</th><th>Drain for</th><th>Destination</th></tr>
-                </thead>
-                <tbody>
-                  {active.pins.map((p) => {
-                    const twistable = isTwistable(p.constructionId);
-                    const twistCandidates = active.pins.filter((op) => op.pin !== p.pin && isTwistable(op.constructionId));
-                    return (
-                    <tr key={p.pin}>
-                      <td>{p.pin}</td>
-                      <td><input autoComplete="off" value={p.signalName} onChange={(e) => updatePin(active.id, p.pin, { signalName: e.target.value })} style={{ width: '90px', fontSize: '0.78rem' }} /></td>
-                      <td>
-                        <select value={p.constructionId} onChange={(e) => updatePin(active.id, p.pin, { constructionId: e.target.value })} style={{ fontSize: '0.75rem' }}>
-                          {WIRE_CONSTRUCTIONS.map((w) => (
-                            <option key={w.id} value={w.id}>{w.label}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <select value={p.awg} onChange={(e) => updatePin(active.id, p.pin, { awg: Number(e.target.value) })} style={{ fontSize: '0.75rem' }}>
-                          {CONTACT_SIZE_SPECS[active.contactSize].awgRange.map((a) => (
-                            <option key={a} value={a}>{a}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        {twistable ? (
-                          <select
-                            value={p.twistedWithPin ?? ''}
-                            onChange={(e) => updateTwistedPartner(active.id, p.pin, e.target.value === '' ? null : Number(e.target.value))}
-                            style={{ fontSize: '0.75rem' }}
-                          >
-                            <option value="">None</option>
-                            {twistCandidates.map((op) => (
-                              <option key={op.pin} value={op.pin}>Pin {op.pin} ({op.signalName})</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="hint" title="Only available when this pin's wire construction is a twisted-pair category">—</span>
-                        )}
-                      </td>
-                      <td>
-                        {shieldTargets.length > 0 ? (
-                          <select
-                            value={p.shieldDrainForPin ?? ''}
-                            onChange={(e) => updateShieldDrain(active.id, p.pin, e.target.value === '' ? null : Number(e.target.value))}
-                            style={{ fontSize: '0.75rem' }}
-                            title="This pin is the drain wire for a shielded conductor or twisted pair elsewhere on this connector"
-                          >
-                            <option value="">None</option>
-                            {shieldTargets.filter((t) => t.pin !== p.pin && t.partnerPin !== p.pin).map((t) => (
-                              <option key={t.pin} value={t.pin}>{t.label}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="hint" title="No shielded conductor or twisted shielded pair on this connector yet">—</span>
-                        )}
-                      </td>
-                      <td>
-                        <select value={destValue(p.destination)} onChange={(e) => {
-                          const v = e.target.value;
-                          if (v === 'unused') updatePinDestination(active.id, p.pin, { kind: 'unused' });
-                          else if (v === 'ground') updatePinDestination(active.id, p.pin, { kind: 'ground' });
-                          else {
-                            const [cid, pinStr] = v.split(':');
-                            updatePinDestination(active.id, p.pin, { kind: 'pin', connectorId: cid, pin: Number(pinStr) });
-                          }
-                        }} style={{ fontSize: '0.75rem' }}>
-                          <option value="unused">Unused</option>
-                          <option value="ground">Ground / chassis</option>
-                          {otherConnectors.map((oc) => (
-                            <optgroup key={oc.id} label={oc.name}>
-                              {oc.pins.map((op) => {
-                                const spliced = splicedCount(connectors, oc.id, op.pin, active.id, p.pin);
-                                return (
-                                  <option key={op.pin} value={`${oc.id}:${op.pin}`}>
-                                    {oc.name} pin {op.pin} ({op.signalName}){spliced > 0 ? ` — splice (+${spliced} joined)` : ''}
-                                  </option>
-                                );
-                              })}
-                            </optgroup>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
 
         {/* RIGHT COLUMN — results */}
@@ -365,6 +269,102 @@ export default function HarnessDesigner() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">{active.name} pinout</div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table" style={{ width: '100%', fontSize: '0.78rem' }}>
+            <thead>
+              <tr><th>Pin</th><th>Signal</th><th>Wire</th><th>AWG</th><th>Twisted w/</th><th>Drain for</th><th>Destination</th></tr>
+            </thead>
+            <tbody>
+              {active.pins.map((p) => {
+                const twistable = isTwistable(p.constructionId);
+                const twistCandidates = active.pins.filter((op) => op.pin !== p.pin && isTwistable(op.constructionId));
+                return (
+                <tr key={p.pin}>
+                  <td>{p.pin}</td>
+                  <td><input autoComplete="off" value={p.signalName} onChange={(e) => updatePin(active.id, p.pin, { signalName: e.target.value })} style={{ width: '90px', fontSize: '0.78rem' }} /></td>
+                  <td>
+                    <select value={p.constructionId} onChange={(e) => updatePin(active.id, p.pin, { constructionId: e.target.value })} style={{ fontSize: '0.75rem' }}>
+                      {WIRE_CONSTRUCTIONS.map((w) => (
+                        <option key={w.id} value={w.id}>{w.label}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <select value={p.awg} onChange={(e) => updatePin(active.id, p.pin, { awg: Number(e.target.value) })} style={{ fontSize: '0.75rem' }}>
+                      {CONTACT_SIZE_SPECS[active.contactSize].awgRange.map((a) => (
+                        <option key={a} value={a}>{a}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    {twistable ? (
+                      <select
+                        value={p.twistedWithPin ?? ''}
+                        onChange={(e) => updateTwistedPartner(active.id, p.pin, e.target.value === '' ? null : Number(e.target.value))}
+                        style={{ fontSize: '0.75rem' }}
+                      >
+                        <option value="">None</option>
+                        {twistCandidates.map((op) => (
+                          <option key={op.pin} value={op.pin}>Pin {op.pin} ({op.signalName})</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="hint" title="Only available when this pin's wire construction is a twisted-pair category">—</span>
+                    )}
+                  </td>
+                  <td>
+                    {shieldTargets.length > 0 ? (
+                      <select
+                        value={p.shieldDrainForPin ?? ''}
+                        onChange={(e) => updateShieldDrain(active.id, p.pin, e.target.value === '' ? null : Number(e.target.value))}
+                        style={{ fontSize: '0.75rem' }}
+                        title="This pin is the drain wire for a shielded conductor or twisted pair elsewhere on this connector"
+                      >
+                        <option value="">None</option>
+                        {shieldTargets.filter((t) => t.pin !== p.pin && t.partnerPin !== p.pin).map((t) => (
+                          <option key={t.pin} value={t.pin}>{t.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="hint" title="No shielded conductor or twisted shielded pair on this connector yet">—</span>
+                    )}
+                  </td>
+                  <td>
+                    <select value={destValue(p.destination)} onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === 'unused') updatePinDestination(active.id, p.pin, { kind: 'unused' });
+                      else if (v === 'ground') updatePinDestination(active.id, p.pin, { kind: 'ground' });
+                      else {
+                        const [cid, pinStr] = v.split(':');
+                        updatePinDestination(active.id, p.pin, { kind: 'pin', connectorId: cid, pin: Number(pinStr) });
+                      }
+                    }} style={{ fontSize: '0.75rem' }}>
+                      <option value="unused">Unused</option>
+                      <option value="ground">Ground / chassis</option>
+                      {otherConnectors.map((oc) => (
+                        <optgroup key={oc.id} label={oc.name}>
+                          {oc.pins.map((op) => {
+                            const spliced = splicedCount(connectors, oc.id, op.pin, active.id, p.pin);
+                            return (
+                              <option key={op.pin} value={`${oc.id}:${op.pin}`}>
+                                {oc.name} pin {op.pin} ({op.signalName}){spliced > 0 ? ` — splice (+${spliced} joined)` : ''}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
