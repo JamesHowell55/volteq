@@ -607,18 +607,39 @@ export function renderHarnessSchematicSvg(layout: SchematicLayout, accentColor: 
     for (const part of w.netId.split('|')) connectedPins.add(part);
   }
   for (const g of layout.grounds) connectedPins.add(`${g.connectorId}:${g.pin}`);
+  // A drain pin's own ground stub is suppressed in favour of the shield tap,
+  // but it's still a connected pin.
+  for (const s of layout.shields) connectedPins.add(`${s.drainConnectorId}:${s.drainPin}`);
 
   const palette = wireSpecPalette(accentColor);
   const colorForSpec = (i: number) => palette[i % palette.length];
 
   const wiresHtml = layout.wires.map((w) => `<path d="${pdfPathWithHops(w.points, w.hops)}" fill="none" stroke="${colorForSpec(w.specIndex)}" stroke-width="1.5" />`).join('');
 
+  const bundledPins = new Set<string>();
+  for (const b of layout.twistBundles) {
+    for (const netId of [b.netIdA, b.netIdB]) for (const part of netId.split('|')) bundledPins.add(part);
+  }
+
+  const twistHtml = layout.twistBundles.map((b) => b.crossings.map((c) =>
+    `<line x1="${c.x1}" y1="${c.y1}" x2="${c.x2}" y2="${c.y2}" stroke="${TEXT_2}" stroke-width="1" />`
+  ).join('')).join('');
+
+  const shieldsHtml = layout.shields.map((s) => {
+    const tapD = `M ${s.tap[0].x} ${s.tap[0].y} ` + s.tap.slice(1).map((p) => `L ${p.x} ${p.y}`).join(' ');
+    return `<g fill="none" stroke="${NEG}" stroke-width="1.2">
+      <ellipse cx="${s.end1.cx}" cy="${s.end1.cy}" rx="${s.end1.rx}" ry="${s.end1.ry}" />
+      <ellipse cx="${s.end2.cx}" cy="${s.end2.cy}" rx="${s.end2.rx}" ry="${s.end2.ry}" />
+      <path d="${tapD}" />
+    </g>`;
+  }).join('');
+
   const groundsHtml = layout.grounds.map((g) => `<g>
-    <path d="${pdfPathWithHops([{ x: g.stubX1, y: g.stubY1 }, { x: g.x, y: g.y }], g.hops)}" fill="none" stroke="${colorForSpec(g.specIndex)}" stroke-width="1.5"${g.kind === 'shield' ? ' stroke-dasharray="3,2"' : ''} />
+    <path d="${pdfPathWithHops([{ x: g.stubX1, y: g.stubY1 }, { x: g.x, y: g.y }], g.hops)}" fill="none" stroke="${colorForSpec(g.specIndex)}" stroke-width="1.5" />
     <line x1="${g.x}" y1="${g.y - 8}" x2="${g.x}" y2="${g.y + 8}" stroke="#14170F" stroke-width="1.5" />
     <line x1="${g.x + 4}" y1="${g.y - 5}" x2="${g.x + 4}" y2="${g.y + 5}" stroke="#14170F" stroke-width="1.3" />
     <line x1="${g.x + 8}" y1="${g.y - 2}" x2="${g.x + 8}" y2="${g.y + 2}" stroke="#14170F" stroke-width="1" />
-    <text x="${g.x + 12}" y="${g.y + 3}" font-size="8" fill="${TEXT_2}" font-family="ui-monospace, monospace">${g.kind === 'shield' ? 'SHLD' : 'GND'}</text>
+    <text x="${g.x + 12}" y="${g.y + 3}" font-size="8" fill="${TEXT_2}" font-family="ui-monospace, monospace">GND</text>
   </g>`).join('');
 
   const boxesHtml = layout.connectors.map((box) => {
@@ -640,12 +661,12 @@ export function renderHarnessSchematicSvg(layout: SchematicLayout, accentColor: 
 
     const twistPairs: { pinA: number; pinB: number; yA: number; yB: number }[] = [];
     for (const p of box.pins) {
-      if (p.twistedWithPin != null && p.twistedWithPin > p.pin) {
+      if (p.twistedWithPin != null && p.twistedWithPin > p.pin && !bundledPins.has(`${box.id}:${p.pin}`)) {
         const partner = box.pins.find((o) => o.pin === p.twistedWithPin);
         if (partner) twistPairs.push({ pinA: p.pin, pinB: partner.pin, yA: p.y, yB: partner.y });
       }
     }
-    const twistHtml = twistPairs.map((tp) => {
+    const twistBracketHtml = twistPairs.map((tp) => {
       const bx = box.x + box.width + 5;
       const midY = (tp.yA + tp.yB) / 2;
       const zigzag = [-4, 0, 4].map((dy) => `<path d="M ${bx - 3} ${midY + dy - 2} L ${bx + 3} ${midY + dy} L ${bx - 3} ${midY + dy + 2}" fill="none" stroke="${BLUE}" stroke-width="1" />`).join('');
@@ -661,7 +682,7 @@ export function renderHarnessSchematicSvg(layout: SchematicLayout, accentColor: 
       <text x="${box.x + box.width / 2}" y="${box.y + 14}" text-anchor="middle" font-size="11" font-weight="700" fill="#14170F" font-family="ui-monospace, monospace">${escapeXml(box.name)}</text>
       <text x="${box.x + box.width / 2}" y="${box.y + 25}" text-anchor="middle" font-size="8" fill="${TEXT_2}" font-family="ui-monospace, monospace">${escapeXml(box.subtitle)}</text>
       ${pinsHtml}
-      ${twistHtml}
+      ${twistBracketHtml}
     </g>`;
   }).join('');
 
@@ -678,6 +699,8 @@ export function renderHarnessSchematicSvg(layout: SchematicLayout, accentColor: 
 
   return `<svg viewBox="0 0 ${totalWidth} ${totalHeight}" width="100%">
     ${wiresHtml}
+    ${twistHtml}
+    ${shieldsHtml}
     ${groundsHtml}
     ${boxesHtml}
     ${legendHeading}

@@ -20,7 +20,7 @@
 // convention for "these do not connect". Export the PDF for a
 // full-resolution version when there are many connectors.
 import type { ConnectorSpec } from './harnessDesignerLogic';
-import { extractNets, pinHasShield } from './harnessDesignerLogic';
+import { extractNets, getShieldTargets } from './harnessDesignerLogic';
 import { getWireConstruction } from './harnessWireTypes';
 
 const BOX_WIDTH = 200;
@@ -29,13 +29,20 @@ const HEADER_HEIGHT = 36;
 const BOX_GAP_X = 220;
 const MARGIN = 50;
 const GROUND_STUB_LENGTH = 34;
-const SHIELD_GROUND_STUB_LENGTH = GROUND_STUB_LENGTH + 30; // further out than a signal ground so a pin with both never overlaps
 const RAIL_CLEARANCE = 20; // gap between the topmost box edge and the first skip-connection rail
 const RAIL_SPACING = 14; // vertical spacing between stacked skip-connection rails
 const RAIL_LANE_OFFSET = 24; // how far into its own connector's gap the FIRST skip-connection sharing a pair sits
 const RAIL_LANE_SPACING = 10; // extra offset per additional skip-connection sharing the same connector pair
 const SAME_CONN_BRACKET_OFFSET = 10; // how far out from its own box edge the first same-connector splice spoke sits
 const SAME_CONN_BRACKET_SPACING = 8; // extra offset per additional same-connector splice spoke
+const TWIST_LANE_OFFSET = 3; // how far apart a twisted pair's two conductors sit within their shared lane (elbow-routed pairs)
+const TWIST_TICK_SPACING = 14; // length of each twist-crossing "cell" along an elbow-routed pair's parallel run
+const WEAVE_CROSSOVERS = 2; // how many times a straight twisted pair's conductors visibly swap rows along the run
+const WEAVE_CROSS_HALF = 7; // half the horizontal extent of one crossover's diagonals
+const WEAVE_LEAD = 40; // straight lead-in before the first crossover, leaving room for a shield oval at the box edge
+const SHIELD_OVAL_RX = 9; // shield end-marker oval, horizontal radius
+const SHIELD_OVAL_PAD = 7; // vertical clearance of the shield oval beyond the enclosed conductor rows
+const SHIELD_OVAL_GAP = 6; // clear space between the box edge and the oval's near edge, so they don't touch
 
 export interface Point { x: number; y: number }
 
@@ -65,10 +72,12 @@ export interface ConnectorBoxLayout {
 
 export interface WirePath {
   netId: string;
-  points: Point[]; // polyline: 2 points (same-row, straight) or 4 (orthogonal elbow)
+  points: Point[]; // polyline: 2 points (same-row, straight) or more (orthogonal elbow/rail/bracket)
   hops: Point[]; // positions on this wire's horizontal segment(s) where a "hop" bump is drawn — another net crosses here without connecting
   tooltip: string; // signal name + wire spec, shown on hover only (see legend for the always-visible spec/colour key)
   specIndex: number; // index into SchematicLayout.legend — which colour this wire is drawn in
+  aConnectorId: string; // connector at points[0]
+  bConnectorId: string; // connector at the last point
 }
 
 export interface GroundSymbol {
@@ -80,14 +89,46 @@ export interface GroundSymbol {
   pin: number;
   hops: Point[];
   specIndex: number;
-  /** 'shield' is a cable shield/drain tied to ground — drawn with a longer
-   *  stub (so it never overlaps a 'signal' ground at the same pin) and
-   *  labelled "SHLD" instead of "GND". */
-  kind: 'signal' | 'shield';
+  kind: 'signal';
 }
 
 export interface LegendEntry {
   label: string; // e.g. "16 AWG M22759/32"
+}
+
+export interface CrossLine { x1: number; y1: number; x2: number; y2: number }
+
+/** A twisted pair's two conductors, drawn as their own ordinary WirePath
+ *  entries (so they still get hop-crossing detection etc. like any other
+ *  wire). A pair whose two conductors both run straight between the same
+ *  two connectors is drawn with the conductors literally swapping rows at
+ *  intervals (crossovers baked into their WirePath points), so `crossings`
+ *  is empty; an elbow-routed pair keeps parallel offset lanes and gets this
+ *  overlay of diagonal crossing tick lines instead. Either way this record
+ *  marks the pair as "already indicated" so the near-box bracket fallback
+ *  doesn't draw a second marker. */
+export interface TwistBundle {
+  netIdA: string;
+  netIdB: string;
+  crossings: CrossLine[];
+}
+
+export interface ShieldOval { cx: number; cy: number; rx: number; ry: number }
+
+/** A cable shield on one conductor or one twisted pair: an oval end-marker
+ *  drawn around the conductor(s) at each end of the run — the drafting
+ *  shorthand for "these wires are enclosed by a shield" — plus an
+ *  orthogonal tap polyline from the drain-side oval to the separate
+ *  drain-wire pin's own box position. */
+export interface ShieldMarker {
+  end1: ShieldOval;
+  end2: ShieldOval;
+  tap: Point[];
+  /** The drain-wire pin the tap lands on — its drawn ground stub (if its own
+   *  destination is Ground) is suppressed in favour of the tap, and the
+   *  renderers still style its pin dot as connected. */
+  drainConnectorId: string;
+  drainPin: number;
 }
 
 export interface SchematicLayout {
@@ -95,6 +136,8 @@ export interface SchematicLayout {
   wires: WirePath[];
   grounds: GroundSymbol[];
   legend: LegendEntry[];
+  twistBundles: TwistBundle[];
+  shields: ShieldMarker[];
   width: number;
   height: number;
 }
@@ -110,6 +153,80 @@ function specKeyFor(constructionId: string, awg: number): string {
 
 function findPinSpecIn(connectors: ConnectorSpec[], connectorId: string, pin: number) {
   return connectors.find((c) => c.id === connectorId)?.pins.find((p) => p.pin === pin);
+}
+
+function findWireForPin(wires: WirePath[], connectorId: string, pin: number): WirePath | undefined {
+  const key = `${connectorId}:${pin}`;
+  return wires.find((w) => w.netId.split('|').includes(key));
+}
+
+/** Crossover x-positions for a straight twisted pair's weave, spread evenly
+ *  along the run with a straight lead-in at each end (so the first/last
+ *  crossover clears the shield ovals sitting at the box edges). */
+function weaveCrossoverXs(x1: number, x2: number): number[] {
+  const xLo = Math.min(x1, x2);
+  const xHi = Math.max(x1, x2);
+  const lead = Math.min(WEAVE_LEAD, (xHi - xLo) * 0.2);
+  const span = (xHi - xLo) - 2 * lead;
+  return Array.from({ length: WEAVE_CROSSOVERS }, (_, k) => xLo + lead + (span * (k + 1)) / (WEAVE_CROSSOVERS + 1));
+}
+
+/** One conductor of a straight twisted pair, drawn so it literally swaps
+ *  between its own row and its partner's row at each crossover — the two
+ *  conductors' paths visibly cross like a drawn twist, rather than running
+ *  parallel with a tick overlay. WEAVE_CROSSOVERS is even, so the conductor
+ *  re-enters its own row before reaching the far pin. */
+function weaveStraightConductor(w: { x1: number; y1: number; x2: number }, partnerY: number, crossXs: number[]): Point[] {
+  const dir = Math.sign(w.x2 - w.x1) || 1;
+  const ordered = [...crossXs].sort((a, b) => dir * (a - b));
+  let y = w.y1;
+  const pts: Point[] = [{ x: w.x1, y }];
+  for (const cx of ordered) {
+    pts.push({ x: cx - dir * WEAVE_CROSS_HALF, y });
+    y = y === w.y1 ? partnerY : w.y1;
+    pts.push({ x: cx + dir * WEAVE_CROSS_HALF, y });
+  }
+  pts.push({ x: w.x2, y });
+  return pts;
+}
+
+/** Chain of diagonal crossing lines (a repeated "X") between two horizontal
+ *  or two vertical segments running in parallel — the standard drafting
+ *  convention for indicating a twisted pair, as opposed to a helix drawn
+ *  literally or a single label. */
+function twistCrossingsForSegmentPair(a1: Point, a2: Point, b1: Point, b2: Point): CrossLine[] {
+  const out: CrossLine[] = [];
+  const aH = a1.y === a2.y;
+  const bH = b1.y === b2.y;
+  if (aH && bH) {
+    const xMin = Math.max(Math.min(a1.x, a2.x), Math.min(b1.x, b2.x));
+    const xMax = Math.min(Math.max(a1.x, a2.x), Math.max(b1.x, b2.x));
+    const n = Math.floor((xMax - xMin) / TWIST_TICK_SPACING);
+    for (let k = 0; k < n; k++) {
+      const x1 = xMin + k * TWIST_TICK_SPACING;
+      const x2 = Math.min(xMin + (k + 1) * TWIST_TICK_SPACING, xMax);
+      out.push({ x1, y1: a1.y, x2, y2: b1.y }, { x1, y1: b1.y, x2, y2: a1.y });
+    }
+  } else if (!aH && !bH) {
+    const yMin = Math.max(Math.min(a1.y, a2.y), Math.min(b1.y, b2.y));
+    const yMax = Math.min(Math.max(a1.y, a2.y), Math.max(b1.y, b2.y));
+    const n = Math.floor((yMax - yMin) / TWIST_TICK_SPACING);
+    for (let k = 0; k < n; k++) {
+      const y1 = yMin + k * TWIST_TICK_SPACING;
+      const y2 = Math.min(yMin + (k + 1) * TWIST_TICK_SPACING, yMax);
+      out.push({ x1: a1.x, y1, x2: b1.x, y2 }, { x1: b1.x, y1, x2: a1.x, y2 });
+    }
+  }
+  return out;
+}
+
+function twistCrossings(pointsA: Point[], pointsB: Point[]): CrossLine[] {
+  const out: CrossLine[] = [];
+  const segCount = Math.min(pointsA.length, pointsB.length) - 1;
+  for (let i = 0; i < segCount; i++) {
+    out.push(...twistCrossingsForSegmentPair(pointsA[i], pointsA[i + 1], pointsB[i], pointsB[i + 1]));
+  }
+  return out;
 }
 
 interface Segment {
@@ -231,7 +348,11 @@ export function buildSchematicLayout(connectors: ConnectorSpec[]): SchematicLayo
     return { label: wireLabelFor(constructionId, Number(awgStr)) };
   });
 
-  interface RawWire { netId: string; x1: number; y1: number; x2: number; y2: number; loIdx: number; hiIdx: number; tooltip: string; specIndex: number }
+  interface RawWire {
+    netId: string; x1: number; y1: number; x2: number; y2: number; loIdx: number; hiIdx: number;
+    tooltip: string; specIndex: number;
+    aConnectorId: string; aPin: number; bConnectorId: string; bPin: number;
+  }
   const rawWires: RawWire[] = [];
   const grounds: GroundSymbol[] = [];
 
@@ -269,31 +390,16 @@ export function buildSchematicLayout(connectors: ConnectorSpec[]): SchematicLayo
         loIdx, hiIdx,
         tooltip: `${bPinSpec.signalName} · ${wireLabelFor(bPinSpec.constructionId, bPinSpec.awg)}${net.isSpliceAnchor ? ' · splice' : ''}`,
         specIndex,
-      });
-    }
-  }
-
-  // Shield/drain-to-ground is a separate per-pin flag, not a Destination —
-  // a shielded conductor's two signal ends and its shield are three distinct
-  // electrical points. Drawn further out than a signal ground stub so a pin
-  // that's both grounded AND shield-grounded gets two clearly separate symbols.
-  for (const c of connectors) {
-    for (const p of c.pins) {
-      if (!p.shieldGrounded || !pinHasShield(p)) continue;
-      const box = boxById.get(c.id);
-      const point = box?.pins.find((pt) => pt.pin === p.pin);
-      if (!box || !point) continue;
-      const specIndex = specIndexOf.get(specKeyFor(p.constructionId, p.awg)) ?? 0;
-      grounds.push({
-        x: point.rightX + SHIELD_GROUND_STUB_LENGTH, y: point.y,
-        stubX1: point.rightX, stubY1: point.y,
-        connectorId: c.id, pin: p.pin, hops: [], specIndex, kind: 'shield',
+        aConnectorId: net.a.connectorId, aPin: net.a.pin, bConnectorId: b.connectorId, bPin: b.pin,
       });
     }
   }
 
   // Adjacent-connector wires (spanning exactly one gap) get a lane x within
-  // that gap, spread evenly so wires sharing it don't overlap.
+  // that gap, spread evenly so wires sharing it don't overlap. A twisted
+  // pair whose two conductors both run between the same two connectors gets
+  // bundled onto ONE shared lane instead (see twistBundlePairs below), so it
+  // reads as one cable rather than two independently-spread wires.
   const adjacentWires = rawWires.filter((w) => w.hiIdx - w.loIdx === 1);
   const skipWires = rawWires.filter((w) => w.hiIdx - w.loIdx > 1);
   // A splice spoke can land back on its own connector (e.g. two pins on CON1
@@ -303,25 +409,91 @@ export function buildSchematicLayout(connectors: ConnectorSpec[]): SchematicLayo
   // idiom already used for twisted-pair brackets.
   const sameConnWires = rawWires.filter((w) => w.hiIdx === w.loIdx);
 
-  const byGap = new Map<string, RawWire[]>();
+  // Detect twisted-pair bundles: two adjacent-gap wires whose source pins are
+  // mutually twisted AND whose target pins are also mutually twisted — i.e.
+  // both conductors of one physical twisted-pair cable, routed between the
+  // same two connectors. Only this common case gets the bundled/twist-tick
+  // treatment; a twisted pair split across non-adjacent connectors or to
+  // mismatched targets still renders correctly, just as two ordinary wires.
+  const usedInBundle = new Set<string>();
+  const bundlePairs: { wireA: RawWire; wireB: RawWire }[] = [];
   for (const w of adjacentWires) {
+    if (usedInBundle.has(w.netId)) continue;
+    const aPartnerPin = findPinSpecIn(connectors, w.aConnectorId, w.aPin)?.twistedWithPin;
+    const bPartnerPin = findPinSpecIn(connectors, w.bConnectorId, w.bPin)?.twistedWithPin;
+    if (aPartnerPin == null || bPartnerPin == null) continue;
+    const partner = adjacentWires.find((w2) => (
+      w2.netId !== w.netId && !usedInBundle.has(w2.netId)
+      && w2.aConnectorId === w.aConnectorId && w2.aPin === aPartnerPin
+      && w2.bConnectorId === w.bConnectorId && w2.bPin === bPartnerPin
+    ));
+    if (partner) {
+      bundlePairs.push({ wireA: w, wireB: partner });
+      usedInBundle.add(w.netId);
+      usedInBundle.add(partner.netId);
+    }
+  }
+
+  type LaneItem = { kind: 'single'; wire: RawWire } | { kind: 'bundle'; wireA: RawWire; wireB: RawWire };
+  const byGap = new Map<string, LaneItem[]>();
+  for (const w of adjacentWires) {
+    if (usedInBundle.has(w.netId)) continue;
     const gapKey = `${w.loIdx}-${w.hiIdx}`;
     if (!byGap.has(gapKey)) byGap.set(gapKey, []);
-    byGap.get(gapKey)!.push(w);
+    byGap.get(gapKey)!.push({ kind: 'single', wire: w });
+  }
+  for (const b of bundlePairs) {
+    const gapKey = `${b.wireA.loIdx}-${b.wireA.hiIdx}`;
+    if (!byGap.has(gapKey)) byGap.set(gapKey, []);
+    byGap.get(gapKey)!.push({ kind: 'bundle', wireA: b.wireA, wireB: b.wireB });
   }
 
   const wires: WirePath[] = [];
+  const twistBundles: TwistBundle[] = [];
+  const laneItemY = (item: LaneItem) => (item.kind === 'single'
+    ? item.wire.y1 + item.wire.y2
+    : (item.wireA.y1 + item.wireA.y2 + item.wireB.y1 + item.wireB.y2) / 2);
+  const pathFor = (w: RawWire, laneX: number): Point[] => (w.y1 === w.y2
+    ? [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }]
+    : [{ x: w.x1, y: w.y1 }, { x: laneX, y: w.y1 }, { x: laneX, y: w.y2 }, { x: w.x2, y: w.y2 }]);
+
   for (const [gapKey, group] of byGap) {
     const [loIdx, hiIdx] = gapKey.split('-').map(Number);
     const gapLeftX = boxes[loIdx].x + boxes[loIdx].width;
     const gapRightX = boxes[hiIdx].x;
-    const sorted = [...group].sort((a, b) => (a.y1 + a.y2) - (b.y1 + b.y2));
-    sorted.forEach((w, i) => {
+    const sorted = [...group].sort((a, b) => laneItemY(a) - laneItemY(b));
+    sorted.forEach((item, i) => {
       const laneX = gapLeftX + ((gapRightX - gapLeftX) * (i + 1)) / (sorted.length + 1);
-      const points: Point[] = w.y1 === w.y2
-        ? [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }]
-        : [{ x: w.x1, y: w.y1 }, { x: laneX, y: w.y1 }, { x: laneX, y: w.y2 }, { x: w.x2, y: w.y2 }];
-      wires.push({ netId: w.netId, points, hops: [], tooltip: w.tooltip, specIndex: w.specIndex });
+      if (item.kind === 'single') {
+        const w = item.wire;
+        wires.push({
+          netId: w.netId, points: pathFor(w, laneX), hops: [], tooltip: w.tooltip, specIndex: w.specIndex,
+          aConnectorId: w.aConnectorId, bConnectorId: w.bConnectorId,
+        });
+      } else {
+        const { wireA, wireB } = item;
+        const bothStraight = wireA.y1 === wireA.y2 && wireB.y1 === wireB.y2;
+        if (bothStraight) {
+          // Both conductors run straight between matched rows, so the twist
+          // is drawn literally: the two paths swap rows at shared crossover
+          // points, visibly crossing each other. No tick overlay needed.
+          const crossXs = weaveCrossoverXs(wireA.x1, wireA.x2);
+          const pointsA = weaveStraightConductor(wireA, wireB.y1, crossXs);
+          const pointsB = weaveStraightConductor(wireB, wireA.y1, crossXs);
+          wires.push({ netId: wireA.netId, points: pointsA, hops: [], tooltip: wireA.tooltip, specIndex: wireA.specIndex, aConnectorId: wireA.aConnectorId, bConnectorId: wireA.bConnectorId });
+          wires.push({ netId: wireB.netId, points: pointsB, hops: [], tooltip: wireB.tooltip, specIndex: wireB.specIndex, aConnectorId: wireB.aConnectorId, bConnectorId: wireB.bConnectorId });
+          twistBundles.push({ netIdA: wireA.netId, netIdB: wireB.netId, crossings: [] });
+        } else {
+          // Elbow-routed pair: keep parallel offset lanes with a diagonal
+          // crossing-tick overlay (a literal weave along a multi-bend path
+          // isn't worth the corner-case complexity).
+          const pointsA = pathFor(wireA, laneX - TWIST_LANE_OFFSET);
+          const pointsB = pathFor(wireB, laneX + TWIST_LANE_OFFSET);
+          wires.push({ netId: wireA.netId, points: pointsA, hops: [], tooltip: wireA.tooltip, specIndex: wireA.specIndex, aConnectorId: wireA.aConnectorId, bConnectorId: wireA.bConnectorId });
+          wires.push({ netId: wireB.netId, points: pointsB, hops: [], tooltip: wireB.tooltip, specIndex: wireB.specIndex, aConnectorId: wireB.aConnectorId, bConnectorId: wireB.bConnectorId });
+          twistBundles.push({ netIdA: wireA.netId, netIdB: wireB.netId, crossings: twistCrossings(pointsA, pointsB) });
+        }
+      }
     });
   }
 
@@ -335,7 +507,7 @@ export function buildSchematicLayout(connectors: ConnectorSpec[]): SchematicLayo
     sorted.forEach((w, i) => {
       const bx = w.x1 + SAME_CONN_BRACKET_OFFSET + i * SAME_CONN_BRACKET_SPACING;
       const points: Point[] = [{ x: w.x1, y: w.y1 }, { x: bx, y: w.y1 }, { x: bx, y: w.y2 }, { x: w.x2, y: w.y2 }];
-      wires.push({ netId: w.netId, points, hops: [], tooltip: w.tooltip, specIndex: w.specIndex });
+      wires.push({ netId: w.netId, points, hops: [], tooltip: w.tooltip, specIndex: w.specIndex, aConnectorId: w.aConnectorId, bConnectorId: w.bConnectorId });
     });
   }
 
@@ -375,8 +547,80 @@ export function buildSchematicLayout(connectors: ConnectorSpec[]): SchematicLayo
       { x: nearBX, y: w.y2 },
       { x: w.x2, y: w.y2 },
     ];
-    wires.push({ netId: w.netId, points, hops: [], tooltip: w.tooltip, specIndex: w.specIndex });
+    wires.push({ netId: w.netId, points, hops: [], tooltip: w.tooltip, specIndex: w.specIndex, aConnectorId: w.aConnectorId, bConnectorId: w.bConnectorId });
   });
+
+  // A shield is drawn as a red oval end-marker around the conductor(s) at
+  // each end of the run — the drafting shorthand for "enclosed by a shield"
+  // — plus an orthogonal (90°) tap from the drain-side oval down/up to the
+  // drain-wire pin's own row and across into that pin. Only rendered when
+  // the shielded target actually has a real 'pin' destination (produces a
+  // wire whose ends the ovals can sit on) — a shield on an unused or
+  // grounded pin has nothing to enclose and is silently skipped.
+  const shields: ShieldMarker[] = [];
+  for (const c of connectors) {
+    for (const target of getShieldTargets(c)) {
+      const drainPin = c.pins.find((p) => p.shieldDrainForPin === target.pin);
+      if (!drainPin) continue;
+      const wire1 = findWireForPin(wires, c.id, target.pin);
+      if (!wire1) continue;
+      const wire2 = target.partnerPin != null ? findWireForPin(wires, c.id, target.partnerPin) : undefined;
+      const drainBox = boxById.get(c.id);
+      const drainPoint = drainBox?.pins.find((pt) => pt.pin === drainPin.pin);
+      if (!drainBox || !drainPoint) continue;
+
+      // Each wire's endpoint at the drain connector ("near") and at the far
+      // connector, plus the direction it leaves the box in — the ovals sit
+      // a small clear gap outside each box edge so the conductors pass
+      // through them without the oval clashing with the box border.
+      const endsOf = (w: WirePath) => {
+        const atA = w.aConnectorId === c.id;
+        const near = atA ? w.points[0] : w.points[w.points.length - 1];
+        const nearNext = atA ? w.points[1] : w.points[w.points.length - 2];
+        const far = atA ? w.points[w.points.length - 1] : w.points[0];
+        const farNext = atA ? w.points[w.points.length - 2] : w.points[1];
+        return {
+          near, far,
+          nearDir: Math.sign(nearNext.x - near.x) || 1,
+          farDir: Math.sign(farNext.x - far.x) || 1,
+        };
+      };
+      const e1 = endsOf(wire1);
+      const e2 = wire2 ? endsOf(wire2) : undefined;
+
+      const ovalAt = (p: Point, partner: Point | undefined, dir: number): ShieldOval => {
+        const yLo = Math.min(p.y, partner?.y ?? p.y);
+        const yHi = Math.max(p.y, partner?.y ?? p.y);
+        return {
+          cx: p.x + dir * (SHIELD_OVAL_GAP + SHIELD_OVAL_RX),
+          cy: (yLo + yHi) / 2,
+          rx: SHIELD_OVAL_RX,
+          ry: (yHi - yLo) / 2 + SHIELD_OVAL_PAD,
+        };
+      };
+      const end1 = ovalAt(e1.near, e2?.near, e1.nearDir);
+      const end2 = ovalAt(e1.far, e2?.far, e1.farDir);
+
+      const tapStartY = drainPoint.y > end1.cy ? end1.cy + end1.ry : end1.cy - end1.ry;
+      shields.push({
+        end1, end2,
+        tap: [
+          { x: end1.cx, y: tapStartY },
+          { x: end1.cx, y: drainPoint.y },
+          { x: e1.near.x, y: drainPoint.y },
+        ],
+        drainConnectorId: c.id,
+        drainPin: drainPin.pin,
+      });
+    }
+  }
+
+  // A drain pin whose own destination is Ground keeps that in the data model
+  // (pinout table, PDF rows), but its drawn stub + GND symbol is suppressed:
+  // the red tap into the pin already depicts the shield's path to it, and
+  // drawing both cluttered the drain pin with two overlapping symbols.
+  const drawnDrainKeys = new Set(shields.map((s) => `${s.drainConnectorId}:${s.drainPin}`));
+  const visibleGrounds = grounds.filter((g) => !drawnDrainKeys.has(`${g.connectorId}:${g.pin}`));
 
   // Crossing detection across every wire + ground stub segment, regardless of
   // which gap it belongs to (a non-adjacent-connector lane can legitimately
@@ -385,7 +629,7 @@ export function buildSchematicLayout(connectors: ConnectorSpec[]): SchematicLayo
   wires.forEach((w, idx) => {
     for (const s of segmentsOfPolyline(w.points)) segments.push({ key: w.netId, target: { kind: 'wire', idx }, ...s });
   });
-  grounds.forEach((g, idx) => {
+  visibleGrounds.forEach((g, idx) => {
     for (const s of segmentsOfPolyline([{ x: g.stubX1, y: g.stubY1 }, { x: g.x, y: g.y }])) {
       segments.push({ key: `gnd-${g.connectorId}-${g.pin}`, target: { kind: 'ground', idx }, ...s });
     }
@@ -394,12 +638,12 @@ export function buildSchematicLayout(connectors: ConnectorSpec[]): SchematicLayo
   wires.forEach((w, idx) => {
     w.hops = (hopsByTarget.get(`wire:${idx}`) ?? []).sort((a, b) => a.x - b.x);
   });
-  grounds.forEach((g, idx) => {
+  visibleGrounds.forEach((g, idx) => {
     g.hops = (hopsByTarget.get(`ground:${idx}`) ?? []).sort((a, b) => a.x - b.x);
   });
 
-  const width = boxes.length > 0 ? Math.max(...boxes.map((b) => b.x + b.width)) + MARGIN + SHIELD_GROUND_STUB_LENGTH + 30 : MARGIN * 2;
+  const width = boxes.length > 0 ? Math.max(...boxes.map((b) => b.x + b.width)) + MARGIN + GROUND_STUB_LENGTH + 30 : MARGIN * 2;
   const height = boxes.length > 0 ? Math.max(...boxes.map((b) => b.y + b.height)) + MARGIN : MARGIN * 2;
 
-  return { connectors: boxes, wires, grounds, legend, width, height };
+  return { connectors: boxes, wires, grounds: visibleGrounds, legend, twistBundles, shields, width, height };
 }

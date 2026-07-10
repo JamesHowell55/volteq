@@ -27,12 +27,16 @@ export interface PinSpec {
    *  Kept mutually consistent by setTwistedPartner, mirroring how
    *  setPinDestination keeps pin-to-pin links consistent. */
   twistedWithPin?: number;
-  /** Whether this pin's cable shield/drain is tied to chassis ground — only
-   *  meaningful when constructionId's construction actually has a shield
-   *  (see pinHasShield). Independent of the pin's own signal destination:
-   *  a shielded conductor's two signal ends and its shield are three
-   *  separate electrical points. */
-  shieldGrounded?: boolean;
+  /** Pin number (same connector only) whose cable shield this pin is the
+   *  drain wire for — a real separate conductor with its own signalName/
+   *  destination like any other pin, not an abstract flag, since a drain
+   *  wire can terminate anywhere a normal wire can (ground, another
+   *  connector's pin, or unused). If the referenced pin is itself twisted
+   *  with another pin, this drains the whole pair's shared shield, not
+   *  just the one conductor (see getShieldTargets). Kept valid by
+   *  pruneDanglingShieldDrains whenever a pin's construction/twist link/
+   *  existence changes. */
+  shieldDrainForPin?: number;
 }
 
 export interface ConnectorSpec {
@@ -154,18 +158,68 @@ function findPin(connectors: ConnectorSpec[], connectorId: string, pin: number):
 }
 
 /** True when this pin's current wire construction actually has a shield
- *  layer (twistedShieldedPair / shielded) — the shield-to-ground option only
- *  makes sense for those, not a bare single conductor or unshielded twisted
- *  pair/CAN bus. */
+ *  layer (twistedShieldedPair / shielded) — a drain wire only makes sense
+ *  for those, not a bare single conductor or unshielded twisted pair/CAN
+ *  bus. */
 export function pinHasShield(pin: PinSpec): boolean {
   return (getWireConstruction(pin.constructionId).shieldAddMm ?? 0) > 0;
 }
 
-/** Immutably sets whether a pin's shield/drain is tied to ground. */
-export function setShieldGrounded(connectors: ConnectorSpec[], connectorId: string, pin: number, grounded: boolean): ConnectorSpec[] {
-  return connectors.map((c) => (c.id === connectorId
-    ? { ...c, pins: c.pins.map((p) => (p.pin === pin ? { ...p, shieldGrounded: grounded } : p)) }
-    : c));
+export interface ShieldTarget {
+  /** Canonical representative pin — the lower-numbered member when this is
+   *  a twisted shielded pair, or the pin itself for a lone shielded single
+   *  conductor. */
+  pin: number;
+  /** The other conductor's pin number — only set for a twisted shielded pair. */
+  partnerPin?: number;
+  label: string;
+}
+
+/** Every shield-eligible conductor (or twisted pair) on a connector, listed
+ *  once each — a twisted shielded pair's two conductors share ONE physical
+ *  shield, so only its lower-numbered pin represents it here, not both. */
+export function getShieldTargets(connector: ConnectorSpec): ShieldTarget[] {
+  const targets: ShieldTarget[] = [];
+  for (const p of connector.pins) {
+    if (!pinHasShield(p)) continue;
+    if (p.twistedWithPin != null) {
+      if (p.pin > p.twistedWithPin) continue;
+      targets.push({ pin: p.pin, partnerPin: p.twistedWithPin, label: `Pins ${p.pin} & ${p.twistedWithPin} (twisted pair)` });
+    } else {
+      targets.push({ pin: p.pin, label: `Pin ${p.pin}` });
+    }
+  }
+  return targets;
+}
+
+/** Immutably sets which shield-eligible conductor (or pair) a pin's drain
+ *  wire belongs to. Only one drain per target — assigning a new drain to a
+ *  target clears whichever other pin previously drained it. Pass
+ *  targetPin=null to clear this pin's own drain assignment. */
+export function setShieldDrain(connectors: ConnectorSpec[], connectorId: string, drainPin: number, targetPin: number | null): ConnectorSpec[] {
+  return connectors.map((c) => {
+    if (c.id !== connectorId) return c;
+    return {
+      ...c,
+      pins: c.pins.map((p) => {
+        if (p.pin === drainPin) return { ...p, shieldDrainForPin: targetPin ?? undefined };
+        if (targetPin != null && p.shieldDrainForPin === targetPin) return { ...p, shieldDrainForPin: undefined };
+        return p;
+      }),
+    };
+  });
+}
+
+/** Clears any shieldDrainForPin reference that no longer points at a valid
+ *  shield target — call after any edit that could invalidate one (a
+ *  construction change dropping the shield, a broken twist link, or a
+ *  removed pin). */
+export function pruneDanglingShieldDrains(connector: ConnectorSpec): ConnectorSpec {
+  const validTargets = new Set(getShieldTargets(connector).flatMap((t) => (t.partnerPin != null ? [t.pin, t.partnerPin] : [t.pin])));
+  return {
+    ...connector,
+    pins: connector.pins.map((p) => (p.shieldDrainForPin != null && !validTargets.has(p.shieldDrainForPin) ? { ...p, shieldDrainForPin: undefined } : p)),
+  };
 }
 
 /** A pin's signal name is considered "still at its default" (never

@@ -5,6 +5,7 @@ interface Props {
 }
 
 const HOP_R = 5;
+const SHIELD_COLOR = 'var(--neg)';
 
 // Cycled by wire-spec index (see harnessSchematicLayout's legend) so every
 // distinct construction+AWG combination in a diagram gets its own colour,
@@ -56,11 +57,18 @@ function pathWithHops(points: Point[], hops: Point[]): string {
   return d;
 }
 
+function polylinePath(points: Point[]): string {
+  if (points.length < 2) return '';
+  return `M ${points[0].x} ${points[0].y} ` + points.slice(1).map((p) => `L ${p.x} ${p.y}`).join(' ');
+}
+
 // Wiring-diagram-style schematic: connector boxes with numbered pins,
 // orthogonal (90°) point-to-point wires with hop bumps at crossings, a
-// standard ground symbol for grounded pins, and a small twist bracket next to
-// any pair of pins linked as a twisted pair. Deterministic layout (computed
-// in harnessSchematicLayout.ts) — this component only renders it.
+// standard ground symbol for grounded pins, twisted pairs whose conductors
+// literally cross over along the run (or tick marks on elbow-routed pairs),
+// and red oval end-markers around a shielded conductor/pair with a 90° tap
+// to its drain-wire pin. Deterministic layout (computed in
+// harnessSchematicLayout.ts) — this component only renders it.
 export default function HarnessSchematicDiagram({ layout }: Props) {
   const connectedPins = new Set<string>();
   for (const w of layout.wires) {
@@ -68,6 +76,17 @@ export default function HarnessSchematicDiagram({ layout }: Props) {
     for (const part of w.netId.split('|')) connectedPins.add(part);
   }
   for (const g of layout.grounds) connectedPins.add(`${g.connectorId}:${g.pin}`);
+  // A drain pin's own ground stub is suppressed in favour of the shield tap,
+  // but it's still a connected pin.
+  for (const s of layout.shields) connectedPins.add(`${s.drainConnectorId}:${s.drainPin}`);
+
+  // Twisted pairs already decorated by a TwistBundle (crossing lines along
+  // the run) skip the near-box bracket fallback below, so a pair isn't
+  // shown twice.
+  const bundledPins = new Set<string>();
+  for (const b of layout.twistBundles) {
+    for (const netId of [b.netIdA, b.netIdB]) for (const part of netId.split('|')) bundledPins.add(part);
+  }
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-start' }}>
@@ -78,20 +97,37 @@ export default function HarnessSchematicDiagram({ layout }: Props) {
           </path>
         ))}
 
+        {layout.twistBundles.map((b, i) => (
+          <g key={`twist-${i}`} stroke="var(--text-2)" strokeWidth={1}>
+            {b.crossings.map((c, j) => (
+              <line key={j} x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} />
+            ))}
+          </g>
+        ))}
+
+        {layout.shields.map((s, i) => (
+          <g key={`shield-${i}`} stroke={SHIELD_COLOR} strokeWidth={1.2} fill="none">
+            <title>Shield / drain</title>
+            <ellipse cx={s.end1.cx} cy={s.end1.cy} rx={s.end1.rx} ry={s.end1.ry} />
+            <ellipse cx={s.end2.cx} cy={s.end2.cy} rx={s.end2.rx} ry={s.end2.ry} />
+            <path d={polylinePath(s.tap)} />
+          </g>
+        ))}
+
         {layout.grounds.map((g, i) => (
           <g key={`gnd-${i}`}>
-            <path d={pathWithHops([{ x: g.stubX1, y: g.stubY1 }, { x: g.x, y: g.y }], g.hops)} fill="none" stroke={colorForSpec(g.specIndex)} strokeWidth={1.5} strokeDasharray={g.kind === 'shield' ? '3,2' : undefined} />
+            <path d={pathWithHops([{ x: g.stubX1, y: g.stubY1 }, { x: g.x, y: g.y }], g.hops)} fill="none" stroke={colorForSpec(g.specIndex)} strokeWidth={1.5} />
             <line x1={g.x} y1={g.y - 8} x2={g.x} y2={g.y + 8} stroke="var(--text)" strokeWidth={1.5} />
             <line x1={g.x + 4} y1={g.y - 5} x2={g.x + 4} y2={g.y + 5} stroke="var(--text)" strokeWidth={1.3} />
             <line x1={g.x + 8} y1={g.y - 2} x2={g.x + 8} y2={g.y + 2} stroke="var(--text)" strokeWidth={1} />
-            <text x={g.x + 12} y={g.y + 3} fontSize="8" fill="var(--text-2)" fontFamily="ui-monospace, monospace">{g.kind === 'shield' ? 'SHLD' : 'GND'}</text>
+            <text x={g.x + 12} y={g.y + 3} fontSize="8" fill="var(--text-2)" fontFamily="ui-monospace, monospace">GND</text>
           </g>
         ))}
 
         {layout.connectors.map((box) => {
           const twistPairs: { pinA: number; pinB: number; yA: number; yB: number }[] = [];
           for (const p of box.pins) {
-            if (p.twistedWithPin != null && p.twistedWithPin > p.pin) {
+            if (p.twistedWithPin != null && p.twistedWithPin > p.pin && !bundledPins.has(`${box.id}:${p.pin}`)) {
               const partner = box.pins.find((o) => o.pin === p.twistedWithPin);
               if (partner) twistPairs.push({ pinA: p.pin, pinB: partner.pin, yA: p.y, yB: partner.y });
             }
@@ -120,9 +156,11 @@ export default function HarnessSchematicDiagram({ layout }: Props) {
                 );
               })}
 
-              {/* twisted-pair brackets — drawn on the right edge (the common wire-exit side); a
-                  small zigzag stands in for the physical twist, per the convention shown in
-                  Altium's harness wiring diagrams. */}
+              {/* fallback twisted-pair brackets — only for pairs NOT already shown as
+                  crossing lines along their shared run (e.g. routed to non-adjacent
+                  connectors or mismatched target pins); a small zigzag stands in for
+                  the physical twist, per the convention shown in Altium's harness
+                  wiring diagrams. */}
               {twistPairs.map((tp) => {
                 const bx = box.x + box.width + 5;
                 const midY = (tp.yA + tp.yB) / 2;
