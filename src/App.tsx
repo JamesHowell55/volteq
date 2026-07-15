@@ -15,6 +15,7 @@ import HarnessDesigner from './pages/HarnessDesigner';
 import ORingCalculator from './pages/ORingCalculator';
 import FitsAndLimitsCalculator from './pages/FitsAndLimitsCalculator';
 import DqCurrentCalculator from './pages/DqCurrentCalculator';
+import DcLinkCalculator from './pages/DcLinkCalculator';
 import SkinDepthCalculator from './pages/SkinDepthCalculator';
 import ConversionsCalculator from './pages/ConversionsCalculator';
 import ComingSoonCalculator from './pages/ComingSoonCalculator';
@@ -58,6 +59,7 @@ function App() {
               <Route path="/id-iq-current" element={<DqCurrentCalculator />} />
               <Route path="/choke-sizing" element={<ChokeSizingCalculator />} />
               <Route path="/mosfet-loss" element={<MosfetLossCalculator />} />
+              <Route path="/dc-link" element={<DcLinkCalculator />} />
               <Route path="/harness-bundle-diameter" element={<BundleDiameterCalculator />} />
               <Route path="/harness-designer" element={<HarnessDesigner />} />
               <Route path="/skin-depth" element={<SkinDepthCalculator />} />

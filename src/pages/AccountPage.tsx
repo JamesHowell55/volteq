@@ -178,6 +178,7 @@ const CALCULATOR_META: Record<string, { label: string; path: string }> = {
   'o-ring': { label: 'O-Ring Seal Calculator', path: '/o-ring' },
   'fits-and-limits': { label: 'Fits & Limits Calculator', path: '/fits-and-limits' },
   'dq-current': { label: 'Id / Iq Current Vector', path: '/id-iq-current' },
+  'dc-link': { label: 'DC-Link Capacitor Sizing', path: '/dc-link' },
 };
 
 interface SaveRow {
