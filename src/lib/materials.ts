@@ -66,6 +66,13 @@ export const COATING_PRESETS: CoatingPreset[] = [
   { id: 'heatshrink', label: 'PVC / heat-shrink sleeve', thermalConductivity: 0.17, thicknessMm: 0.5 },
   { id: 'tin', label: 'Tin plating', thermalConductivity: 65, thicknessMm: 0.01 },
   { id: 'silver', label: 'Silver plating', thermalConductivity: 427, thicknessMm: 0.01 },
+  // Overmoulding: a thick polymer encapsulation. Modelled as a (thick) coating —
+  // a t/(k·A) conduction resistance in series with the outer convective/radiative
+  // film. Typical unfilled-thermoset/thermoplastic conductivities are ~0.2–0.3
+  // W/(m·K); thermally-conductive moulding compounds reach ~0.5–1.0.
+  { id: 'overmould_epoxy', label: 'Overmould — epoxy / thermoset (~0.3 W/m·K)', thermalConductivity: 0.3, thicknessMm: 2.0 },
+  { id: 'overmould_pa', label: 'Overmould — PA/PBT thermoplastic (~0.25 W/m·K)', thermalConductivity: 0.25, thicknessMm: 2.0 },
+  { id: 'overmould_tc', label: 'Overmould — thermally-conductive compound (~1 W/m·K)', thermalConductivity: 1.0, thicknessMm: 2.0 },
   { id: 'custom', label: 'Custom', thermalConductivity: 0.3, thicknessMm: 0.2 },
 ];
 

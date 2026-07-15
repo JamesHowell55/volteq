@@ -18,6 +18,7 @@ import { MATERIALS, EMISSIVITY_PRESETS, COATING_PRESETS, TIM_PRESETS, COOLANT_PR
 import {
   buildSingleBusbarNodes,
   buildMultipleBarNodes,
+  buildBulkNode,
   solveNodalSteadyState,
   solveMaxContinuousCurrentNodal,
   solveNodalAdiabatic,
@@ -77,6 +78,12 @@ export default function BusbarCalculator() {
   const [nBars, setNBars] = useState(2);
   const [barGap, setBarGap] = useState(10);
   const [bundleLengthM, setBundleLengthM] = useState(1);
+
+  // Bulk-mode: an arbitrary conductor described only by extracted/measured
+  // resistance (at 20°C), conductor volume, and total exposed surface area.
+  const [bulkResistance20uOhm, setBulkResistance20uOhm] = useState(72);
+  const [bulkVolumeCm3, setBulkVolumeCm3] = useState(18);
+  const [bulkSurfaceAreaCm2, setBulkSurfaceAreaCm2] = useState(150);
 
   const [materialId, setMaterialId] = useState<'copper' | 'aluminium'>('copper');
   const [orientation, setOrientation] = useState<Orientation>('vertical');
@@ -159,8 +166,9 @@ export default function BusbarCalculator() {
   };
 
   const getInputs = useCallback((): Record<string, unknown> => ({
-    busbarType, sections: sections.map(s => ({ width: s.width, length: s.length, coolingEnabled: !!s.coolingEnabled })),
+    busbarType, sections: sections.map(s => ({ width: s.width, length: s.length, coolingEnabled: !!s.coolingEnabled, coatedEnabled: s.coatedEnabled ?? true })),
     thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM,
+    bulkResistance20uOhm, bulkVolumeCm3, bulkSurfaceAreaCm2,
     materialId, orientation, emissivity, convMode, manualHValue,
     coatingPresetId, coatingThicknessMm, coatingConductivity,
     timPresetId, timThicknessMm, timConductivity,
@@ -172,6 +180,7 @@ export default function BusbarCalculator() {
     maxContinuousTempC, maxFaultTempC,
   }), [
     busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM,
+    bulkResistance20uOhm, bulkVolumeCm3, bulkSurfaceAreaCm2,
     materialId, orientation, emissivity, convMode, manualHValue,
     coatingPresetId, coatingThicknessMm, coatingConductivity,
     timPresetId, timThicknessMm, timConductivity,
@@ -184,13 +193,16 @@ export default function BusbarCalculator() {
   const restoreInputs = useCallback((inp: Record<string, unknown>) => {
     const v = inp as Record<string, any>;
     if (v.busbarType) setBusbarType(v.busbarType);
-    if (Array.isArray(v.sections)) setSections(v.sections.map((s: any) => ({ ...newSection(s.width, s.length), coolingEnabled: !!s.coolingEnabled })));
+    if (Array.isArray(v.sections)) setSections(v.sections.map((s: any) => ({ ...newSection(s.width, s.length), coolingEnabled: !!s.coolingEnabled, coatedEnabled: s.coatedEnabled ?? true })));
     if (v.thicknessMm != null) setThicknessMm(v.thicknessMm);
     if (v.profileWidth != null) setProfileWidth(v.profileWidth);
     if (v.profileThickness != null) setProfileThickness(v.profileThickness);
     if (v.nBars != null) setNBars(v.nBars);
     if (v.barGap != null) setBarGap(v.barGap);
     if (v.bundleLengthM != null) setBundleLengthM(v.bundleLengthM);
+    if (v.bulkResistance20uOhm != null) setBulkResistance20uOhm(v.bulkResistance20uOhm);
+    if (v.bulkVolumeCm3 != null) setBulkVolumeCm3(v.bulkVolumeCm3);
+    if (v.bulkSurfaceAreaCm2 != null) setBulkSurfaceAreaCm2(v.bulkSurfaceAreaCm2);
     if (v.materialId) setMaterialId(v.materialId);
     if (v.orientation) setOrientation(v.orientation);
     if (v.emissivity != null) setEmissivity(v.emissivity);
@@ -254,8 +266,21 @@ export default function BusbarCalculator() {
 
   const nodes = useMemo(() => {
     if (busbarType === 'single') return buildSingleBusbarNodes(sections, thicknessMm);
+    if (busbarType === 'bulk') return buildBulkNode(bulkResistance20uOhm * 1e-6, bulkVolumeCm3 * 1e-6, bulkSurfaceAreaCm2 * 1e-4, resistivityAt(material, 20));
     return buildMultipleBarNodes(profileWidth, profileThickness, nBars, barGap, bundleLengthM);
-  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM]);
+  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, bulkResistance20uOhm, bulkVolumeCm3, bulkSurfaceAreaCm2, material]);
+
+  // Bulk mode: skip the IEC skin factor — a measured/CAD-extracted resistance
+  // already embeds any AC (skin/proximity) effect, so re-applying it double-counts.
+  const effFrequencyForSolve = busbarType === 'bulk' ? 0 : effFrequency;
+
+  // The shared coating/overmould is applied per-section in single mode (each
+  // section's "Apply coating" toggle, default on for backward compatibility);
+  // in multiple/bulk mode it applies to the whole conductor.
+  const coatingThicknessPerNode = useMemo(() => {
+    if (busbarType === 'single') return nodes.map((_, i) => ((sections[i]?.coatedEnabled ?? true) ? coatingThicknessMm : 0));
+    return nodes.map(() => coatingThicknessMm);
+  }, [busbarType, nodes, sections, coatingThicknessMm]);
 
   const validGeometry = nodes.length > 0 && nodes.every(n => n.areaMm2 > 0 && n.lengthM > 0);
 
@@ -270,13 +295,13 @@ export default function BusbarCalculator() {
 
   const steady = useMemo(() => {
     if (!validGeometry || durationMode !== 'continuous') return null;
-    return solveNodalSteadyState(nodes, material, current, currentType, effFrequency, ambientC, emissivity, orientation, manualH, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC);
-  }, [validGeometry, durationMode, nodes, material, current, currentType, effFrequency, ambientC, emissivity, orientation, manualH, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC]);
+    return solveNodalSteadyState(nodes, material, current, currentType, effFrequencyForSolve, ambientC, emissivity, orientation, manualH, coatingThicknessPerNode, coatingConductivity, coolantConductancePerNode, coolantInletTempC);
+  }, [validGeometry, durationMode, nodes, material, current, currentType, effFrequencyForSolve, ambientC, emissivity, orientation, manualH, coatingThicknessPerNode, coatingConductivity, coolantConductancePerNode, coolantInletTempC]);
 
   const maxCurrent = useMemo(() => {
     if (!validGeometry || durationMode !== 'continuous') return null;
-    return solveMaxContinuousCurrentNodal(nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, maxContinuousTempC, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC);
-  }, [validGeometry, durationMode, nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, maxContinuousTempC, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC]);
+    return solveMaxContinuousCurrentNodal(nodes, material, currentType, effFrequencyForSolve, ambientC, emissivity, orientation, manualH, maxContinuousTempC, coatingThicknessPerNode, coatingConductivity, coolantConductancePerNode, coolantInletTempC);
+  }, [validGeometry, durationMode, nodes, material, currentType, effFrequencyForSolve, ambientC, emissivity, orientation, manualH, maxContinuousTempC, coatingThicknessPerNode, coatingConductivity, coolantConductancePerNode, coolantInletTempC]);
 
   const adiabatic = useMemo(() => {
     if (!validGeometry || durationMode !== 'fault') return null;
@@ -290,8 +315,8 @@ export default function BusbarCalculator() {
 
   const transient = useMemo(() => {
     if (!validGeometry || durationMode !== 'profile') return null;
-    return solveNodalTransient(nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, steps.map(s => ({ current: s.current, durationS: s.durationS })), coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC);
-  }, [validGeometry, durationMode, nodes, material, currentType, effFrequency, ambientC, emissivity, orientation, manualH, steps, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantInletTempC]);
+    return solveNodalTransient(nodes, material, currentType, effFrequencyForSolve, ambientC, emissivity, orientation, manualH, steps.map(s => ({ current: s.current, durationS: s.durationS })), coatingThicknessPerNode, coatingConductivity, coolantConductancePerNode, coolantInletTempC);
+  }, [validGeometry, durationMode, nodes, material, currentType, effFrequencyForSolve, ambientC, emissivity, orientation, manualH, steps, coatingThicknessPerNode, coatingConductivity, coolantConductancePerNode, coolantInletTempC]);
 
   // Informational only (see the disclosed simplification in the UI note) —
   // computed from the continuous steady-state result since that's the only
@@ -312,6 +337,18 @@ export default function BusbarCalculator() {
   const totalResistanceOhm = durationMode === 'continuous' && steady
     ? steady.racTotalPerNode.reduce((a, b) => a + b, 0)
     : undefined;
+  // End-to-end resistance evaluated at a fixed 20°C reference, independent of the
+  // solved operating temperature — this is the basis field-solver tools (e.g. Q3D)
+  // typically report, so it's directly comparable. Includes AC skin effect for AC
+  // except in bulk mode, where the entered resistance already embeds it.
+  const resistanceAt20Ohm = useMemo(() => {
+    if (!validGeometry) return undefined;
+    return nodes.reduce((sum, n) => {
+      const rdc = dcResistancePerMetre(material, 20, n.areaMm2);
+      const ks = currentType === 'ac' && busbarType !== 'bulk' ? skinEffectFactor(rdc, frequency).ks : 1;
+      return sum + rdc * ks * n.lengthM;
+    }, 0);
+  }, [validGeometry, nodes, material, currentType, frequency, busbarType]);
 
   const worstTempC = durationMode === 'continuous' ? (steady ? Math.max(...steady.tempsC) : undefined)
     : durationMode === 'fault' ? (adiabatic ? Math.max(...adiabatic.finalTempsC) : undefined)
@@ -415,10 +452,14 @@ export default function BusbarCalculator() {
   }, [nodes, material, rho20, durationMode, steady, frequency, manualH, coatingThicknessMm, coatingConductivity, adiabatic, faultInitialTempC, faultDurationS, minArea, transient, steps, anySectionCooled, timThicknessMm, timConductivity, metalThicknessMm, metalConductivity, coolantInletTempC, coolantConductancePerNode, currentType, skinDepthAtTempMm, skinDepthTempC]);
 
   const inputSections: ReportSection[] = useMemo(() => {
-    const geoRows: ReportRow[] = [{ label: 'Busbar type', value: busbarType === 'single' ? 'Single (sections)' : 'Multiple (stacked bars)' }];
+    const geoRows: ReportRow[] = [{ label: 'Busbar type', value: busbarType === 'single' ? 'Single (sections)' : busbarType === 'bulk' ? 'Bulk (CAD)' : 'Multiple (stacked bars)' }];
     if (busbarType === 'single') {
-      sections.forEach((s, i) => geoRows.push({ label: `Section ${i + 1}`, value: `${fmtU(s.width, unitSystem, UNIT_LENGTH, 3)} × ${fmtU(s.length, unitSystem, UNIT_LENGTH, 3)} ${unitLabel(unitSystem, UNIT_LENGTH)}` }));
+      sections.forEach((s, i) => geoRows.push({ label: `Section ${i + 1}`, value: `${fmtU(s.width, unitSystem, UNIT_LENGTH, 3)} × ${fmtU(s.length, unitSystem, UNIT_LENGTH, 3)} ${unitLabel(unitSystem, UNIT_LENGTH)}${coatingThicknessMm > 0 && !(s.coatedEnabled ?? true) ? ' (uncoated)' : ''}` }));
       geoRows.push({ label: 'Common thickness', value: `${fmtU(thicknessMm, unitSystem, UNIT_LENGTH, 3)} ${unitLabel(unitSystem, UNIT_LENGTH)}` });
+    } else if (busbarType === 'bulk') {
+      geoRows.push({ label: 'Resistance at 20°C (entered)', value: `${fmt(bulkResistance20uOhm, 2)} µΩ` });
+      geoRows.push({ label: 'Conductor volume', value: `${fmt(bulkVolumeCm3, 2)} cm³` });
+      geoRows.push({ label: 'Exposed surface area', value: `${fmt(bulkSurfaceAreaCm2, 1)} cm²` });
     } else {
       geoRows.push({ label: 'Bar profile', value: `${fmtU(profileWidth, unitSystem, UNIT_LENGTH, 3)} × ${fmtU(profileThickness, unitSystem, UNIT_LENGTH, 3)} ${unitLabel(unitSystem, UNIT_LENGTH)}` });
       geoRows.push({ label: 'Number of bars', value: `${nBars}` });
@@ -472,7 +513,7 @@ export default function BusbarCalculator() {
     }
 
     return sectionsOut;
-  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, orientation, material, emissivity, convMode, manualHValue, coatingThicknessMm, coatingConductivity, currentType, durationMode, current, frequency, ambientC, maxContinuousTempC, faultDurationS, faultInitialTempC, maxFaultTempC, steps, anySectionCooled, timThicknessMm, timConductivity, metalMaterialId, metalThicknessMm, metalConductivity, coolantPresetId, coolantSpecificHeat, coolantDensity, coolantFlowRateLPerMin, coolantInletTempC, unitSystem]);
+  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, bulkResistance20uOhm, bulkVolumeCm3, bulkSurfaceAreaCm2, orientation, material, emissivity, convMode, manualHValue, coatingThicknessMm, coatingConductivity, currentType, durationMode, current, frequency, ambientC, maxContinuousTempC, faultDurationS, faultInitialTempC, maxFaultTempC, steps, anySectionCooled, timThicknessMm, timConductivity, metalMaterialId, metalThicknessMm, metalConductivity, coolantPresetId, coolantSpecificHeat, coolantDensity, coolantFlowRateLPerMin, coolantInletTempC, unitSystem]);
 
   const outputSections: ReportSection[] = useMemo(() => {
     const headline: ReportRow[] = [
@@ -484,7 +525,10 @@ export default function BusbarCalculator() {
     if (durationMode === 'profile' && transient) headline.push({ label: 'Profile duration', value: `${fmt(transient.timeS[transient.timeS.length - 1], 0)} s` });
     headline.push({ label: 'Total busbar loss', value: durationMode === 'continuous' ? (totalLossW !== undefined ? `${fmt(totalLossW, 1)} W` : '—') : (totalEnergyJ !== undefined ? `${fmt(totalEnergyJ / 1000, 2)} kJ` : '—') });
     if (durationMode === 'continuous' && totalResistanceOhm !== undefined) {
-      headline.push({ label: `Resistance (${currentType === 'ac' ? 'Rac' : 'Rdc'})`, value: `${fmt(totalResistanceOhm * 1e6, 1)} µΩ` });
+      headline.push({ label: `Resistance (${currentType === 'ac' ? 'Rac' : 'Rdc'}, operating temp)`, value: `${fmt(totalResistanceOhm * 1e6, 1)} µΩ` });
+    }
+    if (resistanceAt20Ohm !== undefined) {
+      headline.push({ label: 'Resistance at 20°C (reference)', value: `${fmt(resistanceAt20Ohm * 1e6, 1)} µΩ` });
     }
     if (currentType === 'ac' && skinDepthAtTempMm !== null) {
       headline.push({ label: 'Skin depth', value: `${isFinite(skinDepthAtTempMm) ? fmtU(skinDepthAtTempMm, unitSystem, UNIT_LENGTH, 4) : '—'} ${unitLabel(unitSystem, UNIT_LENGTH)} (at ${fmtU(skinDepthTempC, unitSystem, UNIT_TEMP, 0)}${unitLabel(unitSystem, UNIT_TEMP)}, ${fmt(frequency, 0)} Hz)` });
@@ -504,9 +548,9 @@ export default function BusbarCalculator() {
 
     return [
       { heading: 'Summary', rows: headline },
-      { heading: busbarType === 'single' ? 'Per-section results' : 'Bundle result', rows: nodeRows },
+      { heading: busbarType === 'single' ? 'Per-section results' : busbarType === 'bulk' ? 'Bulk conductor result' : 'Bundle result', rows: nodeRows },
     ];
-  }, [durationMode, worstTempC, referenceTempC, maxCurrent, minArea, transient, totalLossW, totalEnergyJ, totalResistanceOhm, nodes, steady, adiabatic, busbarType, anySectionCooled, coolantTotalHeatW, coolantTempRiseK, currentType, skinDepthAtTempMm, skinDepthTempC, frequency, unitSystem]);
+  }, [durationMode, worstTempC, referenceTempC, maxCurrent, minArea, transient, totalLossW, totalEnergyJ, totalResistanceOhm, resistanceAt20Ohm, nodes, steady, adiabatic, busbarType, anySectionCooled, coolantTotalHeatW, coolantTempRiseK, currentType, skinDepthAtTempMm, skinDepthTempC, frequency, unitSystem]);
 
   const handleExportPdf = () => {
     const pdfAccent = deriveAccentOnLight(accentHex);
@@ -514,7 +558,7 @@ export default function BusbarCalculator() {
 
     if (busbarType === 'single') {
       diagrams.push({ title: 'Busbar length profile (plan view)', svgMarkup: renderLengthProfileSvg(sections, pdfAccent) });
-    } else {
+    } else if (busbarType === 'multiple') {
       diagrams.push({
         title: 'Busbar cross-section',
         svgMarkup: renderCrossSectionSvg(
@@ -524,6 +568,7 @@ export default function BusbarCalculator() {
         ),
       });
     }
+    // Bulk mode has no representative geometry to draw.
 
     if (anySectionCooled) {
       diagrams.push({
@@ -602,11 +647,14 @@ export default function BusbarCalculator() {
               <div className="segmented">
                 <button className={busbarType === 'single' ? 'active' : ''} onClick={() => setBusbarType('single')}>Single (sections)</button>
                 <button className={busbarType === 'multiple' ? 'active' : ''} onClick={() => setBusbarType('multiple')}>Multiple (stacked bars)</button>
+                <button className={busbarType === 'bulk' ? 'active' : ''} onClick={() => setBusbarType('bulk')}>Bulk (CAD)</button>
               </div>
               <span className="hint">
                 {busbarType === 'single'
                   ? `One conductor made of up to ${isPremium ? '10' : '2 (Premium unlocks up to 10)'} lengthwise sections of different width, sharing a common thickness — heat conducts between adjoining sections.`
-                  : 'Several identical bars in parallel, sharing one profile and spacing.'}
+                  : busbarType === 'multiple'
+                    ? 'Several identical bars in parallel, sharing one profile and spacing.'
+                    : 'A complex/arbitrary conductor described only by its extracted resistance, volume and surface area — for a bulk temperature of a shape too intricate to split into sections.'}
               </span>
             </div>
 
@@ -638,6 +686,12 @@ export default function BusbarCalculator() {
                         <input type="checkbox" checked={!!s.coolingEnabled} onChange={e => updateSection(s.id, { coolingEnabled: e.target.checked })} style={{ width: 'auto' }} />
                         Apply conduction
                       </label>
+                      {coatingThicknessMm > 0 && (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--text-2)', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                          <input type="checkbox" checked={s.coatedEnabled ?? true} onChange={e => updateSection(s.id, { coatedEnabled: e.target.checked })} style={{ width: 'auto' }} />
+                          Coat / overmould
+                        </label>
+                      )}
                       <button className="btn small danger" onClick={() => removeSection(s.id)} disabled={sections.length === 1}>Remove</button>
                     </div>
                   </div>
@@ -649,6 +703,32 @@ export default function BusbarCalculator() {
                 <div style={{ marginTop: '1rem' }}>
                   <BusbarLengthProfile sections={sections} />
                 </div>
+              </>
+            ) : busbarType === 'bulk' ? (
+              <>
+                <div className="grid grid-2">
+                  <div className="field">
+                    <label>Resistance at 20°C (µΩ)</label>
+                    <input autoComplete="off" type="number" min={0.0001} step={0.1} value={bulkResistance20uOhm} onChange={e => setBulkResistance20uOhm(Number(e.target.value))} />
+                    <span className="hint">DC or AC resistance of the whole conductor — paste the value your field solver (e.g. Q3D) or measurement gives.</span>
+                  </div>
+                  <div className="field">
+                    <label>Conductor volume (cm³)</label>
+                    <input autoComplete="off" type="number" min={0.0001} step={0.1} value={bulkVolumeCm3} onChange={e => setBulkVolumeCm3(Number(e.target.value))} />
+                    <span className="hint">Solid metal volume from CAD (mass properties) — sets the thermal mass and nominal current density.</span>
+                  </div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label>Total exposed surface area (cm²)</label>
+                    <input autoComplete="off" type="number" min={0.0001} step={1} value={bulkSurfaceAreaCm2} onChange={e => setBulkSurfaceAreaCm2(Number(e.target.value))} />
+                    <span className="hint">Wetted (air-exposed) surface area from CAD — the single biggest driver of the steady temperature. Exclude overmoulded/buried faces, or model them with the coating below.</span>
+                  </div>
+                </div>
+                <span className="hint" style={{ display: 'block', marginTop: '0.4rem' }}>
+                  A single equivalent conductor is synthesised to reproduce both the entered resistance and the volume exactly.
+                  The AC skin factor is not re-applied (your entered resistance already includes it). For natural convection the
+                  characteristic length is taken as the cube-root of the volume — set a manual convection coefficient below if you
+                  have a CFD-derived film value.
+                </span>
               </>
             ) : (
               <>
@@ -753,9 +833,10 @@ export default function BusbarCalculator() {
                 <label>Coating thermal conductivity (W/m·K)</label>
                 <input autoComplete="off" type="number" min={0.01} value={coatingConductivity} onChange={e => setCoatingConductivity(Number(e.target.value))} />
                 <span className="hint">
-                  A coating adds a conduction resistance in series with the convection/radiation film, between the
-                  conductor and ambient — it traps heat (raises conductor temperature) even as it may also raise
-                  emissivity. Set thickness to 0 for bare metal.
+                  A coating or overmould adds a conduction resistance in series with the convection/radiation film,
+                  between the conductor and ambient — it traps heat (raises conductor temperature) even as it may also
+                  raise emissivity. Set thickness to 0 for bare metal.
+                  {busbarType === 'single' && coatingThicknessMm > 0 && ' In single-section mode, tick "Coat / overmould" on each section it applies to (default: all).'}
                 </span>
               </div>
             </div>
@@ -1042,7 +1123,14 @@ export default function BusbarCalculator() {
                 <div className="result-tile">
                   <div className="label">Resistance ({currentType === 'ac' ? 'Rac' : 'Rdc'})</div>
                   <div className="value">{fmt(totalResistanceOhm * 1e6, 1)}<span className="unit">µΩ</span></div>
-                  {nodes.length > 1 && <div className="hint">sum across all {nodes.length} sections</div>}
+                  <div className="hint">at the solved operating temp{nodes.length > 1 ? `, summed over ${nodes.length} sections` : ''}</div>
+                </div>
+              )}
+              {resistanceAt20Ohm !== undefined && (
+                <div className="result-tile">
+                  <div className="label">Resistance at 20°C</div>
+                  <div className="value">{fmt(resistanceAt20Ohm * 1e6, 1)}<span className="unit">µΩ</span></div>
+                  <div className="hint">reference basis — compare with field-solver / measured values</div>
                 </div>
               )}
               {durationMode !== 'continuous' && totalEnergyJ !== undefined && (
@@ -1064,7 +1152,7 @@ export default function BusbarCalculator() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>{busbarType === 'single' ? 'Section' : 'Bundle'}</th>
+                  <th>{busbarType === 'single' ? 'Section' : busbarType === 'bulk' ? 'Conductor' : 'Bundle'}</th>
                   <th>Area ({unitLabel(unitSystem, UNIT_AREA)})</th>
                   {durationMode !== 'profile' && <th>Current density (A/mm²)</th>}
                   {durationMode === 'continuous' && steady && <th>Rac (<span style={{ textTransform: 'none' }}>µΩ</span>)</th>}
@@ -1173,7 +1261,15 @@ export default function BusbarCalculator() {
           resistance term is modelled). Flow rate and coolant medium feed one exact, separate calculation
           (an energy-balance coolant temperature rise) that is informational only and not fed back into the
           busbar temperature result, which always uses the fixed inlet temperature as the coolant-side sink,
-          the same way ambient air is always treated as a fixed-temperature reservoir. For critical designs,
+          the same way ambient air is always treated as a fixed-temperature reservoir. A coating or overmould is a
+          conduction resistance t/(k·A) in series with the outer film, applied per-section (single mode) or to the
+          whole conductor (bundle/bulk); a thick overmould is just a thick coating, using the bar's own surface area
+          for the outer film (so enter the mould's true external area in bulk mode if it differs). Bulk (CAD) mode
+          synthesises one equivalent conductor from an entered 20°C resistance, volume and surface area — reproducing
+          both the resistance and the thermal mass exactly — and does not re-apply the AC skin factor, since a
+          measured/field-solver resistance already embeds it. Resistance is reported both at the solved operating
+          temperature and at a 20°C reference (the basis field solvers typically report), the two differing by the
+          copper/aluminium resistivity temperature factor. For critical designs,
           verify against manufacturer test data and, where required, by test.
         </p>
       </div>

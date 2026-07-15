@@ -10,7 +10,7 @@ export interface BarSection {
 export type Orientation = 'vertical' | 'horizontal';
 export type CurrentType = 'ac' | 'dc';
 export type DurationMode = 'continuous' | 'fault' | 'profile';
-export type BusbarType = 'single' | 'multiple';
+export type BusbarType = 'single' | 'multiple' | 'bulk';
 
 export const STEFAN_BOLTZMANN = 5.67e-8; // W/(m²K⁴)
 export const DEFAULT_NATURAL_CONVECTION_H = 5; // W/(m²K), typical still-air value for busbars
@@ -196,6 +196,7 @@ export interface SingleSectionInput {
   width: number;  // mm
   length: number; // mm
   coolingEnabled?: boolean; // "Apply conduction" — mounted via a TIM to a metallic plate + coolant
+  coatedEnabled?: boolean;  // whether the shared coating/overmould is applied to this section
 }
 
 export function buildSingleBusbarNodes(sections: SingleSectionInput[], thicknessMm: number): ThermalNode[] {
@@ -240,6 +241,37 @@ export function buildMultipleBarNodes(profileWidthMm: number, profileThicknessMm
     surfaceAreaM2: surfacePerM * circuitLengthM,
     charLengthM: profileWidthMm / 1000,
     contactAreaM2: 0, // conduction cooling only applies in single-section mode
+  }];
+}
+
+/** Single lumped node for a complex/arbitrary conductor described only by its
+ *  measured or CAD-extracted bulk properties: DC resistance at 20°C, conductor
+ *  volume, and total exposed surface area. Used for a "bulk temperature" of a
+ *  shape too complex to break into prismatic sections.
+ *
+ *  An equivalent prism is synthesised that reproduces BOTH the resistance and
+ *  the thermal mass exactly: from R20 = ρ20·L/A and V = L·A it follows that
+ *  L = √(R20·V/ρ20) and A = V/L. That node then feeds the same nodal solver as
+ *  every other mode, so convection, radiation, coating and (fixed-temperature)
+ *  sinks all behave identically. The synthesised cross-section A is only a
+ *  nominal value for the current-density readout — the real part varies along
+ *  its length. The IEC skin factor should be disabled by the caller (pass
+ *  frequency 0) since a CAD/measured resistance already embeds any AC effect. */
+export function buildBulkNode(resistance20Ohm: number, volumeM3: number, surfaceAreaM2: number, rho20: number): ThermalNode[] {
+  if (resistance20Ohm <= 0 || volumeM3 <= 0 || surfaceAreaM2 <= 0) return [];
+  const lengthM = Math.sqrt((resistance20Ohm * volumeM3) / rho20);
+  const areaM2 = volumeM3 / lengthM;
+  return [{
+    id: 'bulk',
+    label: 'Bulk conductor',
+    areaMm2: areaM2 * 1e6,
+    lengthM,
+    surfaceAreaM2,
+    // Characteristic length for the natural-convection correlation — a bulk body
+    // has no single obvious value, so use the cube-root body scale; users with a
+    // known/CFD-derived film coefficient should use the manual-h override.
+    charLengthM: Math.cbrt(volumeM3),
+    contactAreaM2: 0,
   }];
 }
 
@@ -298,7 +330,7 @@ export function solveNodalSteadyState(
   emissivity: number,
   orientation: Orientation,
   manualH: number | null,
-  coatingThicknessMm = 0,
+  coatingThicknessPerNode: number[] = [],
   coatingConductivity = 0.3,
   coolantConductancePerNode: number[] = [],
   coolantTempC = 0
@@ -328,7 +360,7 @@ export function solveNodalSteadyState(
       const hConv = effectiveConvection(deltaT, node.charLengthM, orientation, manualH);
       const hRadLin = emissivity * STEFAN_BOLTZMANN * 4 * Math.pow(Math.max(temps[i] + 273.15, 1), 3);
       const hEff = hConv + hRadLin;
-      const gAmb = effectiveAmbientConductance(hEff, node.surfaceAreaM2, coatingThicknessMm, coatingConductivity);
+      const gAmb = effectiveAmbientConductance(hEff, node.surfaceAreaM2, coatingThicknessPerNode[i] ?? 0, coatingConductivity);
 
       // Two parallel sink paths to two different reservoirs (air, coolant) —
       // each contributes its own conductance to the diagonal and its own
@@ -373,7 +405,7 @@ export function solveNodalSteadyState(
     // Total heat leaving the node (conductor -> ambient) accounts for the coating's series
     // resistance; conv/rad split is then apportioned by their film conductances at the
     // (coating-limited) outer-surface temperature, consistent with how gAmb was assembled.
-    const gAmbFinal = effectiveAmbientConductance(hEffPerNode[i], node.surfaceAreaM2, coatingThicknessMm, coatingConductivity);
+    const gAmbFinal = effectiveAmbientConductance(hEffPerNode[i], node.surfaceAreaM2, coatingThicknessPerNode[i] ?? 0, coatingConductivity);
     const totalLossFinal = gAmbFinal * deltaT;
     const hRadLin = emissivity * STEFAN_BOLTZMANN * 4 * Math.pow(temps[i] + 273.15, 3);
     convLossPerNodeW[i] = totalLossFinal * (hConv / hEffPerNode[i]);
@@ -393,14 +425,14 @@ export function solveNodalSteadyState(
 export function solveMaxContinuousCurrentNodal(
   nodes: ThermalNode[], material: Material, currentType: CurrentType, frequencyHz: number,
   ambientC: number, emissivity: number, orientation: Orientation, manualH: number | null, maxTempC: number,
-  coatingThicknessMm = 0, coatingConductivity = 0.3,
+  coatingThicknessPerNode: number[] = [], coatingConductivity = 0.3,
   coolantConductancePerNode: number[] = [], coolantTempC = 0
 ): number {
   let lo = 0;
   let hi = 500000;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
-    const result = solveNodalSteadyState(nodes, material, mid, currentType, frequencyHz, ambientC, emissivity, orientation, manualH, coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantTempC);
+    const result = solveNodalSteadyState(nodes, material, mid, currentType, frequencyHz, ambientC, emissivity, orientation, manualH, coatingThicknessPerNode, coatingConductivity, coolantConductancePerNode, coolantTempC);
     const worst = Math.max(...result.tempsC);
     if (worst <= maxTempC) lo = mid; else hi = mid; // NaN/Infinity (solver failed to converge) falls through to "exceeds limit"
   }
@@ -457,7 +489,7 @@ export interface TransientResult {
 export function solveNodalTransient(
   nodes: ThermalNode[], material: Material, currentType: CurrentType, frequencyHz: number,
   ambientC: number, emissivity: number, orientation: Orientation, manualH: number | null,
-  steps: LoadStep[], coatingThicknessMm = 0, coatingConductivity = 0.3,
+  steps: LoadStep[], coatingThicknessPerNode: number[] = [], coatingConductivity = 0.3,
   coolantConductancePerNode: number[] = [], coolantTempC = 0, substepsPerStep = 25
 ): TransientResult {
   const n = nodes.length;
@@ -471,7 +503,7 @@ export function solveNodalTransient(
   let temps = anyCoolant
     ? solveNodalSteadyState(
       nodes, material, 0, currentType, frequencyHz, ambientC, emissivity, orientation, manualH,
-      coatingThicknessMm, coatingConductivity, coolantConductancePerNode, coolantTempC
+      coatingThicknessPerNode, coatingConductivity, coolantConductancePerNode, coolantTempC
     ).tempsC
     : new Array(n).fill(ambientC);
   const timeS: number[] = [0];
@@ -501,7 +533,7 @@ export function solveNodalTransient(
           const deltaT = guess[i] - ambientC;
           const hConv = effectiveConvection(deltaT, node.charLengthM, orientation, manualH);
           const hRadLin = emissivity * STEFAN_BOLTZMANN * 4 * Math.pow(Math.max(guess[i] + 273.15, 1), 3);
-          const gAmb = effectiveAmbientConductance(hConv + hRadLin, node.surfaceAreaM2, coatingThicknessMm, coatingConductivity);
+          const gAmb = effectiveAmbientConductance(hConv + hRadLin, node.surfaceAreaM2, coatingThicknessPerNode[i] ?? 0, coatingConductivity);
           const cDt = capacitance[i] / dtSub;
 
           let diagVal = gAmb + gCoolant(i) + cDt;
