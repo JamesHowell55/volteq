@@ -10,7 +10,7 @@ import PremiumGate from '../components/PremiumGate';
 import InfoTooltip from '../components/InfoTooltip';
 import DcLinkArrayDiagram from '../components/DcLinkArrayDiagram';
 import {
-  CAP_SUPPLIERS, seriesForSupplier, voltagesForSeries, partsFor,
+  CAP_SUPPLIERS, seriesForSupplier, voltagesForSeries, partsFor, leadsFor,
   maxOperatingVoltage, estimateLifeHours, type DcLinkCapacitor,
 } from '../lib/dcLinkCapacitors';
 import {
@@ -64,7 +64,7 @@ export default function DcLinkCalculator() {
   const [supplier, setSupplier] = useState<string>('KEMET');
   const [series, setSeries] = useState<string>('C4AQ-M');
   const [voltageSel, setVoltageSel] = useState<number>(500);
-  const [leadsSel] = useState<number>(4);
+  const [leadsSel, setLeadsSel] = useState<number>(4);
   const [partNumber, setPartNumber] = useState<string>('C4AQLBW5800M36K');
   // custom cap
   const [customCapUf, setCustomCapUf] = useState(80);
@@ -86,7 +86,34 @@ export default function DcLinkCalculator() {
 
   const seriesList = useMemo(() => seriesForSupplier(supplier), [supplier]);
   const voltageList = useMemo(() => voltagesForSeries(supplier, series), [supplier, series]);
+  const leadsList = useMemo(() => leadsFor(supplier, series, voltageSel), [supplier, series, voltageSel]);
   const partList = useMemo(() => partsFor(supplier, series, voltageSel, leadsSel), [supplier, series, voltageSel, leadsSel]);
+
+  // Cascade helpers — changing a higher-level selection re-resolves the ones
+  // below it to a valid value so a real part is always selected.
+  const pickFirstPart = (sup: string, ser: string, v: number, ld: number) => {
+    const p = partsFor(sup, ser, v, ld);
+    if (p[0]) setPartNumber(p[0].partNumber);
+  };
+  const onSupplierChange = (s: string) => {
+    const ser = seriesForSupplier(s)[0];
+    const v = voltagesForSeries(s, ser)[0];
+    const ld = leadsFor(s, ser, v)[0] ?? 4;
+    setSupplier(s); setSeries(ser); setVoltageSel(v); setLeadsSel(ld); pickFirstPart(s, ser, v, ld);
+  };
+  const onSeriesChange = (ser: string) => {
+    const vs = voltagesForSeries(supplier, ser);
+    const v = vs.includes(voltageSel) ? voltageSel : vs[0];
+    const lds = leadsFor(supplier, ser, v);
+    const ld = lds.includes(leadsSel) ? leadsSel : (lds[0] ?? 4);
+    setSeries(ser); setVoltageSel(v); setLeadsSel(ld); pickFirstPart(supplier, ser, v, ld);
+  };
+  const onVoltageChange = (v: number) => {
+    const lds = leadsFor(supplier, series, v);
+    const ld = lds.includes(leadsSel) ? leadsSel : (lds[0] ?? 4);
+    setVoltageSel(v); setLeadsSel(ld); pickFirstPart(supplier, series, v, ld);
+  };
+  const onLeadsChange = (ld: number) => { setLeadsSel(ld); pickFirstPart(supplier, series, voltageSel, ld); };
 
   const catalogPart: DcLinkCapacitor | undefined = useMemo(
     () => partList.find((p) => p.partNumber === partNumber) ?? partList[0],
@@ -193,11 +220,11 @@ export default function DcLinkCalculator() {
   // ── save/load ──
   const getInputs = useCallback((): Record<string, unknown> => ({
     busVoltageV, rippleVoltagePkPkV, outputFreqHz, switchingFreqKhz, phaseCurrentRmsA, powerFactor, modulationIndex, cableInductanceUh,
-    capMode, supplier, series, voltageSel, partNumber,
+    capMode, supplier, series, voltageSel, leadsSel, partNumber,
     customCapUf, customRatedV, customEsrMohm, customIrmsA, customRthCW, customLmm, customTmm, customHmm, customPartRef,
     ambientTempC, coolingMethod, conductionRthCW, columns, spacingMm,
   }), [busVoltageV, rippleVoltagePkPkV, outputFreqHz, switchingFreqKhz, phaseCurrentRmsA, powerFactor, modulationIndex, cableInductanceUh,
-    capMode, supplier, series, voltageSel, partNumber, customCapUf, customRatedV, customEsrMohm, customIrmsA, customRthCW, customLmm, customTmm, customHmm, customPartRef,
+    capMode, supplier, series, voltageSel, leadsSel, partNumber, customCapUf, customRatedV, customEsrMohm, customIrmsA, customRthCW, customLmm, customTmm, customHmm, customPartRef,
     ambientTempC, coolingMethod, conductionRthCW, columns, spacingMm]);
 
   const restoreInputs = useCallback((inp: Record<string, unknown>) => {
@@ -206,7 +233,7 @@ export default function DcLinkCalculator() {
     set(v.busVoltageV, setBusVoltageV); set(v.rippleVoltagePkPkV, setRippleVoltagePkPkV); set(v.outputFreqHz, setOutputFreqHz);
     set(v.switchingFreqKhz, setSwitchingFreqKhz); set(v.phaseCurrentRmsA, setPhaseCurrentRmsA); set(v.powerFactor, setPowerFactor);
     set(v.modulationIndex, setModulationIndex); set(v.cableInductanceUh, setCableInductanceUh);
-    set(v.capMode, setCapMode); set(v.supplier, setSupplier); set(v.series, setSeries); set(v.voltageSel, setVoltageSel); set(v.partNumber, setPartNumber);
+    set(v.capMode, setCapMode); set(v.supplier, setSupplier); set(v.series, setSeries); set(v.voltageSel, setVoltageSel); set(v.leadsSel, setLeadsSel); set(v.partNumber, setPartNumber);
     set(v.customCapUf, setCustomCapUf); set(v.customRatedV, setCustomRatedV); set(v.customEsrMohm, setCustomEsrMohm); set(v.customIrmsA, setCustomIrmsA);
     set(v.customRthCW, setCustomRthCW); set(v.customLmm, setCustomLmm); set(v.customTmm, setCustomTmm); set(v.customHmm, setCustomHmm); set(v.customPartRef, setCustomPartRef);
     set(v.ambientTempC, setAmbientTempC); set(v.coolingMethod, setCoolingMethod); set(v.conductionRthCW, setConductionRthCW);
@@ -374,30 +401,32 @@ export default function DcLinkCalculator() {
               <div className="grid grid-2">
                 <div className="field">
                   <label>Supplier</label>
-                  <select value={supplier} onChange={(e) => setSupplier(e.target.value)}>
+                  <select value={supplier} onChange={(e) => onSupplierChange(e.target.value)}>
                     {CAP_SUPPLIERS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="field">
                   <label>Series (PP film)</label>
-                  <select value={series} onChange={(e) => { setSeries(e.target.value); }}>
+                  <select value={series} onChange={(e) => onSeriesChange(e.target.value)}>
                     {seriesList.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="field">
                   <label>Rated voltage (VDC)</label>
-                  <select value={voltageSel} onChange={(e) => { const v = Number(e.target.value); setVoltageSel(v); const p = partsFor(supplier, series, v, leadsSel); if (p[0]) setPartNumber(p[0].partNumber); }}>
+                  <select value={voltageSel} onChange={(e) => onVoltageChange(Number(e.target.value))}>
                     {voltageList.map((v) => <option key={v} value={v}>{v} V</option>)}
                   </select>
                 </div>
                 <div className="field">
                   <label>Mounting</label>
-                  <select value={leadsSel} disabled><option value={4}>Radial, 4-lead</option></select>
+                  <select value={leadsSel} onChange={(e) => onLeadsChange(Number(e.target.value))} disabled={leadsList.length <= 1}>
+                    {leadsList.map((l) => <option key={l} value={l}>Radial, {l}-lead</option>)}
+                  </select>
                 </div>
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
                   <label>Part (capacitance)</label>
                   <select value={catalogPart?.partNumber ?? ''} onChange={(e) => setPartNumber(e.target.value)}>
-                    {partList.map((p) => <option key={p.partNumber} value={p.partNumber}>{fmt(p.capacitanceUf, 0)} µF · {p.esrMohm} mΩ · {p.irmsRatedA} A · {p.partNumber}</option>)}
+                    {partList.map((p) => <option key={p.partNumber} value={p.partNumber}>{fmt(p.capacitanceUf, p.capacitanceUf < 10 ? 2 : 0)} µF · {p.esrMohm} mΩ · {p.irmsRatedA} A · {p.partNumber}</option>)}
                   </select>
                 </div>
               </div>
@@ -557,8 +586,13 @@ export default function DcLinkCalculator() {
           70 °C value is used, so real losses vary with the actual ripple spectrum. Expected life uses a PP-film model
           anchored to the C4AQ-M datasheet — 120,000 h at rated voltage at 70 °C hot spot, halving every ~15 °C
           (60,000 h at 85 °C), with a (V_rated/V_applied)^7 voltage-acceleration factor — and is a first-order
-          estimate; the manufacturer's lifetime curve governs. Kemet C4AQ-M parameters are transcribed from datasheet
-          F3125_C4AQ_M; verify against the current datasheet and, for critical designs, by test.
+          estimate; the manufacturer's lifetime curve for the specific series governs. Capacitor parameters are
+          transcribed from the manufacturer datasheets — KEMET C4AQ-M (F3125), KEMET C4AE (F3046) and TDK/EPCOS
+          B3277x MKP DC-Link (MKP_B32774XYZ_778XYZ). Note the Irms rating basis differs by manufacturer: KEMET quotes
+          the current for a 30 °C hot-spot rise, TDK for a 15 °C rise; the TDK parts' R_th is derived from R_th =
+          ΔT/(ESR·Irms²) with ΔT = 15 °C (which cross-checks against KEMET for matching case sizes). The
+          voltage-derating and life models are generic PP-film approximations. Verify against the current datasheets
+          and, for critical designs, by test.
         </p>
       </div>
 
