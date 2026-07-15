@@ -86,8 +86,8 @@ export default function BusbarCalculator() {
   const [bulkResistanceMode, setBulkResistanceMode] = useState<'fromLength' | 'enter'>('fromLength');
   const [bulkResistance20uOhm, setBulkResistance20uOhm] = useState(72);
   const [bulkPathLengthMm, setBulkPathLengthMm] = useState(100);
-  const [bulkVolumeCm3, setBulkVolumeCm3] = useState(18);
-  const [bulkSurfaceAreaCm2, setBulkSurfaceAreaCm2] = useState(150);
+  const [bulkVolumeMm3, setBulkVolumeMm3] = useState(18000);
+  const [bulkSurfaceAreaMm2, setBulkSurfaceAreaMm2] = useState(15000);
 
   const [materialId, setMaterialId] = useState<'copper' | 'aluminium'>('copper');
   const [orientation, setOrientation] = useState<Orientation>('vertical');
@@ -172,7 +172,7 @@ export default function BusbarCalculator() {
   const getInputs = useCallback((): Record<string, unknown> => ({
     busbarType, sections: sections.map(s => ({ width: s.width, length: s.length, coolingEnabled: !!s.coolingEnabled, coatedEnabled: s.coatedEnabled ?? true })),
     thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM,
-    bulkResistanceMode, bulkResistance20uOhm, bulkPathLengthMm, bulkVolumeCm3, bulkSurfaceAreaCm2,
+    bulkResistanceMode, bulkResistance20uOhm, bulkPathLengthMm, bulkVolumeMm3, bulkSurfaceAreaMm2,
     materialId, orientation, emissivity, convMode, manualHValue,
     coatingPresetId, coatingThicknessMm, coatingConductivity,
     timPresetId, timThicknessMm, timConductivity,
@@ -184,7 +184,7 @@ export default function BusbarCalculator() {
     maxContinuousTempC, maxFaultTempC,
   }), [
     busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM,
-    bulkResistanceMode, bulkResistance20uOhm, bulkPathLengthMm, bulkVolumeCm3, bulkSurfaceAreaCm2,
+    bulkResistanceMode, bulkResistance20uOhm, bulkPathLengthMm, bulkVolumeMm3, bulkSurfaceAreaMm2,
     materialId, orientation, emissivity, convMode, manualHValue,
     coatingPresetId, coatingThicknessMm, coatingConductivity,
     timPresetId, timThicknessMm, timConductivity,
@@ -207,8 +207,10 @@ export default function BusbarCalculator() {
     if (v.bulkResistanceMode) setBulkResistanceMode(v.bulkResistanceMode);
     if (v.bulkResistance20uOhm != null) setBulkResistance20uOhm(v.bulkResistance20uOhm);
     if (v.bulkPathLengthMm != null) setBulkPathLengthMm(v.bulkPathLengthMm);
-    if (v.bulkVolumeCm3 != null) setBulkVolumeCm3(v.bulkVolumeCm3);
-    if (v.bulkSurfaceAreaCm2 != null) setBulkSurfaceAreaCm2(v.bulkSurfaceAreaCm2);
+    if (v.bulkVolumeMm3 != null) setBulkVolumeMm3(v.bulkVolumeMm3);
+    else if (v.bulkVolumeCm3 != null) setBulkVolumeMm3(v.bulkVolumeCm3 * 1000); // back-compat: old cm³ key
+    if (v.bulkSurfaceAreaMm2 != null) setBulkSurfaceAreaMm2(v.bulkSurfaceAreaMm2);
+    else if (v.bulkSurfaceAreaCm2 != null) setBulkSurfaceAreaMm2(v.bulkSurfaceAreaCm2 * 100); // back-compat: old cm² key
     if (v.materialId) setMaterialId(v.materialId);
     if (v.orientation) setOrientation(v.orientation);
     if (v.emissivity != null) setEmissivity(v.emissivity);
@@ -276,16 +278,16 @@ export default function BusbarCalculator() {
   // resistance — a part that necks down runs a higher resistance than this.
   const bulkResistance20Ohm = useMemo(() => {
     if (bulkResistanceMode === 'enter') return bulkResistance20uOhm * 1e-6;
-    const volumeM3 = bulkVolumeCm3 * 1e-6;
+    const volumeM3 = bulkVolumeMm3 * 1e-9;
     const lengthM = bulkPathLengthMm / 1000;
     return volumeM3 > 0 ? (resistivityAt(material, 20) * lengthM * lengthM) / volumeM3 : 0;
-  }, [bulkResistanceMode, bulkResistance20uOhm, bulkPathLengthMm, bulkVolumeCm3, material]);
+  }, [bulkResistanceMode, bulkResistance20uOhm, bulkPathLengthMm, bulkVolumeMm3, material]);
 
   const nodes = useMemo(() => {
     if (busbarType === 'single') return buildSingleBusbarNodes(sections, thicknessMm);
-    if (busbarType === 'bulk') return buildBulkNode(bulkResistance20Ohm, bulkVolumeCm3 * 1e-6, bulkSurfaceAreaCm2 * 1e-4, resistivityAt(material, 20));
+    if (busbarType === 'bulk') return buildBulkNode(bulkResistance20Ohm, bulkVolumeMm3 * 1e-9, bulkSurfaceAreaMm2 * 1e-6, resistivityAt(material, 20));
     return buildMultipleBarNodes(profileWidth, profileThickness, nBars, barGap, bundleLengthM);
-  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, bulkResistance20Ohm, bulkVolumeCm3, bulkSurfaceAreaCm2, material]);
+  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, bulkResistance20Ohm, bulkVolumeMm3, bulkSurfaceAreaMm2, material]);
 
   // Bulk mode: skip the IEC skin factor — a measured/CAD-extracted resistance
   // already embeds any AC (skin/proximity) effect, so re-applying it double-counts.
@@ -480,8 +482,8 @@ export default function BusbarCalculator() {
       } else {
         geoRows.push({ label: 'Resistance at 20°C (entered)', value: `${fmt(bulkResistance20uOhm, 2)} µΩ` });
       }
-      geoRows.push({ label: 'Conductor volume', value: `${fmt(bulkVolumeCm3, 2)} cm³` });
-      geoRows.push({ label: 'Exposed surface area', value: `${fmt(bulkSurfaceAreaCm2, 1)} cm²` });
+      geoRows.push({ label: 'Conductor volume', value: `${fmt(bulkVolumeMm3, 0)} mm³` });
+      geoRows.push({ label: 'Exposed surface area', value: `${fmt(bulkSurfaceAreaMm2, 0)} mm²` });
     } else {
       geoRows.push({ label: 'Bar profile', value: `${fmtU(profileWidth, unitSystem, UNIT_LENGTH, 3)} × ${fmtU(profileThickness, unitSystem, UNIT_LENGTH, 3)} ${unitLabel(unitSystem, UNIT_LENGTH)}` });
       geoRows.push({ label: 'Number of bars', value: `${nBars}` });
@@ -535,7 +537,7 @@ export default function BusbarCalculator() {
     }
 
     return sectionsOut;
-  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, bulkResistanceMode, bulkResistance20uOhm, bulkPathLengthMm, bulkResistance20Ohm, bulkVolumeCm3, bulkSurfaceAreaCm2, orientation, material, emissivity, convMode, manualHValue, coatingThicknessMm, coatingConductivity, currentType, durationMode, current, frequency, ambientC, maxContinuousTempC, faultDurationS, faultInitialTempC, maxFaultTempC, steps, anySectionCooled, timThicknessMm, timConductivity, metalMaterialId, metalThicknessMm, metalConductivity, coolantPresetId, coolantSpecificHeat, coolantDensity, coolantFlowRateLPerMin, coolantInletTempC, unitSystem]);
+  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, bulkResistanceMode, bulkResistance20uOhm, bulkPathLengthMm, bulkResistance20Ohm, bulkVolumeMm3, bulkSurfaceAreaMm2, orientation, material, emissivity, convMode, manualHValue, coatingThicknessMm, coatingConductivity, currentType, durationMode, current, frequency, ambientC, maxContinuousTempC, faultDurationS, faultInitialTempC, maxFaultTempC, steps, anySectionCooled, timThicknessMm, timConductivity, metalMaterialId, metalThicknessMm, metalConductivity, coolantPresetId, coolantSpecificHeat, coolantDensity, coolantFlowRateLPerMin, coolantInletTempC, unitSystem]);
 
   const outputSections: ReportSection[] = useMemo(() => {
     const headline: ReportRow[] = [
@@ -755,13 +757,13 @@ export default function BusbarCalculator() {
                     </div>
                   )}
                   <div className="field">
-                    <label>Conductor volume (cm³)</label>
-                    <input autoComplete="off" type="number" min={0.0001} step={0.1} value={bulkVolumeCm3} onChange={e => setBulkVolumeCm3(Number(e.target.value))} />
+                    <label>Conductor volume (mm³)</label>
+                    <input autoComplete="off" type="number" min={0.001} step={100} value={bulkVolumeMm3} onChange={e => setBulkVolumeMm3(Number(e.target.value))} />
                     <span className="hint">Solid metal volume from CAD (mass properties) — sets the thermal mass{bulkResistanceMode === 'fromLength' ? ' and, with the path length, the resistance' : ' and nominal current density'}.</span>
                   </div>
                   <div className="field" style={{ gridColumn: '1 / -1' }}>
-                    <label>Total exposed surface area (cm²)</label>
-                    <input autoComplete="off" type="number" min={0.0001} step={1} value={bulkSurfaceAreaCm2} onChange={e => setBulkSurfaceAreaCm2(Number(e.target.value))} />
+                    <label>Total exposed surface area (mm²)</label>
+                    <input autoComplete="off" type="number" min={0.001} step={100} value={bulkSurfaceAreaMm2} onChange={e => setBulkSurfaceAreaMm2(Number(e.target.value))} />
                     <span className="hint">Wetted (air-exposed) surface area from CAD — the single biggest driver of the steady temperature. Exclude overmoulded/buried faces, or model them with the coating below.</span>
                   </div>
                 </div>
