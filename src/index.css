@@ -866,6 +866,45 @@ footer.site-footer {
 
 .data-table tbody tr:last-child td { border-bottom: none; }
 
+/* ── BoM compare tables ─────────────────────────────────────── */
+.bom-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+
+.bom-table th {
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+  font-weight: 600;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.bom-table td {
+  padding: 0.2rem 0.3rem;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.bom-table tbody tr:last-child td { border-bottom: none; }
+
+.bom-table td input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  padding: 0.45rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-family: var(--font-sans);
+}
+
+.bom-table td input:focus {
+  outline: none;
+  background: var(--bg-input);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
 .step-row {
   display: grid;
   grid-template-columns: 28px 1fr 1fr auto;
