@@ -35,7 +35,7 @@ export function emptyRow(columns: BomColumn[]): BomRow {
  *  tab- vs comma-delimited by whichever is more common in the first line
  *  (a plain Excel copy is tab-delimited; a saved CSV is comma-delimited). */
 export function parseDelimitedText(text: string): string[][] {
-  const lines = text.replace(/\r\n/g, '\n').split('\n').filter((l) => l.length > 0);
+  const lines = text.replace(/\r\n|\r/g, '\n').split('\n').filter((l) => l.length > 0);
   if (lines.length === 0) return [];
   const tabCount = (lines[0].match(/\t/g) || []).length;
   const commaCount = (lines[0].match(/,/g) || []).length;

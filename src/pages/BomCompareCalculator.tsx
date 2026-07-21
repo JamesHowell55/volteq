@@ -36,9 +36,9 @@ interface BomEditableTableProps {
 }
 
 function BomEditableTable({ title, rows, columns, onCellChange, onPasteGrid, onAddRow, onRemoveRow, onClear }: BomEditableTableProps) {
-  const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
-    const text = e.clipboardData.getData('text/plain');
-    if (!text.trim()) return;
+  const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text/plain') || e.clipboardData.getData('text');
+    if (!text || text.indexOf('\t') === -1 && text.indexOf('\n') === -1 && text.indexOf('\r') === -1) return; // single value — let the default single-cell paste happen
     e.preventDefault();
     onPasteGrid(parseDelimitedText(text));
   };
@@ -49,7 +49,7 @@ function BomEditableTable({ title, rows, columns, onCellChange, onPasteGrid, onA
       <p className="hint" style={{ marginTop: '-0.3rem', marginBottom: '0.75rem' }}>
         Click a cell, then paste (Ctrl/Cmd+V) straight from Excel — replaces the rows below.
       </p>
-      <div onPaste={handlePaste} style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto' }}>
         <table className="bom-table">
           <thead>
             <tr>
@@ -64,7 +64,7 @@ function BomEditableTable({ title, rows, columns, onCellChange, onPasteGrid, onA
               <tr key={ri}>
                 {columns.map((c) => (
                   <td key={c.id}>
-                    <input value={row[c.id] ?? ''} onChange={(e) => onCellChange(ri, c.id, e.target.value)} />
+                    <input value={row[c.id] ?? ''} onChange={(e) => onCellChange(ri, c.id, e.target.value)} onPaste={handlePaste} />
                   </td>
                 ))}
                 <td>
