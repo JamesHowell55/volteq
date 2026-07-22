@@ -369,6 +369,13 @@ export default function BusbarCalculator() {
     }, 0);
   }, [validGeometry, nodes, material, currentType, frequency, busbarType]);
 
+  // Solid conductor mass only (density × volume, summed across nodes) — excludes
+  // coating/overmould, TIM and any mounting hardware.
+  const totalMassKg = useMemo(
+    () => nodes.reduce((sum, n) => sum + material.density * (n.areaMm2 * 1e-6) * n.lengthM, 0),
+    [nodes, material]
+  );
+
   const worstTempC = durationMode === 'continuous' ? (steady ? Math.max(...steady.tempsC) : undefined)
     : durationMode === 'fault' ? (adiabatic ? Math.max(...adiabatic.finalTempsC) : undefined)
       : (transient ? Math.max(...transient.peakTempsC) : undefined);
@@ -491,6 +498,7 @@ export default function BusbarCalculator() {
       geoRows.push({ label: 'Bar length', value: `${fmtU(bundleLengthM, unitSystem, UNIT_LENGTH_M, 3)} ${unitLabel(unitSystem, UNIT_LENGTH_M)}` });
     }
     geoRows.push({ label: 'Mounting orientation', value: orientation === 'vertical' ? 'Vertical (edge)' : 'Horizontal (flat)' });
+    geoRows.push({ label: 'Total mass', value: `${fmt(totalMassKg, totalMassKg < 1 ? 3 : 2)} kg` });
 
     const matRows: ReportRow[] = [
       { label: 'Material', value: material.name },
@@ -537,7 +545,7 @@ export default function BusbarCalculator() {
     }
 
     return sectionsOut;
-  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, bulkResistanceMode, bulkResistance20uOhm, bulkPathLengthMm, bulkResistance20Ohm, bulkVolumeMm3, bulkSurfaceAreaMm2, orientation, material, emissivity, convMode, manualHValue, coatingThicknessMm, coatingConductivity, currentType, durationMode, current, frequency, ambientC, maxContinuousTempC, faultDurationS, faultInitialTempC, maxFaultTempC, steps, anySectionCooled, timThicknessMm, timConductivity, metalMaterialId, metalThicknessMm, metalConductivity, coolantPresetId, coolantSpecificHeat, coolantDensity, coolantFlowRateLPerMin, coolantInletTempC, unitSystem]);
+  }, [busbarType, sections, thicknessMm, profileWidth, profileThickness, nBars, barGap, bundleLengthM, bulkResistanceMode, bulkResistance20uOhm, bulkPathLengthMm, bulkResistance20Ohm, bulkVolumeMm3, bulkSurfaceAreaMm2, orientation, material, emissivity, convMode, manualHValue, coatingThicknessMm, coatingConductivity, currentType, durationMode, current, frequency, ambientC, maxContinuousTempC, faultDurationS, faultInitialTempC, maxFaultTempC, steps, anySectionCooled, timThicknessMm, timConductivity, metalMaterialId, metalThicknessMm, metalConductivity, coolantPresetId, coolantSpecificHeat, coolantDensity, coolantFlowRateLPerMin, coolantInletTempC, unitSystem, totalMassKg]);
 
   const outputSections: ReportSection[] = useMemo(() => {
     const headline: ReportRow[] = [
@@ -824,6 +832,11 @@ export default function BusbarCalculator() {
                     ? 'Convection is set to a manual value below, so orientation has no effect until you switch back to Auto-calculate.'
                     : 'Feeds the auto-calculated convection coefficient (leading constant 1.42 vertical vs 1.0 horizontal, same ΔT and characteristic length) — its effect on final temperature is diluted by radiation, which doesn\'t depend on orientation, so the difference is often modest rather than dramatic.'}
                 </span>
+              </div>
+              <div className="field">
+                <label>Total mass</label>
+                <input value={`${fmt(totalMassKg, totalMassKg < 1 ? 3 : 2)} kg`} readOnly />
+                <span className="hint">Solid conductor mass (density × volume) — excludes coating/overmould, TIM and mounting hardware.</span>
               </div>
             </div>
           </div>

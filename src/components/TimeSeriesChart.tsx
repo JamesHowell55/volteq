@@ -71,13 +71,24 @@ export default function TimeSeriesChart({ timeS, currentA, series, ambientC, max
   const currentTicks = niceTicks(0, iMax, 4);
   const tempTicks = niceTicks(tempMin, tempMax, 4);
 
+  // Maps the cursor through the SVG's actual screen transform (getScreenCTM),
+  // rather than assuming rect.width scales 1:1 onto the viewBox width. The
+  // container here (particularly the expanded chart modal, which forces the
+  // svg to width:100%/height:100% independently) routinely has a different
+  // aspect ratio than the 900x380 viewBox, so the default preserveAspectRatio
+  // letterboxes the content — a plain rect.width-based scale factor then
+  // drifts further from the truth the closer you get to the letterboxed
+  // edges, making part of the plot un-hoverable / offset from the cursor.
   const handleMove = (e: MouseEvent<SVGRectElement>) => {
     const svg = svgRef.current;
     if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const scaleX = W / rect.width;
-    const xInViewBox = (e.clientX - rect.left) * scaleX;
-    const tAtCursor = ((xInViewBox - MARGIN.left) / PLOT_W) * tMax;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgPoint = pt.matrixTransform(ctm.inverse());
+    const tAtCursor = ((svgPoint.x - MARGIN.left) / PLOT_W) * tMax;
     setHoverIndex(nearestIndex(timeS, tAtCursor));
   };
 
@@ -94,6 +105,24 @@ export default function TimeSeriesChart({ timeS, currentA, series, ambientC, max
   const tooltipH = 20 + tooltipLines * 19;
   const tooltipX = hover ? Math.min(Math.max(hover.x + 10, MARGIN.left), W - MARGIN.right - tooltipW) : 0;
   const tooltipY = MARGIN.top + 6;
+
+  // Worst point across the whole profile — hottest temperature reached by any
+  // node, at any time — always annotated on the chart (not just on hover).
+  let peakIdx = 0;
+  let peakTempC = -Infinity;
+  let peakLabel = series[0]?.label ?? '';
+  series.forEach(s => {
+    s.values.forEach((v, i) => {
+      if (v > peakTempC) { peakTempC = v; peakIdx = i; peakLabel = s.label; }
+    });
+  });
+  const hasPeak = series.length > 0 && isFinite(peakTempC);
+  const peakX = hasPeak ? xs[peakIdx] : 0;
+  const peakY = hasPeak ? yTempScale(peakTempC) : 0;
+  const peakCurrentY = hasPeak ? yCurrentScale(currentA[peakIdx]) : 0;
+  const peakLabelW = 168;
+  const peakLabelX = hasPeak ? Math.min(Math.max(peakX - peakLabelW / 2, MARGIN.left), W - MARGIN.right - peakLabelW) : 0;
+  const peakLabelY = hasPeak ? Math.max(peakY - 40, MARGIN.top + 2) : 0;
 
   return (
     <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxHeight: 420 }}>
@@ -146,6 +175,22 @@ export default function TimeSeriesChart({ timeS, currentA, series, ambientC, max
       <text x={(MARGIN.left + W - MARGIN.right) / 2} y={H - 8} textAnchor="middle" fontSize="10" fill="var(--text-faint)" fontFamily="ui-monospace, monospace">
         time (s)
       </text>
+
+      {/* peak-temperature marker — always shown, independent of hover */}
+      {hasPeak && (
+        <g pointerEvents="none">
+          <line x1={peakX} x2={peakX} y1={MARGIN.top} y2={H - MARGIN.bottom} stroke="var(--warn)" strokeWidth={1} strokeDasharray="4,2" opacity={0.6} />
+          <circle cx={peakX} cy={peakCurrentY} r={4.5} fill="none" stroke="var(--blue)" strokeWidth={2} />
+          <circle cx={peakX} cy={peakY} r={4.5} fill="none" stroke="var(--warn)" strokeWidth={2} />
+          <rect x={peakLabelX} y={peakLabelY} width={peakLabelW} height={34} rx={5} fill="var(--bg-raised)" stroke="var(--warn)" strokeWidth={1} />
+          <text x={peakLabelX + 8} y={peakLabelY + 14} fontSize="10.5" fontWeight={700} fill="var(--warn)" fontFamily="ui-monospace, monospace">
+            Peak {fmt1(peakTempC)}°C &middot; {truncate(peakLabel, 12)}
+          </text>
+          <text x={peakLabelX + 8} y={peakLabelY + 28} fontSize="10" fill="var(--text-2)" fontFamily="ui-monospace, monospace">
+            t={fmt1(timeS[peakIdx])}s, I={fmt1(currentA[peakIdx])}A
+          </text>
+        </g>
+      )}
 
       {/* hover guide + markers + tooltip */}
       {hover && (

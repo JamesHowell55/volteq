@@ -426,12 +426,22 @@ export interface PdfSeries {
   values: number[];
 }
 
+function pdfNiceTicks(min: number, max: number, count: number): number[] {
+  if (max <= min) return [min];
+  const span = max - min;
+  const step = span / count;
+  const ticks: number[] = [];
+  for (let i = 0; i <= count; i++) ticks.push(min + step * i);
+  return ticks;
+}
+
 /** Static current/temperature-vs-time chart, matching TimeSeriesChart.tsx's
- *  traces (no hover interactivity needed in a printed report). */
+ *  traces and axis ticks (no hover interactivity needed in a printed report,
+ *  so the worst point is annotated permanently instead of on hover). */
 export function renderTimeSeriesChartSvg(timeS: number[], currentA: number[], series: PdfSeries[], ambientC: number, maxTempC: number): string {
   const W = 700;
   const H = 320;
-  const MARGIN = { left: 55, right: 55, top: 20, bottom: 40 };
+  const MARGIN = { left: 55, right: 55, top: 20, bottom: 52 };
   const PLOT_W = W - MARGIN.left - MARGIN.right;
   const PLOT_H = H - MARGIN.top - MARGIN.bottom;
   if (timeS.length === 0) return `<svg viewBox="0 0 ${W} ${H}" width="100%"></svg>`;
@@ -452,6 +462,21 @@ export function renderTimeSeriesChartSvg(timeS: number[], currentA: number[], se
 
   const xs = timeS.map(xScale);
   const currentYs = currentA.map(yCurrentScale);
+  const timeTicks = pdfNiceTicks(0, tMax, 5);
+  const currentTicks = pdfNiceTicks(0, iMax, 4);
+  const tempTicks = pdfNiceTicks(tempMin, tempMax, 4);
+
+  // Worst point across the whole profile — hottest temperature reached by any
+  // node/series, at any time — annotated permanently since there's no hover here.
+  let peakIdx = 0;
+  let peakTempC = -Infinity;
+  let peakLabel = series[0]?.label ?? '';
+  series.forEach(s => {
+    s.values.forEach((v, i) => {
+      if (v > peakTempC) { peakTempC = v; peakIdx = i; peakLabel = s.label; }
+    });
+  });
+  const hasPeak = series.length > 0 && isFinite(peakTempC);
 
   const seriesHtml = series.map(s => `<path d="${pathFor(xs, s.values.map(yTempScale))}" fill="none" stroke="${s.color}" stroke-width="2" />`).join('');
   const legendHtml = series.map((s, i) => `
@@ -460,6 +485,29 @@ export function renderTimeSeriesChartSvg(timeS: number[], currentA: number[], se
       <text x="${MARGIN.left + i * 95 + 12}" y="${H - 3}" fill="${TEXT_2}">${escapeXml(s.label)}</text>
     </g>`).join('');
 
+  const currentTickHtml = currentTicks.map(c => `
+    <text x="${MARGIN.left - 8}" y="${yCurrentScale(c) + 3}" text-anchor="end" font-size="8.5" fill="${BLUE}" font-family="ui-monospace, monospace">${Math.round(c)}</text>
+    <line x1="${MARGIN.left - 4}" x2="${MARGIN.left}" y1="${yCurrentScale(c)}" y2="${yCurrentScale(c)}" stroke="${BLUE}" stroke-width="1" />`).join('');
+  const tempTickHtml = tempTicks.map(t => `
+    <text x="${W - MARGIN.right + 8}" y="${yTempScale(t) + 3}" text-anchor="start" font-size="8.5" fill="${TEXT_2}" font-family="ui-monospace, monospace">${t.toFixed(0)}</text>
+    <line x1="${W - MARGIN.right}" x2="${W - MARGIN.right + 4}" y1="${yTempScale(t)}" y2="${yTempScale(t)}" stroke="${TEXT_2}" stroke-width="1" />`).join('');
+  const timeTickHtml = timeTicks.map(t => `
+    <text x="${xScale(t)}" y="${H - MARGIN.bottom + 15}" text-anchor="middle" font-size="8.5" fill="${TEXT_FAINT}" font-family="ui-monospace, monospace">${t.toFixed(0)}s</text>
+    <line x1="${xScale(t)}" x2="${xScale(t)}" y1="${H - MARGIN.bottom}" y2="${H - MARGIN.bottom + 4}" stroke="${TEXT_FAINT}" stroke-width="1" />`).join('');
+
+  const peakLabelW = 150;
+  const peakX = hasPeak ? xs[peakIdx] : 0;
+  const peakY = hasPeak ? yTempScale(peakTempC) : 0;
+  const peakLabelX = hasPeak ? Math.min(Math.max(peakX - peakLabelW / 2, MARGIN.left), W - MARGIN.right - peakLabelW) : 0;
+  const peakLabelY = hasPeak ? Math.max(peakY - 38, MARGIN.top + 2) : 0;
+  const peakHtml = hasPeak ? `
+    <line x1="${peakX}" x2="${peakX}" y1="${MARGIN.top}" y2="${H - MARGIN.bottom}" stroke="${WARN}" stroke-dasharray="4,2" stroke-width="1" opacity="0.6" />
+    <circle cx="${peakX}" cy="${yCurrentScale(currentA[peakIdx])}" r="4" fill="none" stroke="${BLUE}" stroke-width="1.75" />
+    <circle cx="${peakX}" cy="${peakY}" r="4" fill="none" stroke="${WARN}" stroke-width="1.75" />
+    <rect x="${peakLabelX}" y="${peakLabelY}" width="${peakLabelW}" height="32" rx="4" fill="white" stroke="${WARN}" stroke-width="1" />
+    <text x="${peakLabelX + 7}" y="${peakLabelY + 13}" font-size="9.5" font-weight="700" fill="${WARN}" font-family="ui-monospace, monospace">Peak ${peakTempC.toFixed(1)}&deg;C &middot; ${escapeXml(peakLabel.slice(0, 12))}</text>
+    <text x="${peakLabelX + 7}" y="${peakLabelY + 26}" font-size="9" fill="${TEXT_2}" font-family="ui-monospace, monospace">t=${timeS[peakIdx].toFixed(1)}s, I=${currentA[peakIdx].toFixed(1)}A</text>` : '';
+
   return `<svg viewBox="0 0 ${W} ${H}" width="100%">
     <line x1="${MARGIN.left}" x2="${W - MARGIN.right}" y1="${yTempScale(ambientC)}" y2="${yTempScale(ambientC)}" stroke="${TEXT_FAINT}" stroke-dasharray="3,3" stroke-width="1" />
     <text x="${W - MARGIN.right + 4}" y="${yTempScale(ambientC) + 3}" font-size="8.5" fill="${TEXT_FAINT}" font-family="ui-monospace, monospace">ambient</text>
@@ -467,12 +515,16 @@ export function renderTimeSeriesChartSvg(timeS: number[], currentA: number[], se
     <text x="${W - MARGIN.right + 4}" y="${yTempScale(maxTempC) + 3}" font-size="8.5" fill="#DC2626" font-family="ui-monospace, monospace">limit</text>
     <path d="${pathFor(xs, currentYs)}" fill="none" stroke="${BLUE}" stroke-width="1.5" opacity="0.85" />
     ${seriesHtml}
+    ${peakHtml}
     <line x1="${MARGIN.left}" x2="${MARGIN.left}" y1="${MARGIN.top}" y2="${H - MARGIN.bottom}" stroke="${BORDER_STRONG}" stroke-width="1" />
     <line x1="${W - MARGIN.right}" x2="${W - MARGIN.right}" y1="${MARGIN.top}" y2="${H - MARGIN.bottom}" stroke="${BORDER_STRONG}" stroke-width="1" />
     <line x1="${MARGIN.left}" x2="${W - MARGIN.right}" y1="${H - MARGIN.bottom}" y2="${H - MARGIN.bottom}" stroke="${BORDER_STRONG}" stroke-width="1" />
+    ${currentTickHtml}
+    ${tempTickHtml}
+    ${timeTickHtml}
     <text x="12" y="${MARGIN.top - 6}" font-size="9" fill="${BLUE}" font-family="ui-monospace, monospace">A (current)</text>
     <text x="${W - MARGIN.right}" y="${MARGIN.top - 6}" text-anchor="end" font-size="9" fill="${TEXT_2}" font-family="ui-monospace, monospace">&deg;C (temp)</text>
-    <text x="${(MARGIN.left + W - MARGIN.right) / 2}" y="${H - MARGIN.bottom + 14}" text-anchor="middle" font-size="9" fill="${TEXT_FAINT}" font-family="ui-monospace, monospace">time (s)</text>
+    <text x="${(MARGIN.left + W - MARGIN.right) / 2}" y="${H - MARGIN.bottom + 27}" text-anchor="middle" font-size="9" fill="${TEXT_FAINT}" font-family="ui-monospace, monospace">time (s)</text>
     ${legendHtml}
   </svg>`;
 }
