@@ -18,6 +18,11 @@ alter table entitlements enable row level security;
 create policy "read own entitlement" on entitlements
   for select using (auth.uid() = user_id);
 
+-- Grants: authenticated users read their row (RLS scopes it); the Stripe webhook
+-- writes via the service_role key and needs full table access.
+grant select on table public.entitlements to authenticated;
+grant all on table public.entitlements to service_role;
+
 -- Deliberately no insert/update policy for anon/authenticated roles: entitlement
 -- rows are only ever written by the Stripe webhook serverless function using the
 -- Supabase service-role key, which bypasses RLS entirely. This prevents a user
@@ -39,6 +44,9 @@ create policy "insert own branding" on branding
   for insert with check (auth.uid() = user_id);
 create policy "update own branding" on branding
   for update using (auth.uid() = user_id);
+
+grant select, insert, update on table public.branding to authenticated;
+grant all on table public.branding to service_role;
 
 -- Storage bucket for uploaded company logos (public read so the logo can be
 -- embedded in an exported PDF without an authenticated fetch; write restricted
@@ -84,3 +92,9 @@ create policy "update own saved calculations" on saved_calculations
   for update using (auth.uid() = user_id);
 create policy "delete own saved calculations" on saved_calculations
   for delete using (auth.uid() = user_id);
+
+-- Table-level privileges. When a table is created via raw SQL (rather than the
+-- dashboard Table Editor) the API roles are NOT auto-granted access, so the
+-- logged-in `authenticated` role would hit "permission denied" (SQLSTATE 42501)
+-- even with correct RLS. RLS still restricts each user to their own rows.
+grant select, insert, update, delete on table public.saved_calculations to authenticated;
