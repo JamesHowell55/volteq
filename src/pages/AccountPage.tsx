@@ -241,7 +241,7 @@ function SavedCalculationsOverview() {
                     <td>{r.label}</td>
                     <td>{new Date(r.updated_at).toLocaleString()}</td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button className="btn small" onClick={() => navigate(meta.path)}>Open</button>
+                      <button className="btn small" onClick={() => navigate(`${meta.path}?load=${r.id}`)}>Open</button>
                       <button className="btn small" style={{ marginLeft: '0.4rem' }} onClick={() => handleDelete(r.id)}>Delete</button>
                     </td>
                   </tr>

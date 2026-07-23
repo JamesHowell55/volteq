@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { SavedCalculation } from '../lib/useSavedCalculations';
 
 interface Props {
@@ -19,6 +20,25 @@ interface Props {
 export default function SavedCalculations({ saves, loading, loggedIn, onLoad, onUpdate, onRename, onDelete }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const loadedRef = useRef<string | null>(null);
+
+  // Deep-link load: arriving with ?load=<id> (e.g. "Open" from the Account page)
+  // restores that save's inputs onto this calculator as soon as it appears in the
+  // fetched list, then strips the param so a refresh doesn't reapply it. Runs
+  // before the early returns so it still fires while the list is empty/loading.
+  const loadId = searchParams.get('load');
+  useEffect(() => {
+    if (!loadId || loadedRef.current === loadId) return;
+    const match = saves.find((s) => s.id === loadId);
+    if (match) {
+      loadedRef.current = loadId;
+      onLoad(match.inputs);
+      const next = new URLSearchParams(searchParams);
+      next.delete('load');
+      setSearchParams(next, { replace: true });
+    }
+  }, [loadId, saves, onLoad, searchParams, setSearchParams]);
 
   if (!loggedIn) return null;
   if (!loading && saves.length === 0) return null;
