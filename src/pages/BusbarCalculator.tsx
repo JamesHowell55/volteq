@@ -14,6 +14,7 @@ import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import { MATERIALS, EMISSIVITY_PRESETS, COATING_PRESETS, TIM_PRESETS, COOLANT_PRESETS } from '../lib/materials';
 import {
   buildSingleBusbarNodes,
@@ -663,9 +664,11 @@ export default function BusbarCalculator() {
             or a multi-step drive-cycle profile. Every formula used is shown below with your numbers substituted in.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div className="two-col">

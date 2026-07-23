@@ -8,6 +8,7 @@ import { useEntitlement } from '../lib/useEntitlement';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import {
   ALL_SIZES,
   ALL_PROPERTY_CLASSES,
@@ -714,9 +715,11 @@ export default function BoltedJointCalculator() {
             for a plain-language explanation of each input and result.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div style={{ marginBottom: '1.25rem' }}>

@@ -11,6 +11,7 @@ import { renderSkinDepthCrossSectionSvg } from '../lib/pdfDiagrams';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import {
   SKIN_DEPTH_MATERIALS,
   getSkinDepthMaterial,
@@ -178,9 +179,11 @@ export default function SkinDepthCalculator() {
             permeability at a given frequency, direct-entered or derived from motor speed and pole pairs.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div className="two-col">

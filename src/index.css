@@ -983,3 +983,39 @@ footer.site-footer {
 .chart-modal-panel .card-title { margin-bottom: 0.75rem; }
 .chart-modal-panel .chart-modal-body { flex: 1; min-height: 0; display: flex; align-items: center; }
 .chart-modal-panel .chart-modal-body svg { height: 100%; }
+
+/* ── Calculator action stack (Export PDF + Save) ─────────────────── */
+.calc-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: stretch;
+  min-width: 168px;
+}
+/* Make the passed-in Export PDF button (and its Premium lock variant) fill the
+   stack width so it lines up with the Save button below it. */
+.calc-actions > .btn,
+.calc-actions > a.btn { width: 100%; }
+.save-btn { gap: 0.4rem; }
+
+.save-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.save-modal-panel {
+  width: 100%;
+  max-width: 420px;
+  margin: 0;
+}
+.save-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}

@@ -7,6 +7,7 @@ import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import InfoTooltip from '../components/InfoTooltip';
 import DqSpaceVectorDiagram from '../components/DqSpaceVectorDiagram';
 import {
@@ -263,9 +264,11 @@ export default function DqCurrentCalculator() {
             diagram and the derived torque, MTPA comparison, and speed-dependent back-EMF and power.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div className="two-col">

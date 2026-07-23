@@ -3,6 +3,7 @@ import { useTheme } from '../lib/ThemeContext';
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import HarnessSchematicDiagram from '../components/HarnessSchematicDiagram';
 import { renderHarnessSchematicSvg } from '../lib/pdfDiagrams';
 import { CONTACT_SIZE_SPECS, CONTACT_SIZES, type ContactSize } from '../lib/connectorLibrary';
@@ -220,9 +221,11 @@ export default function HarnessDesigner() {
             and an auto-generated point-to-point wiring schematic with connector naming, pin numbers, and wire specs.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div className="card">

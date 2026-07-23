@@ -53,3 +53,34 @@ create policy "upload own branding logo" on storage.objects
   for insert with check (bucket_id = 'branding-logos' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "update own branding logo" on storage.objects
   for update using (bucket_id = 'branding-logos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Per-user saved calculator inputs (the "Save calculation" button on every
+-- calculator page, listed back on the Account page and the on-page Saved
+-- calculations panel). Each row belongs to one user and stores the calculator
+-- slug, a user-chosen label, and the full input state as JSON. RLS scopes every
+-- operation to the owning user, so the client only ever needs to pass user_id on
+-- insert (auth.uid() must match). Without this table + policies the save button
+-- silently fails.
+create table if not exists saved_calculations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  calculator text not null,     -- calculator slug, e.g. 'busbar', 'mohrs-circle'
+  label text not null,          -- user-chosen name for this save
+  inputs jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table saved_calculations enable row level security;
+
+create index if not exists saved_calculations_user_calc_idx
+  on saved_calculations (user_id, calculator, updated_at desc);
+
+create policy "read own saved calculations" on saved_calculations
+  for select using (auth.uid() = user_id);
+create policy "insert own saved calculations" on saved_calculations
+  for insert with check (auth.uid() = user_id);
+create policy "update own saved calculations" on saved_calculations
+  for update using (auth.uid() = user_id);
+create policy "delete own saved calculations" on saved_calculations
+  for delete using (auth.uid() = user_id);

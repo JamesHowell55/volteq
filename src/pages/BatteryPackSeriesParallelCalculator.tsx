@@ -5,6 +5,7 @@ import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import { CELL_PRESETS, getCellPreset, solveBatteryPack } from '../lib/batteryPackPhysics';
 
 function fmt(n: number, digits = 2): string {
@@ -178,9 +179,11 @@ export default function BatteryPackSeriesParallelCalculator() {
             (SxP) cell arrangement, plus a voltage-sag check under a given load current.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div className="two-col">

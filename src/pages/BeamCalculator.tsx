@@ -15,6 +15,7 @@ import BeamDiagram from '../components/BeamDiagram';
 import BeamResponseChart from '../components/BeamResponseChart';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useBranding } from '../lib/useBranding';
 import { useTheme } from '../lib/ThemeContext';
@@ -304,9 +305,11 @@ export default function BeamCalculator() {
             cross-checked against Roark's Formulas for Stress and Strain.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" onClick={handleExportPdf} disabled={!result}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" onClick={handleExportPdf} disabled={!result}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div className="two-col">

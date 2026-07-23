@@ -11,6 +11,7 @@ import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import {
   MATERIAL_GROUP_CTI,
   MATERIAL_GROUP_DESCRIPTION,
@@ -328,9 +329,11 @@ export default function CreepageClearanceCalculator() {
             below with your numbers substituted in.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div style={{ marginBottom: '1.25rem' }}>

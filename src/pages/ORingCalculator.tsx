@@ -7,6 +7,7 @@ import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import InfoTooltip from '../components/InfoTooltip';
 import ORingGlandDiagram from '../components/ORingGlandDiagram';
 import { fitDeviationsMm, HOLE_FITS, SHAFT_FITS } from '../lib/isoFits';
@@ -453,9 +454,11 @@ export default function ORingCalculator() {
             stretch, gland-fill and extrusion-gap checks with worst-case tolerance stacks.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div className="two-col">

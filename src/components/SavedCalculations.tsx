@@ -12,21 +12,16 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
-export default function SavedCalculations({ saves, loading, loggedIn, onSave, onLoad, onUpdate, onRename, onDelete }: Props) {
-  const [label, setLabel] = useState('');
-  const [saving, setSaving] = useState(false);
+// Note: `onSave` remains in Props (call sites still pass it) but is no longer
+// used here — saving now happens via the "Save calculation" button in the page
+// header (CalculatorActions). This panel is the load/manage list only, and
+// hides itself entirely when there is nothing saved yet.
+export default function SavedCalculations({ saves, loading, loggedIn, onLoad, onUpdate, onRename, onDelete }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
 
   if (!loggedIn) return null;
-
-  const handleSave = async () => {
-    if (!label.trim()) return;
-    setSaving(true);
-    await onSave(label.trim());
-    setLabel('');
-    setSaving(false);
-  };
+  if (!loading && saves.length === 0) return null;
 
   const handleRename = async (id: string) => {
     if (!editLabel.trim()) return;
@@ -37,21 +32,6 @@ export default function SavedCalculations({ saves, loading, loggedIn, onSave, on
   return (
     <div className="card">
       <div className="card-title">Saved calculations</div>
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', marginBottom: saves.length > 0 ? '0.75rem' : 0 }}>
-        <div className="field" style={{ flex: 1, marginBottom: 0 }}>
-          <label>Save current inputs as</label>
-          <input
-            autoComplete="off"
-            placeholder="e.g. 150 mm copper, 1 kA AC"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-          />
-        </div>
-        <button className="btn primary" disabled={saving || !label.trim()} onClick={handleSave} style={{ whiteSpace: 'nowrap' }}>
-          {saving ? 'Saving...' : 'Save'}
-        </button>
-      </div>
 
       {loading && <p className="hint">Loading saves...</p>}
 

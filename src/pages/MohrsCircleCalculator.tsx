@@ -7,6 +7,7 @@ import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import InfoTooltip from '../components/InfoTooltip';
 import MohrsCircleDiagram from '../components/MohrsCircleDiagram';
 import { solveMohrsCircle, transformStress, type StressState2D } from '../lib/mohrsCirclePhysics';
@@ -162,9 +163,11 @@ export default function MohrsCircleCalculator() {
             plane and a to-scale Mohr's circle showing the whole geometry.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div className="two-col">

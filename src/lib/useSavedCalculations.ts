@@ -28,16 +28,25 @@ export function useSavedCalculations(calculatorSlug: string) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const save = async (label: string, inputs: Record<string, unknown>) => {
-    if (!user || !isSupabaseConfigured) return;
-    await supabase.from('saved_calculations').insert({ calculator: calculatorSlug, label, inputs });
+  const save = async (label: string, inputs: Record<string, unknown>): Promise<{ error: string | null }> => {
+    if (!isSupabaseConfigured) return { error: 'Saving is not configured (Supabase environment variables are missing).' };
+    if (!user) return { error: 'You need to be signed in to save a calculation.' };
+    // user_id is required by the table's row-level-security policy — without it the
+    // insert is rejected (or orphaned), which is why saves never appeared before.
+    const { error } = await supabase
+      .from('saved_calculations')
+      .insert({ user_id: user.id, calculator: calculatorSlug, label, inputs });
+    if (error) return { error: error.message };
     await refresh();
+    return { error: null };
   };
 
-  const update = async (id: string, inputs: Record<string, unknown>) => {
-    if (!user || !isSupabaseConfigured) return;
-    await supabase.from('saved_calculations').update({ inputs, updated_at: new Date().toISOString() }).eq('id', id);
+  const update = async (id: string, inputs: Record<string, unknown>): Promise<{ error: string | null }> => {
+    if (!user || !isSupabaseConfigured) return { error: 'You need to be signed in to update a calculation.' };
+    const { error } = await supabase.from('saved_calculations').update({ inputs, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) return { error: error.message };
     await refresh();
+    return { error: null };
   };
 
   const rename = async (id: string, label: string) => {

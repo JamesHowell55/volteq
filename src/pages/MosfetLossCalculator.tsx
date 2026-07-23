@@ -5,6 +5,7 @@ import { toDisplay, fromDisplay, unitLabel, UNIT_TEMP } from '../lib/globalUnits
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import PremiumGate from '../components/PremiumGate';
+import CalculatorActions from '../components/CalculatorActions';
 import InfoTooltip from '../components/InfoTooltip';
 import LossBreakdownBars, { type LossBar } from '../components/LossBreakdownBars';
 import { renderLossBreakdownSvg, type PdfLossBar } from '../lib/pdfDiagrams';
@@ -325,9 +326,11 @@ export default function MosfetLossCalculator() {
             half-bridge, and six-pack packages, with parallel devices, motoring/generating operation, and duty-cycle profiles.
           </p>
         </div>
-        <PremiumGate feature="PDF export">
-          <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-        </PremiumGate>
+        <CalculatorActions saved={saved} getInputs={getInputs}>
+          <PremiumGate feature="PDF export">
+            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
+          </PremiumGate>
+        </CalculatorActions>
       </div>
 
       <div className="two-col">
