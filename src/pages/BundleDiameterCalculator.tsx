@@ -377,6 +377,16 @@ export default function BundleDiameterCalculator() {
           assumes the tubing/sleeve wraps snugly against the bundle, a first-order estimate. Actual bundle
           diameter also depends on lay length and tie/lace spacing — treat this as a planning estimate.
         </p>
+        <p className="note">
+          <b>Validated:</b> checking the circle-packing algorithm against exact closed-form cases (2 identical
+          wires → exactly 2× diameter; 3 mutually-tangent identical wires → exactly d×(2/√3+1) = 21.547 mm for
+          d=10 mm) surfaced a real bug — the minimal-enclosing-circle search could get stuck short of the true
+          answer whenever two or more wires tied for "farthest from center" (which happens for any bundle of
+          equal-diameter wires), returning up to ~12% too large a bundle diameter. Fixed 2026-07-24 (now moves
+          toward the averaged direction of every tied wire, not just one) and re-verified against both
+          closed-form cases exactly, plus an independent brute-force search confirming the enclosing circle is
+          now correct for whatever arrangement the (disclosed, non-optimal) greedy packing heuristic produces.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

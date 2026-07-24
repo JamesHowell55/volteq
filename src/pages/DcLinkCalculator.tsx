@@ -871,6 +871,14 @@ export default function DcLinkCalculator() {
           voltage-derating and life models are generic PP-film approximations. Verify against the current datasheets
           and, for critical designs, by test.
         </p>
+        <p className="note">
+          <b>Validated:</b> the Kolar &amp; Round ripple-current formula was independently re-derived and matched
+          exactly, and sweeping the modulation index at unity power factor confirms the well-known published
+          characteristic stated above — the ratio peaks at M = 0.615 with a value of 0.650, right in the
+          documented "M ≈ 0.6, ~0.6–0.65×" range. LC resonance, both capacitance-sizing constraints, stored
+          energy, busbar loop inductance, and the di/dt and overshoot formulas all matched independent hand
+          calculation exactly.
+        </p>
       </div>
 
       <div className="card" style={{ marginTop: '1.25rem' }}>

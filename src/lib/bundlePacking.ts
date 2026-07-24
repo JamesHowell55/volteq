@@ -157,14 +157,39 @@ export function packCircles(diametersMm: number[]): PackResult {
     placed.push({ x: best.x, y: best.y, r: rk, id: idx });
   }
 
-  const maxReach = (center: { x: number; y: number }) => {
+  const maxReach = (center: { x: number; y: number }): number => {
     let radius = 0;
-    let worst = placed[0];
     for (const p of placed) {
       const reach = Math.hypot(p.x - center.x, p.y - center.y) + p.r;
-      if (reach > radius) { radius = reach; worst = p; }
+      if (reach > radius) radius = reach;
     }
-    return { radius, worst };
+    return radius;
+  };
+
+  // Direction to move the trial center to reduce the max reach: the AVERAGED
+  // unit vector toward every circle within tolerance of the current worst
+  // reach, not just a single "worst" circle. This matters whenever two or
+  // more circles are exactly (or nearly) tied for worst — e.g. any bundle of
+  // identical-diameter wires — since moving toward only one of the tied
+  // circles makes the other(s) strictly worse by the same amount, and a
+  // single-worst-circle search gets stuck oscillating at a non-optimal fixed
+  // point instead of converging to the true minimal enclosing circle.
+  const pullDirection = (center: { x: number; y: number }, radius: number): { x: number; y: number } | null => {
+    const tol = Math.max(radius * 1e-9, 1e-9);
+    let dx = 0, dy = 0, count = 0;
+    for (const p of placed) {
+      const ddx = p.x - center.x;
+      const ddy = p.y - center.y;
+      const dist = Math.hypot(ddx, ddy);
+      if (dist + p.r >= radius - tol && dist > 1e-9) {
+        dx += ddx / dist;
+        dy += ddy / dist;
+        count++;
+      }
+    }
+    if (count === 0) return null;
+    const mag = Math.hypot(dx, dy);
+    return mag > 1e-9 ? { x: dx / mag, y: dy / mag } : null;
   };
 
   // Initialise at the exact minimal-enclosing-circle solution for the two
@@ -195,20 +220,18 @@ export function packCircles(diametersMm: number[]): PackResult {
 
   let step = Math.max(...diametersMm);
   for (let iter = 0; iter < 300 && step > 1e-9; iter++) {
-    const { radius, worst } = maxReach(center);
-    const dx = worst.x - center.x;
-    const dy = worst.y - center.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist < 1e-9) break;
-    const candidate = { x: center.x + (dx / dist) * step, y: center.y + (dy / dist) * step };
-    const candidateReach = maxReach(candidate).radius;
+    const radius = maxReach(center);
+    const dir = pullDirection(center, radius);
+    if (!dir) break;
+    const candidate = { x: center.x + dir.x * step, y: center.y + dir.y * step };
+    const candidateReach = maxReach(candidate);
     if (candidateReach < radius - 1e-12) center = candidate; else step *= 0.5;
   }
-  const finalReach = maxReach(center);
+  const finalRadius = maxReach(center);
 
   return {
     positions: placed.map((p) => ({ id: p.id, x: p.x, y: p.y, d: p.r * 2 })).sort((a, b) => a.id - b.id),
-    bundleDiameterMm: finalReach.radius * 2,
+    bundleDiameterMm: finalRadius * 2,
     centerX: center.x,
     centerY: center.y,
   };

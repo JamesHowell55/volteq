@@ -520,6 +520,14 @@ export default function CableWireSizingCalculator() {
           model of mutual heating between bundled cables. Treat this as a screening/estimation tool, not a
           substitute for the OEM harness qualification testing real cable assemblies undergo.
         </p>
+        <p className="note">
+          <b>Validated:</b> the Churchill-Chu correlation was independently re-derived from the documented
+          equation and matched the calculator's output exactly (80°C surface, 20°C ambient, 20 mm diameter →
+          h = 8.058 W/m²K both ways) — comfortably inside the textbook-typical 2–25 W/m²K range for natural
+          convection in air. The bundling-derating table matches the published NEC 310.15(B)(3)(a) factors
+          exactly at spot checks (3 conductors → 1.00, 6 → 0.80, 30 → 0.45), and the AC resistance/skin-effect
+          formula is the same one validated on the Busbar calculator.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

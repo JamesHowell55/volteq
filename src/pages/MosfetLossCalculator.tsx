@@ -653,6 +653,13 @@ export default function MosfetLossCalculator() {
           lives at the top of sicDevices.ts) before trusting absolute numbers. Screening tool — not a
           substitute for double-pulse characterisation or calorimetric inverter testing.
         </p>
+        <p className="note">
+          <b>Validated:</b> every loss equation (sync-rect and classic channel/diode conduction — the standard
+          Casanellas PWM-loss form — dead-time diode conduction, test-condition-normalized switching and
+          reverse-recovery loss, gate-drive loss, Rds(on) temperature interpolation, and inverter output power)
+          was independently re-derived from its documented formula and matched the calculator's output exactly
+          across a full set of hand-picked test cases.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

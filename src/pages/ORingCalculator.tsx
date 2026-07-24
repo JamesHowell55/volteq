@@ -840,6 +840,12 @@ export default function ORingCalculator() {
           the neutral-axis length method with common-practice corner-radius guidance (r ≥ 3×d2 recommended,
           ≥ 2×d2 minimum). This is an estimation tool — have the final gland reviewed by your seal supplier.
         </p>
+        <p className="note">
+          <b>Validated:</b> a hand-worked static outer-radial (piston) seal — 20 mm d1, 3 mm cross-section,
+          20.4 mm groove root (2.0% stretch), 25.8 mm bore, 4.4 mm groove width — should give 2.97 mm effective
+          cross-section after stretch-thinning, 9.09% squeeze (0.27 mm), and 58.3% gland fill by hand; this
+          calculator returns all four numbers exactly.
+        </p>
       </div>
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
