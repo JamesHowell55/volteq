@@ -32,46 +32,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const supabaseAdmin = getSupabaseAdmin();
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const userId = session.metadata?.supabase_user_id ?? session.client_reference_id;
-    if (userId) {
-      const plan = session.mode === 'payment' ? 'premium_lifetime' : 'premium_subscription';
-      await supabaseAdmin.from('entitlements').upsert(
-        {
-          user_id: userId,
-          plan,
-          status: session.mode === 'subscription' ? 'active' : null,
-          stripe_customer_id: typeof session.customer === 'string' ? session.customer : session.customer?.id,
-          stripe_subscription_id: typeof session.subscription === 'string' ? session.subscription : session.subscription?.id ?? null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' }
-      );
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.metadata?.supabase_user_id ?? session.client_reference_id;
+      if (userId) {
+        const plan = session.mode === 'payment' ? 'premium_lifetime' : 'premium_subscription';
+        await supabaseAdmin.from('entitlements').upsert(
+          {
+            user_id: userId,
+            plan,
+            status: session.mode === 'subscription' ? 'active' : null,
+            stripe_customer_id: typeof session.customer === 'string' ? session.customer : session.customer?.id,
+            stripe_subscription_id: typeof session.subscription === 'string' ? session.subscription : session.subscription?.id ?? null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        );
+      }
     }
-  }
 
-  if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
-    const subscription = event.data.object as Stripe.Subscription;
-    const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
-    const isActive = subscription.status === 'active' || subscription.status === 'trialing';
-    // current_period_end moved off the top-level Subscription object onto each
-    // subscription item in this Stripe API version (supports multi-item
-    // subscriptions with independent billing cycles) — we only ever create
-    // single-item subscriptions, so the first item's period end applies.
-    const periodEndUnix = subscription.items.data[0]?.current_period_end;
-    await supabaseAdmin
-      .from('entitlements')
-      .update({
-        plan: isActive ? 'premium_subscription' : 'free',
-        status: subscription.status,
-        current_period_end: periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('stripe_customer_id', customerId);
-  }
+    if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+      const subscription = event.data.object as Stripe.Subscription;
+      const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
+      const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+      // current_period_end moved off the top-level Subscription object onto each
+      // subscription item in this Stripe API version (supports multi-item
+      // subscriptions with independent billing cycles) — we only ever create
+      // single-item subscriptions, so the first item's period end applies.
+      const periodEndUnix = subscription.items.data[0]?.current_period_end;
+      await supabaseAdmin
+        .from('entitlements')
+        .update({
+          plan: isActive ? 'premium_subscription' : 'free',
+          status: subscription.status,
+          current_period_end: periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('stripe_customer_id', customerId);
+    }
 
-  res.status(200).json({ received: true });
+    res.status(200).json({ received: true });
+  } catch (err) {
+    // Return 500 (not swallow) so Stripe's automatic retry schedule kicks in —
+    // this is a webhook, so a transient DB hiccup should be retried rather than
+    // silently marked "received" while the entitlement update never happened.
+    console.error(`stripe-webhook failed processing ${event.type}:`, err);
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown server error' });
+  }
 }
