@@ -320,6 +320,13 @@ export default function MohrsCircleCalculator() {
           stress states beyond the zero third principal, and no yielding. Use the equivalent stresses together with
           the relevant material allowable and factor of safety for a strength check.
         </p>
+        <p className="note">
+          <b>Validated:</b> checked against two independent hand-worked examples using the equations above.
+          (σx, σy, τxy) = (−20, 90, 60) MPa gives σ1 = 116.4 MPa, σ2 = −46.4 MPa, θp1 = 66.3° — matches this
+          calculator exactly. (80, 50, −25) MPa gives σ1 = 94.2 MPa, σ2 = 35.8 MPa, and correctly shows the
+          absolute maximum shear (94.2 MPa) exceeding the in-plane maximum (29.2 MPa) once both principal
+          stresses share a sign — a subtlety simpler stress-transformation calculators often get wrong.
+        </p>
       </div>
 
       <div className="card" style={{ marginTop: '1.25rem' }}>

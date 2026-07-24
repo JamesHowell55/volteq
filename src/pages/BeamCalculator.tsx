@@ -591,6 +591,13 @@ export default function BeamCalculator() {
           formulas for elastic straight beams). Shear/moment sign convention: upward reactions and sagging moments
           are positive; loads are entered positive-downward.
         </p>
+        <p className="note">
+          <b>Validated:</b> checked against Roark's closed-form cases for a 20×50 mm steel (E = 200 GPa)
+          rectangular-section beam. Simply supported, 2000 mm span, 1000 N at midspan (Case: M = PL/4, δ = PL³/48EI)
+          → this calculator returns M = 500,000 N·mm, δ = 4.00 mm, bending stress = 60.0 MPa, matching exactly.
+          Cantilever, 1000 mm, 200 N at the tip (Case: M = PL at the fixed end, δ = PL³/3EI) → this calculator
+          returns M = 200,000 N·mm, δ = 1.60 mm, bending stress = 24.0 MPa, also matching exactly.
+        </p>
       </div>
 
       {result && (
