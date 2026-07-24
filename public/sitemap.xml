@@ -37,6 +37,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://volteq.io/pcb-trace-width</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://volteq.io/skin-depth</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

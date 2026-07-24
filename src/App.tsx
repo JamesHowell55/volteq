@@ -15,6 +15,7 @@ import ChokeSizingCalculator from './pages/ChokeSizingCalculator';
 import MosfetLossCalculator from './pages/MosfetLossCalculator';
 import BundleDiameterCalculator from './pages/BundleDiameterCalculator';
 import HarnessDesigner from './pages/HarnessDesigner';
+import PcbTraceCalculator from './pages/PcbTraceCalculator';
 import ORingCalculator from './pages/ORingCalculator';
 import FitsAndLimitsCalculator from './pages/FitsAndLimitsCalculator';
 import MohrsCircleCalculator from './pages/MohrsCircleCalculator';
@@ -72,6 +73,7 @@ function App() {
               <Route path="/dc-link" element={<DcLinkCalculator />} />
               <Route path="/harness-bundle-diameter" element={<BundleDiameterCalculator />} />
               <Route path="/harness-designer" element={<HarnessDesigner />} />
+              <Route path="/pcb-trace-width" element={<PcbTraceCalculator />} />
               <Route path="/skin-depth" element={<SkinDepthCalculator />} />
               <Route path="/conversions" element={<ConversionsCalculator />} />
               <Route path="/account" element={<AccountPage />} />

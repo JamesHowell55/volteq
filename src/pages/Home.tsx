@@ -23,6 +23,7 @@ const PATH_ICON_OVERRIDES: Record<string, string> = {
   '/battery-pack-series-parallel': '⫴',
   '/speed-torque-power': 'Ω',
   '/conversions': '⇄',
+  '/pcb-trace-width': '≣',
 };
 
 // Tighter, homepage-only taglines. navCategories.ts descriptions stay full-length
@@ -33,6 +34,7 @@ const SHORT_DESCRIPTIONS: Record<string, string> = {
   '/creepage-clearance': 'Minimum creepage and clearance per IEC 60664-1.',
   '/harness-bundle-diameter': 'Bundle diameter for mixed-gauge wiring harnesses.',
   '/harness-designer': 'MIL-DTL-38999 connector pinouts and wiring schematics.',
+  '/pcb-trace-width': 'Current capacity and trace width per IPC-2221.',
   '/skin-depth': 'AC skin depth from material, frequency, and geometry.',
   '/choke-sizing': 'CM/DM choke sizing with saturation and core-loss checks.',
   '/mosfet-loss': 'Conduction, switching, and thermal losses for SiC inverters.',
@@ -84,7 +86,7 @@ export default function Home() {
           <Link to="/account" className="btn">Create a free account</Link>
         </div>
         <div className="hero-stats">
-          <span><b>16</b> calculators</span>
+          <span><b>22</b> calculators</span>
           <span><b>10+</b> standards referenced</span>
           <span><b>Full</b> derivations shown</span>
           <span><b>PDF</b> export</span>
