@@ -13,13 +13,10 @@ export interface Entitlement {
 
 const FREE_ENTITLEMENT: Omit<Entitlement, 'loading'> = { plan: 'free', isPremium: false, currentPeriodEnd: null };
 
-// TEMPORARY: the premium paywall is switched off while the calculator library
-// is still being built out — every visitor is treated as premium so nothing
-// is behind a lock yet. All the gating machinery (PremiumGate, Busbar's
-// section/load-profile limits, the Supabase entitlement lookup below, Stripe
-// checkout, the webhook, etc.) is unchanged and ready to go — flip this back
-// to `true` when it's time to actually launch the paywall.
-const GATING_ENABLED = false;
+// The premium paywall is live: Stripe checkout, the webhook, and the Supabase
+// entitlement lookup below all gate real access. Set back to `false` if the
+// paywall ever needs to be pulled while the calculator library keeps growing.
+const GATING_ENABLED = true;
 const EVERYONE_IS_PREMIUM_ENTITLEMENT: Omit<Entitlement, 'loading'> = { plan: 'premium_lifetime', isPremium: true, currentPeriodEnd: null };
 
 export function useEntitlement(): Entitlement {
