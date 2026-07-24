@@ -1,8 +1,8 @@
 import type Stripe from 'stripe';
-import { getStripe } from './_lib/stripeClient';
-import { getSupabaseAdmin } from './_lib/supabaseAdmin';
-import { readRawBody } from './_lib/rawBody';
-import type { VercelRequest, VercelResponse } from './_lib/types';
+import { getStripe } from './_lib/stripeClient.js';
+import { getSupabaseAdmin } from './_lib/supabaseAdmin.js';
+import { readRawBody } from './_lib/rawBody.js';
+import type { VercelRequest, VercelResponse } from './_lib/types.js';
 
 // Stripe signature verification needs the raw, unparsed request body — disable
 // Vercel's default JSON body parsing for this route (see _lib/rawBody.ts).

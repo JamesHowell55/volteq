@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { VercelRequest } from './types';
+import type { VercelRequest } from './types.js';
 
 // Service-role client: bypasses row-level security. Only ever used inside
 // serverless functions (never imported by client code) — this key must never

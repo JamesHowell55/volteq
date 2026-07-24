@@ -1,6 +1,6 @@
-import { getStripe } from './_lib/stripeClient';
-import { getSupabaseAdmin, getUserIdFromRequest } from './_lib/supabaseAdmin';
-import type { VercelRequest, VercelResponse } from './_lib/types';
+import { getStripe } from './_lib/stripeClient.js';
+import { getSupabaseAdmin, getUserIdFromRequest } from './_lib/supabaseAdmin.js';
+import type { VercelRequest, VercelResponse } from './_lib/types.js';
 
 type PlanChoice = 'monthly' | 'annual' | 'lifetime';
 
