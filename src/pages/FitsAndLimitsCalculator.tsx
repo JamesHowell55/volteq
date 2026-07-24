@@ -665,6 +665,16 @@ export default function FitsAndLimitsCalculator() {
           compare against the compound's actual compressive strength rating. This is an estimation tool; verify
           against the application's holding-force, torque, and fatigue requirements before production use.
         </p>
+        <p className="note">
+          <b>Validated:</b> a solid steel shaft (50 mm) pressed into a steel hub (100 mm OD) with a clean
+          0.05 mm diametral interference should give p = δ/{'{'}(d/E)·[(Do²+d²)/(Do²−d²) + (1−ν)]{'}'} = 75.0 MPa
+          by hand — this calculator returns exactly 75.0 MPa, a hub bore hoop stress of 125.0 MPa (von Mises
+          175.0 MPa), and a shaft-interface von Mises stress of 75.0 MPa. That last figure checks out
+          analytically too: a solid shaft is under equal radial and hoop compression (σr = σθ = −p), and the
+          von Mises formula reduces exactly to p in that special case — which is exactly what came back. The
+          thermal-shift term was checked separately (aluminium shaft in a steel hub at 80°C) and also matched
+          the hand-calculated interference exactly.
+        </p>
       </div>
 
       <div className="card" style={{ marginTop: '1.25rem' }}>

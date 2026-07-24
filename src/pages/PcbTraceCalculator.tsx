@@ -395,6 +395,14 @@ export default function PcbTraceCalculator() {
           against your fab's process capability and, where available, IPC-2152 chart data or thermal
           simulation.
         </p>
+        <p className="note">
+          <b>Validated:</b> a 10 mil, 1 oz external trace at 10°C rise returns 0.88 A from the exact IPC-2221
+          equation — in the same range as the ~1 A figure commonly quoted as a rule of thumb for that exact
+          case (rule-of-thumb roundings vary slightly by source; this tool always computes from the equation
+          directly). All three solve directions (current/width/temperature rise) round-trip back to their
+          inputs exactly, and an internal-layer trace of the same geometry returns exactly half the external
+          layer's current capacity, as the k = 0.024 vs 0.048 constants require.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

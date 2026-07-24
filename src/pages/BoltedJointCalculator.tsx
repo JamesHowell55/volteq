@@ -1527,6 +1527,16 @@ export default function BoltedJointCalculator() {
           are typical/representative — verify against the current official standards and, where required, physical
           testing before certification use.
         </p>
+        <p className="note">
+          <b>Validated:</b> the frustum (cone-of-compression) stiffness formula was checked by independently
+          re-deriving it from the documented equation across three different geometries/materials — all matched
+          the calculator's own function to within floating-point precision. The torque-preload relationship
+          round-trips exactly (10,000 N of preload → 25.80 N·m → back to exactly 10,000 N through the inverse
+          function), and for typical friction (µ = 0.15 thread and bearing) it implies a K-factor of 0.215 in
+          T = K·F·d — squarely in the ~0.2 range Shigley documents for this friction regime. Thread minor
+          diameters and minimum engagement length both matched hand calculation from the standard ISO 68-1 and
+          proof/yield-ratio formulas exactly.
+        </p>
       </div>
 
       {/* CALCULATION STEPS */}

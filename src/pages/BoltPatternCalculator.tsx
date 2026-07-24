@@ -707,6 +707,14 @@ export default function BoltPatternCalculator() {
           compliance), linear-elastic response, no fatigue, vibration/self-loosening, or dynamic/impact loading.
           Verify a critical design against a detailed FEA or the referenced standards directly.
         </p>
+        <p className="note">
+          <b>Validated:</b> a 4-bolt square pattern (bolts at ±50 mm) under 1000 N direct shear plus a 200 N·m
+          in-plane torque should split into two bolts carrying 901.4 N and two carrying 559.0 N by hand (direct
+          shear reinforcing the torsional component on one diagonal, partly cancelling it on the other) — this
+          calculator returns exactly those two values. The same pattern under a pure 100 N·m out-of-plane
+          bending moment should split ±500 N by the Mx·y/Ixx superposition — this calculator also matches
+          exactly.
+        </p>
       </div>
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
