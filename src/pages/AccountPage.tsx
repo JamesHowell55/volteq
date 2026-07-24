@@ -172,6 +172,7 @@ const CALCULATOR_META: Record<string, { label: string; path: string }> = {
   'motor-torque-power-speed': { label: 'Motor Torque / Power / Speed', path: '/speed-torque-power' },
   'bundle-diameter': { label: 'Bundle Diameter', path: '/harness-bundle-diameter' },
   'bolted-joint': { label: 'Bolted Joint (VDI 2230)', path: '/bolted-joint' },
+  'bolt-pattern': { label: 'Bolt Pattern', path: '/bolt-pattern' },
   'choke-sizing': { label: 'Choke Sizing', path: '/choke-sizing' },
   'mosfet-loss': { label: 'MOSFET Loss Calculator', path: '/mosfet-loss' },
   'harness-designer': { label: 'Harness Designer', path: '/harness-designer' },
