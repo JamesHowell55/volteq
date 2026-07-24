@@ -2,12 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Primary: adaptive SVG favicon — switches black/white via an embedded
-         prefers-color-scheme media query, which browsers honour reliably
-         (unlike the media attribute on <link rel="icon"> itself, which several
-         browsers, including Firefox, do not evaluate). -->
+    <!-- Static favicon: black mark on a white background, so it stays in
+         contrast against both light- and dark-themed browser chrome without
+         depending on prefers-color-scheme support (unreliable across
+         browsers — Firefox in particular doesn't honour it for favicons). -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Fallback for the rare browser that can't render an SVG favicon at all. -->
     <link rel="alternate icon" type="image/png" href="/favicon-light.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
