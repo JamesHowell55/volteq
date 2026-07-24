@@ -70,12 +70,20 @@ UI-level convenience gate backed by a real entitlement check (not spoofable via 
 does not hide the advanced-mode source code itself from a technically determined user inspecting the JS
 bundle. That would require moving that logic server-side, which is out of scope today.
 
-## Development
+## SEO
 
-```bash
-npm install
-npm run dev
-```
+Each route gets its own `<title>`, meta description, `rel=canonical`, Open Graph/Twitter tags, and a
+`WebApplication` JSON-LD block, set on every navigation by `src/components/Seo.tsx` (rendered once in
+`App.tsx`, driven by `useLocation()`). The actual title/description text is *not* duplicated in `Seo.tsx` —
+it reads from `src/lib/seo.ts`, which in turn reads from `NAV_CATEGORIES` in `src/lib/navCategories.ts` (the
+same single source of truth used by the nav/Home/App routing), plus a couple of static entries for `/`,
+`/account`, and `/reset-password` (the latter two are marked `noindex` — no SEO value). `index.html` carries
+matching static fallback tags for the brief pre-hydration window and for crawlers/link-preview bots that
+don't execute JS.
+
+`public/robots.txt` and `public/sitemap.xml` are static files, hand-maintained alongside `navCategories.ts`
+(see step 7 below) rather than generated at build time — consistent with the rest of this checklist already
+being a manual multi-file update.
 
 ## Adding a new calculator
 
@@ -92,3 +100,6 @@ npm run dev
    "advanced"/override mode, wrap its toggle in `<PremiumGate feature="...">` too (plus a `useEffect` that
    forces the mode off if `useEntitlement().isPremium` becomes false, in case a subscription lapses while the
    toggle was already on — see `BoltedJointCalculator.tsx` for the reference implementation of all of this).
+7. **SEO**: if the nav `label` in `navCategories.ts` wouldn't make a good search-result title on its own (too
+   short, or doesn't mention the standard it's checked against), add a `seoTitle` override on that entry — see
+   the "SEO" section above. Then add a `<url>` entry for the new path to `public/sitemap.xml`.

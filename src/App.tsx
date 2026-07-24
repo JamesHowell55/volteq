@@ -29,6 +29,7 @@ import { ThemeProvider } from './lib/ThemeContext';
 import { AuthProvider } from './lib/AuthContext';
 import { UnitSystemProvider } from './lib/UnitSystemContext';
 import { NAV_CATEGORIES } from './lib/navCategories';
+import Seo from './components/Seo';
 
 const placeholderLinks = NAV_CATEGORIES.flatMap((c) => c.links).filter((l) => !l.available);
 
@@ -49,6 +50,7 @@ function App() {
       <AuthProvider>
         <UnitSystemProvider>
           <div className="app-shell">
+            <Seo />
             <NavBar />
             <Routes>
               <Route path="/" element={<Home />} />
