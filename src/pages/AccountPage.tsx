@@ -11,14 +11,26 @@ const PLAN_LABELS: Record<Plan, string> = {
 };
 
 async function callApi(path: string, body: unknown): Promise<{ url?: string; error?: string }> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  const res = await fetch(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: JSON.stringify(body),
-  });
-  return res.json();
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+    });
+    try {
+      return await res.json();
+    } catch {
+      // The server returned a non-JSON error page (e.g. an unhandled exception
+      // in the serverless function, often a missing environment variable) —
+      // surface something actionable instead of letting a JSON-parse error
+      // propagate uncaught and leave the calling button stuck "busy" forever.
+      return { error: `Server error (HTTP ${res.status}) — the request did not return a valid response. Check the Vercel function logs.` };
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error — please check your connection and try again.' };
+  }
 }
 
 function AuthForm() {
