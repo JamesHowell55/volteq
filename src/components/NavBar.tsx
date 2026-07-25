@@ -28,6 +28,9 @@ export default function NavBar() {
         <NavLink to={CONVERSIONS_LINK.path} className={({ isActive }) => (isActive ? 'active' : '')}>
           {CONVERSIONS_LINK.label}
         </NavLink>
+        <NavLink to="/guides" className={({ isActive }) => (isActive ? 'active' : '')}>
+          Guides
+        </NavLink>
         <NavLink to="/account" className={({ isActive }) => (isActive ? 'active' : '')}>
           {user ? 'Account' : 'Log in'}
         </NavLink>
@@ -57,6 +60,9 @@ export default function NavBar() {
           ))}
           <NavLink to={CONVERSIONS_LINK.path} className={({ isActive }) => (isActive ? 'active' : '')} onClick={() => setMobileOpen(false)}>
             {CONVERSIONS_LINK.label}
+          </NavLink>
+          <NavLink to="/guides" className={({ isActive }) => (isActive ? 'active' : '')} onClick={() => setMobileOpen(false)}>
+            Guides
           </NavLink>
           <NavLink to="/account" className={({ isActive }) => (isActive ? 'active' : '')} onClick={() => setMobileOpen(false)}>
             {user ? 'Account' : 'Log in'}

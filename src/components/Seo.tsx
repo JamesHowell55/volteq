@@ -61,21 +61,36 @@ export default function Seo() {
     upsertMeta('name', 'twitter:title', entry.title);
     upsertMeta('name', 'twitter:description', entry.description);
 
+    // Guide pages are editorial content, not a tool — describe them as an
+    // Article so search engines treat them like the reference reading they are,
+    // rather than the WebApplication schema used for the calculators.
+    const isGuide = pathname.startsWith('/guides/');
+    const name = entry.title.replace(` | ${SITE_NAME}`, '');
     upsertJsonLd(
       'seo-jsonld',
       entry.noindex
         ? null
-        : {
-            '@context': 'https://schema.org',
-            '@type': 'WebApplication',
-            name: entry.title.replace(` | ${SITE_NAME}`, ''),
-            description: entry.description,
-            url,
-            applicationCategory: 'UtilitiesApplication',
-            operatingSystem: 'Any (web-based)',
-            offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-            isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL },
-          },
+        : isGuide
+          ? {
+              '@context': 'https://schema.org',
+              '@type': 'TechArticle',
+              headline: name,
+              description: entry.description,
+              url,
+              publisher: { '@type': 'Organization', name: SITE_NAME, url: SITE_URL },
+              isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL },
+            }
+          : {
+              '@context': 'https://schema.org',
+              '@type': 'WebApplication',
+              name,
+              description: entry.description,
+              url,
+              applicationCategory: 'UtilitiesApplication',
+              operatingSystem: 'Any (web-based)',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+              isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL },
+            },
     );
   }, [pathname]);
 

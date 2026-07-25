@@ -26,6 +26,10 @@ import ConversionsCalculator from './pages/ConversionsCalculator';
 import ComingSoonCalculator from './pages/ComingSoonCalculator';
 import AccountPage from './pages/AccountPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import GuidesIndex from './pages/GuidesIndex';
+import Ipc2221Guide from './pages/guides/Ipc2221Guide';
+import Iec60664Guide from './pages/guides/Iec60664Guide';
+import Vdi2230Guide from './pages/guides/Vdi2230Guide';
 import { ThemeProvider } from './lib/ThemeContext';
 import { AuthProvider } from './lib/AuthContext';
 import { UnitSystemProvider } from './lib/UnitSystemContext';
@@ -76,6 +80,10 @@ function App() {
               <Route path="/pcb-trace-width" element={<PcbTraceCalculator />} />
               <Route path="/skin-depth" element={<SkinDepthCalculator />} />
               <Route path="/conversions" element={<ConversionsCalculator />} />
+              <Route path="/guides" element={<GuidesIndex />} />
+              <Route path="/guides/ipc-2221" element={<Ipc2221Guide />} />
+              <Route path="/guides/iec-60664-1" element={<Iec60664Guide />} />
+              <Route path="/guides/vdi-2230" element={<Vdi2230Guide />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               {placeholderLinks.map((link) => (

@@ -14,6 +14,7 @@ import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import {
   MATERIAL_GROUP_CTI,
   MATERIAL_GROUP_DESCRIPTION,
@@ -605,6 +606,7 @@ export default function CreepageClearanceCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/creepage-clearance" />
         <p className="note">
           Clearance uses IEC 60664-1 Table F.2 (verified against the standard's full text), with a choice of
           Case A (inhomogeneous field, always usable) or Case B (homogeneous field, smaller clearances but

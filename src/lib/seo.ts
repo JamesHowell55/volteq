@@ -1,4 +1,5 @@
 import { getCalculatorLinkByPath } from './navCategories';
+import { GUIDES_INDEX_PATH, getGuideByPath } from './guides';
 
 export const SITE_URL = 'https://volteq.io';
 export const SITE_NAME = 'Volteq';
@@ -31,9 +32,25 @@ const STATIC_ENTRIES: Record<string, SeoEntry> = {
   },
 };
 
+const GUIDES_INDEX_ENTRY: SeoEntry = {
+  title: `Engineering Standards, Explained — Reference Guides | ${SITE_NAME}`,
+  description:
+    'Plain-language guides to the engineering standards behind Volteq’s calculators — IPC-2221 PCB trace sizing, IEC 60664-1 creepage & clearance, VDI 2230 bolted-joint preload, and more — each linked to the calculator that implements it.',
+};
+
 export function getSeoForPath(pathname: string): SeoEntry {
   const staticEntry = STATIC_ENTRIES[pathname];
   if (staticEntry) return staticEntry;
+
+  if (pathname === GUIDES_INDEX_PATH) return GUIDES_INDEX_ENTRY;
+
+  const guide = getGuideByPath(pathname);
+  if (guide) {
+    return {
+      title: `${guide.seoTitle} | ${SITE_NAME}`,
+      description: guide.seoDescription,
+    };
+  }
 
   const link = getCalculatorLinkByPath(pathname);
   if (link && link.available) {

@@ -11,6 +11,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import {
   ALL_SIZES,
   ALL_PROPERTY_CLASSES,
@@ -1517,6 +1518,7 @@ export default function BoltedJointCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/bolted-joint" />
         <p className="note">
           Clamped-member stiffness uses the standard simplified two-cone (nut &amp; bolt) or single-cone (tapped/
           threaded-insert) frustum method — a 30° half-angle cone of compression spreading from each bearing face,

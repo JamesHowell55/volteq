@@ -10,6 +10,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import { MATERIALS } from '../lib/materials';
 import {
@@ -386,6 +387,7 @@ export default function PcbTraceCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/pcb-trace-width" />
         <p className="note">
           Current capacity, required trace width, and temperature rise come from the IPC-2221 (formerly
           IPC-D-275) empirical curve fit I = k·ΔT^0.44·A^0.725 (k = 0.048 external / 0.024 internal) — the same
