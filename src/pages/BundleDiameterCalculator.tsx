@@ -10,6 +10,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import BundleCrossSection, { type BundleWireVisual } from '../components/BundleCrossSection';
 import { renderBundleCrossSectionSvg } from '../lib/pdfDiagrams';
@@ -371,6 +372,7 @@ export default function BundleDiameterCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/harness-bundle-diameter" />
         <p className="note">
           Bundle diameter is computed two independent ways: a real 2D circle-packing algorithm (drives the
           cross-section diagram — a heuristic greedy tangent-placement packing, not a proven-optimal

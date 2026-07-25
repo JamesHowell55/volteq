@@ -41,6 +41,11 @@ import CmDmChokesGuide from './pages/guides/CmDmChokesGuide';
 import SicInverterLossGuide from './pages/guides/SicInverterLossGuide';
 import FieldOrientedControlGuide from './pages/guides/FieldOrientedControlGuide';
 import BoltGroupElasticGuide from './pages/guides/BoltGroupElasticGuide';
+import EulerBernoulliBeamsGuide from './pages/guides/EulerBernoulliBeamsGuide';
+import TorquePowerSpeedGuide from './pages/guides/TorquePowerSpeedGuide';
+import SeriesParallelCellsGuide from './pages/guides/SeriesParallelCellsGuide';
+import WireBundleDiameterGuide from './pages/guides/WireBundleDiameterGuide';
+import MilDtl38999Guide from './pages/guides/MilDtl38999Guide';
 import { ThemeProvider } from './lib/ThemeContext';
 import { AuthProvider } from './lib/AuthContext';
 import { UnitSystemProvider } from './lib/UnitSystemContext';
@@ -106,6 +111,11 @@ function App() {
               <Route path="/guides/sic-inverter-loss" element={<SicInverterLossGuide />} />
               <Route path="/guides/field-oriented-control" element={<FieldOrientedControlGuide />} />
               <Route path="/guides/bolt-group-elastic" element={<BoltGroupElasticGuide />} />
+              <Route path="/guides/euler-bernoulli-beams" element={<EulerBernoulliBeamsGuide />} />
+              <Route path="/guides/torque-power-speed" element={<TorquePowerSpeedGuide />} />
+              <Route path="/guides/series-parallel-cells" element={<SeriesParallelCellsGuide />} />
+              <Route path="/guides/wire-bundle-diameter" element={<WireBundleDiameterGuide />} />
+              <Route path="/guides/mil-dtl-38999" element={<MilDtl38999Guide />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               {placeholderLinks.map((link) => (

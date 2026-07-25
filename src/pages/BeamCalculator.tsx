@@ -17,6 +17,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import { useEntitlement } from '../lib/useEntitlement';
@@ -600,6 +601,7 @@ export default function BeamCalculator() {
 
       <div className="card">
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/beam-bending" />
         <p className="note">
           Assumes Euler-Bernoulli beam theory: a prismatic (uniform cross-section), linear-elastic, straight beam
           with small deflections, where plane sections remain plane. Statically determinate configurations (simply

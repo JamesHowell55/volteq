@@ -8,6 +8,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import { CELL_PRESETS, getCellPreset, solveBatteryPack } from '../lib/batteryPackPhysics';
 
 function fmt(n: number, digits = 2): string {
@@ -307,6 +308,7 @@ export default function BatteryPackSeriesParallelCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/battery-pack-series-parallel" />
         <p className="note">
           Standard series/parallel circuit combination applied to a single cell's spec: cells in series add
           voltage (and their internal resistances add), cells in parallel add capacity (and their internal

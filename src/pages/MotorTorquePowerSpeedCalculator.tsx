@@ -8,6 +8,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import { getCategory, convert } from '../lib/unitConversions';
 import { solveTorquePowerSpeed, torqueFromCurrent, electricalInputPower, type SolveFor } from '../lib/motorTorquePowerSpeedPhysics';
 
@@ -310,6 +311,7 @@ export default function MotorTorquePowerSpeedCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/speed-torque-power" />
         <p className="note">
           The core relationship P = T × ω (power = torque × angular velocity) is exact for any rotating
           shaft, independent of motor type. The optional torque-from-current cross-check (T = Kt × I) is

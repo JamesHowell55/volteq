@@ -177,6 +177,61 @@ export const GUIDES: GuideMeta[] = [
       'The elastic method for eccentrically-loaded bolt groups: direct + torsional shear, moment-driven tension, and its limits.',
     calculator: { label: 'Bolt Pattern Calculator', path: '/bolt-pattern' },
   },
+  {
+    slug: 'euler-bernoulli-beams',
+    title: "Beam Bending: Euler–Bernoulli Theory and Roark's Formulas",
+    standard: 'Beam Theory',
+    seoTitle: "Beam Bending Explained — Euler–Bernoulli Theory & Roark's Formulas",
+    seoDescription:
+      'A plain-language guide to beam bending: what Euler–Bernoulli theory assumes, the shear/moment/deflection chain, the difference between determinate and indeterminate beams, and where Roark\'s formulas come in.',
+    blurb:
+      'What Euler–Bernoulli theory assumes, the shear→moment→deflection chain, and determinate vs indeterminate beams.',
+    calculator: { label: 'Beam Bending Calculator', path: '/beam-bending' },
+  },
+  {
+    slug: 'torque-power-speed',
+    title: 'Torque, Power & Speed: The P = T·ω Relationship',
+    standard: 'P = T·ω',
+    seoTitle: 'Torque, Power & Speed Explained — the P = T·ω Relationship',
+    seoDescription:
+      'A plain-language guide to the torque–power–speed relationship P = T·ω: why it holds for any rotating shaft, the unit traps that catch people out, and how motor torque relates to current.',
+    blurb:
+      'Why P = T·ω holds for any rotating shaft, the unit traps, and how motor torque relates to current.',
+    calculator: { label: 'Speed / Torque / Power Calculator', path: '/speed-torque-power' },
+  },
+  {
+    slug: 'series-parallel-cells',
+    title: 'Battery Pack Configuration: What S×P Does to a Cell',
+    standard: 'Series / Parallel Cells',
+    seoTitle: 'Battery Pack Series/Parallel Explained — Voltage, Capacity & Resistance',
+    seoDescription:
+      'A plain-language guide to battery pack series/parallel (S×P) configuration: how cells in series add voltage, cells in parallel add capacity, how internal resistance combines, and what it means for sag.',
+    blurb:
+      'How series adds voltage, parallel adds capacity, how internal resistance combines, and what S×P means for voltage sag.',
+    calculator: { label: 'Battery Pack Series/Parallel Calculator', path: '/battery-pack-series-parallel' },
+  },
+  {
+    slug: 'wire-bundle-diameter',
+    title: 'Wire Bundle Diameter: Circle Packing and the Glenair Method',
+    standard: 'Glenair Bundle Method',
+    seoTitle: 'Wire Bundle Diameter Explained — Circle Packing & the Glenair Method',
+    seoDescription:
+      'A plain-language guide to estimating wire harness bundle diameter: the two approaches (2D circle packing and the Glenair multiplication-factor table), what coverings add, and why it\'s a planning estimate.',
+    blurb:
+      'The two ways to estimate harness bundle diameter — circle packing and the Glenair factor table — and what coverings add.',
+    calculator: { label: 'Harness Bundle Diameter Calculator', path: '/harness-bundle-diameter' },
+  },
+  {
+    slug: 'mil-dtl-38999',
+    title: 'MIL-DTL-38999 Connectors: Contact Sizes, Ratings & Pinouts',
+    standard: 'MIL-DTL-38999',
+    seoTitle: 'MIL-DTL-38999 Connectors Explained — Contact Sizes, Ratings & Pinouts',
+    seoDescription:
+      'A plain-language guide to MIL-DTL-38999 circular connectors: what the standard covers, how contact size sets current rating, shell/insert basics, and how a point-to-point harness pinout is laid out.',
+    blurb:
+      'What MIL-DTL-38999 covers, how contact size sets current rating, and how a point-to-point harness pinout is laid out.',
+    calculator: { label: 'Harness Designer', path: '/harness-designer' },
+  },
 ];
 
 export const GUIDES_INDEX_PATH = '/guides';

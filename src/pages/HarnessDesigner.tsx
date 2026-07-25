@@ -5,6 +5,7 @@ import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepDat
 import { useBranding } from '../lib/useBranding';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import HarnessSchematicDiagram from '../components/HarnessSchematicDiagram';
 import { renderHarnessSchematicSvg } from '../lib/pdfDiagrams';
 import { CONTACT_SIZE_SPECS, CONTACT_SIZES, type ContactSize } from '../lib/connectorLibrary';
@@ -423,6 +424,7 @@ export default function HarnessDesigner() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/harness-designer" />
         <p className="note">
           Contact-size current ratings are sourced from a real MIL-DTL-38999 Series III contact cross-reference
           catalog. Scope: one dominant contact size per connector with a direct user-entered pin count (no
