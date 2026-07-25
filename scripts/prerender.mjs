@@ -9,11 +9,16 @@
 // while keeping the module <script> so the SPA still boots and takes over.
 //
 // Routes come from dist/sitemap.xml — already the curated indexable set — so a
-// new page only needs a sitemap entry to be prerendered. Chromium comes from
-// puppeteer's bundled download on Vercel, or PUPPETEER_EXECUTABLE_PATH locally.
+// new page only needs a sitemap entry to be prerendered.
+//
+// Chromium: Vercel's build container is missing the system libs a normal
+// Chromium needs (libnspr4/libnss3/…), so we use @sparticuz/chromium (a build
+// that bundles them) driven by puppeteer-core. Set PUPPETEER_EXECUTABLE_PATH to
+// override with a local Chrome (e.g. for a non-Linux dev machine).
 
 import { preview } from 'vite';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,8 +45,21 @@ async function main() {
   const server = await preview({ preview: { port: 0 } });
   const base = server.resolvedUrls.local[0].replace(/\/$/, '');
 
+  // No on-screen rendering is needed for an HTML snapshot; skip the graphics
+  // stack so @sparticuz/chromium stays lean.
+  chromium.setGraphicsMode = false;
+  const localExec = process.env.PUPPETEER_EXECUTABLE_PATH;
+  // @sparticuz defaults include --single-process/--no-zygote, which are needed
+  // in the constrained Lambda *runtime* but crash Chromium in a normal
+  // container. This prerender runs in Vercel's full build VM (and locally), so
+  // drop them and let Chromium run multi-process.
+  const chromiumArgs = chromium.args.filter(
+    (a) => a !== '--single-process' && a !== '--no-zygote',
+  );
   const browser = await puppeteer.launch({
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: localExec ? ['--no-sandbox', '--disable-setuid-sandbox'] : chromiumArgs,
+    executablePath: localExec || (await chromium.executablePath()),
+    headless: true,
   });
 
   const failures = [];
