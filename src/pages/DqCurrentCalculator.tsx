@@ -5,6 +5,8 @@ import { toDisplay, unitLabel, UNIT_TORQUE } from '../lib/globalUnits';
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -150,6 +152,7 @@ export default function DqCurrentCalculator() {
   }, []);
 
   const saved = useSavedCalculations('dq-current');
+  const shareLink = useShareableLink(restoreInputs);
 
   const calculationSteps: CalcStepData[] = useMemo(() => {
     const steps: CalcStepData[] = [];
@@ -270,6 +273,8 @@ export default function DqCurrentCalculator() {
           </PremiumGate>
         </CalculatorActions>
       </div>
+
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
 
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}

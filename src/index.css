@@ -1019,3 +1019,15 @@ footer.site-footer {
   justify-content: flex-end;
   margin-top: 1rem;
 }
+
+.shared-calc-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--accent-glow);
+  border-color: var(--accent-border);
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+.shared-calc-banner .btn { flex-shrink: 0; }

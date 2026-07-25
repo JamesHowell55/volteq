@@ -5,6 +5,8 @@ import { toDisplay, fromDisplay, unitLabel, UNIT_STRESS } from '../lib/globalUni
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -52,6 +54,7 @@ export default function MohrsCircleCalculator() {
   }, []);
 
   const saved = useSavedCalculations('mohrs-circle');
+  const shareLink = useShareableLink(restoreInputs);
 
   const sameSign = result.sigma1MPa * result.sigma2MPa > 0;
 
@@ -169,6 +172,8 @@ export default function MohrsCircleCalculator() {
           </PremiumGate>
         </CalculatorActions>
       </div>
+
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
 
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}

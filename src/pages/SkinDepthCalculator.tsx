@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import SkinDepthCrossSection from '../components/SkinDepthCrossSection';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import InfoTooltip from '../components/InfoTooltip';
 import { useTheme } from '../lib/ThemeContext';
@@ -10,6 +11,7 @@ import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepDat
 import { renderSkinDepthCrossSectionSvg } from '../lib/pdfDiagrams';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
 import {
@@ -80,6 +82,7 @@ export default function SkinDepthCalculator() {
   }, []);
 
   const saved = useSavedCalculations('skin-depth');
+  const shareLink = useShareableLink(restoreInputs);
 
   const rhoAtTemp = useMemo(() => resistivityAtOhmMm2PerM(rho20, beta, tempC), [rho20, beta, tempC]);
   const skinDepthMmValue = useMemo(() => skinDepthMm(rhoAtTemp, frequencyHz, muR), [rhoAtTemp, frequencyHz, muR]);
@@ -185,6 +188,8 @@ export default function SkinDepthCalculator() {
           </PremiumGate>
         </CalculatorActions>
       </div>
+
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
 
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}

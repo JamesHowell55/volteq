@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import PaschenChart from '../components/PaschenChart';
 import ComparisonGrid from '../components/ComparisonGrid';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import InfoTooltip from '../components/InfoTooltip';
 import { useTheme } from '../lib/ThemeContext';
@@ -10,6 +11,7 @@ import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepDat
 import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
 import {
@@ -129,6 +131,7 @@ export default function CreepageClearanceCalculator() {
   }, []);
 
   const saved = useSavedCalculations('creepage-clearance');
+  const shareLink = useShareableLink(restoreInputs);
 
   const altitudeM = altitudeUnit === 'ft' ? altitude / FT_PER_M : altitude;
   const altCorrection = useMemo(() => getAltitudeCorrectionFactor(altitudeM), [altitudeM]);
@@ -336,6 +339,8 @@ export default function CreepageClearanceCalculator() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div style={{ marginBottom: '1.25rem' }}>
         <PremiumGate feature="Advanced: ED-332 HVDC calculations">
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: 'var(--text-2)', fontWeight: 600 }}>
@@ -499,58 +504,62 @@ export default function CreepageClearanceCalculator() {
         <div>
           <div className="card">
             <div className="card-title">Reference tables</div>
-            <p className="note" style={{ marginBottom: '0.9rem' }}>
-              Required distances (including the {safetyFactorPercent}% factor of safety) at your current working voltage and
-              HV-to-chassis voltage, across every Material Group / Case × Pollution Degree combination — the highlighted
-              cell matches your current selection.
-            </p>
-            <ComparisonGrid
-              title={`Creepage @ Working Voltage (${fmt(workingVoltage, 0)} V)`}
-              rowLabels={MATERIAL_GROUPS}
-              colLabels={GRID_COL_LABELS}
-              getValue={creepageGridValue(workingVoltage)}
-              highlightRow={creepageHighlightRow}
-              highlightCol={creepageHighlightCol}
-              unit={unitLabel(unitSystem, UNIT_LENGTH)}
-            />
-            <ComparisonGrid
-              title={`Creepage @ HV to Chassis (${fmt(hvToChassis, 0)} V)`}
-              rowLabels={MATERIAL_GROUPS}
-              colLabels={GRID_COL_LABELS}
-              getValue={creepageGridValue(hvToChassis)}
-              highlightRow={creepageHighlightRow}
-              highlightCol={creepageHighlightCol}
-              unit={unitLabel(unitSystem, UNIT_LENGTH)}
-            />
-            <ComparisonGrid
-              title={`Clearance @ Working Voltage (${fmt(workingVoltageForClearanceKV, 3)} kV, altitude-adjusted)`}
-              rowLabels={['Case A', 'Case B']}
-              colLabels={GRID_COL_LABELS}
-              getValue={clearanceGridValue(workingVoltageForClearanceKV)}
-              highlightRow={clearanceHighlightRow}
-              highlightCol={clearanceHighlightCol}
-              unit={unitLabel(unitSystem, UNIT_LENGTH)}
-            />
-            <ComparisonGrid
-              title={`Clearance @ HV to Chassis (${fmt(hvToChassisForClearanceKV, 3)} kV, altitude-adjusted)`}
-              rowLabels={['Case A', 'Case B']}
-              colLabels={GRID_COL_LABELS}
-              getValue={clearanceGridValue(hvToChassisForClearanceKV)}
-              highlightRow={clearanceHighlightRow}
-              highlightCol={clearanceHighlightCol}
-              unit={unitLabel(unitSystem, UNIT_LENGTH)}
-            />
-            {ed332ClearanceVoltageKV !== null && (
-              <ComparisonGrid
-                title={`Clearance @ ED-332 Transient (${fmt(ed332TransientV, 0)} VDC, ${fmt(ed332ClearanceVoltageKV, 3)} kV altitude-adjusted)`}
-                rowLabels={['Case A', 'Case B']}
-                colLabels={GRID_COL_LABELS}
-                getValue={clearanceGridValue(ed332ClearanceVoltageKV)}
-                highlightRow={clearanceHighlightRow}
-                highlightCol={clearanceHighlightCol}
-                unit={unitLabel(unitSystem, UNIT_LENGTH)}
-              />
-            )}
+            <PremiumGate feature="Reference tables">
+              <>
+                <p className="note" style={{ marginBottom: '0.9rem' }}>
+                  Required distances (including the {safetyFactorPercent}% factor of safety) at your current working voltage and
+                  HV-to-chassis voltage, across every Material Group / Case × Pollution Degree combination — the highlighted
+                  cell matches your current selection.
+                </p>
+                <ComparisonGrid
+                  title={`Creepage @ Working Voltage (${fmt(workingVoltage, 0)} V)`}
+                  rowLabels={MATERIAL_GROUPS}
+                  colLabels={GRID_COL_LABELS}
+                  getValue={creepageGridValue(workingVoltage)}
+                  highlightRow={creepageHighlightRow}
+                  highlightCol={creepageHighlightCol}
+                  unit={unitLabel(unitSystem, UNIT_LENGTH)}
+                />
+                <ComparisonGrid
+                  title={`Creepage @ HV to Chassis (${fmt(hvToChassis, 0)} V)`}
+                  rowLabels={MATERIAL_GROUPS}
+                  colLabels={GRID_COL_LABELS}
+                  getValue={creepageGridValue(hvToChassis)}
+                  highlightRow={creepageHighlightRow}
+                  highlightCol={creepageHighlightCol}
+                  unit={unitLabel(unitSystem, UNIT_LENGTH)}
+                />
+                <ComparisonGrid
+                  title={`Clearance @ Working Voltage (${fmt(workingVoltageForClearanceKV, 3)} kV, altitude-adjusted)`}
+                  rowLabels={['Case A', 'Case B']}
+                  colLabels={GRID_COL_LABELS}
+                  getValue={clearanceGridValue(workingVoltageForClearanceKV)}
+                  highlightRow={clearanceHighlightRow}
+                  highlightCol={clearanceHighlightCol}
+                  unit={unitLabel(unitSystem, UNIT_LENGTH)}
+                />
+                <ComparisonGrid
+                  title={`Clearance @ HV to Chassis (${fmt(hvToChassisForClearanceKV, 3)} kV, altitude-adjusted)`}
+                  rowLabels={['Case A', 'Case B']}
+                  colLabels={GRID_COL_LABELS}
+                  getValue={clearanceGridValue(hvToChassisForClearanceKV)}
+                  highlightRow={clearanceHighlightRow}
+                  highlightCol={clearanceHighlightCol}
+                  unit={unitLabel(unitSystem, UNIT_LENGTH)}
+                />
+                {ed332ClearanceVoltageKV !== null && (
+                  <ComparisonGrid
+                    title={`Clearance @ ED-332 Transient (${fmt(ed332TransientV, 0)} VDC, ${fmt(ed332ClearanceVoltageKV, 3)} kV altitude-adjusted)`}
+                    rowLabels={['Case A', 'Case B']}
+                    colLabels={GRID_COL_LABELS}
+                    getValue={clearanceGridValue(ed332ClearanceVoltageKV)}
+                    highlightRow={clearanceHighlightRow}
+                    highlightCol={clearanceHighlightCol}
+                    unit={unitLabel(unitSystem, UNIT_LENGTH)}
+                  />
+                )}
+              </>
+            </PremiumGate>
           </div>
 
           <div className="card">
@@ -560,27 +569,31 @@ export default function CreepageClearanceCalculator() {
                 {paschenPass ? 'consistent' : 'check design'}
               </span>
             </div>
-            <p className="note" style={{ marginBottom: '0.9rem' }}>
-              First-principles physics, independent of the IEC table: air's dielectric breakdown voltage depends on
-              the pressure × gap product (p·d). At {fmt(altitude, 0)} {altitudeUnit} the local pressure is{' '}
-              {fmt(pressureKPa, 2)} kPa (vs {fmt(101.325, 2)} kPa at sea level) — for a {fmtU(paschenGapMm, unitSystem, UNIT_LENGTH, 3)} {unitLabel(unitSystem, UNIT_LENGTH)} gap,
-              p·d = {fmt(paschenPd, 3)} kPa·cm, well above the Paschen minimum ({fmt(paschenMinPd, 3)} kPa·cm),
-              so breakdown voltage still falls monotonically as altitude increases — the IEC table's assumption
-              holds throughout this range.
-            </p>
-            <div className="result-grid">
-              <div className="result-tile">
-                <div className="label">Breakdown voltage at this gap</div>
-                <div className={`value ${paschenPass ? 'pos' : 'neg'}`}>{fmt(paschenV, 0)}<span className="unit">V</span></div>
-              </div>
-              <div className="result-tile">
-                <div className="label">Min. gap for working voltage</div>
-                <div className="value">{fmtU(paschenMinGapMm, unitSystem, UNIT_LENGTH, 3)}<span className="unit">{unitLabel(unitSystem, UNIT_LENGTH)}</span></div>
-              </div>
-            </div>
-            <div style={{ marginTop: '1rem' }}>
-              <PaschenChart currentPd={paschenPd} currentV={paschenV} requiredV={workingVoltage} />
-            </div>
+            <PremiumGate feature="Paschen's Law cross-check">
+              <>
+                <p className="note" style={{ marginBottom: '0.9rem' }}>
+                  First-principles physics, independent of the IEC table: air's dielectric breakdown voltage depends on
+                  the pressure × gap product (p·d). At {fmt(altitude, 0)} {altitudeUnit} the local pressure is{' '}
+                  {fmt(pressureKPa, 2)} kPa (vs {fmt(101.325, 2)} kPa at sea level) — for a {fmtU(paschenGapMm, unitSystem, UNIT_LENGTH, 3)} {unitLabel(unitSystem, UNIT_LENGTH)} gap,
+                  p·d = {fmt(paschenPd, 3)} kPa·cm, well above the Paschen minimum ({fmt(paschenMinPd, 3)} kPa·cm),
+                  so breakdown voltage still falls monotonically as altitude increases — the IEC table's assumption
+                  holds throughout this range.
+                </p>
+                <div className="result-grid">
+                  <div className="result-tile">
+                    <div className="label">Breakdown voltage at this gap</div>
+                    <div className={`value ${paschenPass ? 'pos' : 'neg'}`}>{fmt(paschenV, 0)}<span className="unit">V</span></div>
+                  </div>
+                  <div className="result-tile">
+                    <div className="label">Min. gap for working voltage</div>
+                    <div className="value">{fmtU(paschenMinGapMm, unitSystem, UNIT_LENGTH, 3)}<span className="unit">{unitLabel(unitSystem, UNIT_LENGTH)}</span></div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '1rem' }}>
+                  <PaschenChart currentPd={paschenPd} currentV={paschenV} requiredV={workingVoltage} />
+                </div>
+              </>
+            </PremiumGate>
           </div>
 
         </div>

@@ -4,6 +4,7 @@ import BusbarLengthProfile from '../components/BusbarLengthProfile';
 import ConductionStackCrossSection from '../components/ConductionStackCrossSection';
 import TimeSeriesChart from '../components/TimeSeriesChart';
 import SavedCalculations from '../components/SavedCalculations';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import { useTheme } from '../lib/ThemeContext';
 import { useUnitSystem } from '../lib/UnitSystemContext';
 import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH, UNIT_LENGTH_M, UNIT_AREA, UNIT_TEMP, UNIT_TEMP_DELTA } from '../lib/globalUnits';
@@ -13,6 +14,7 @@ import { renderLengthProfileSvg, renderCrossSectionSvg, renderConductionStackSvg
 import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
 import { MATERIALS, EMISSIVITY_PRESETS, COATING_PRESETS, TIM_PRESETS, COOLANT_PRESETS } from '../lib/materials';
@@ -246,6 +248,7 @@ export default function BusbarCalculator() {
   }, []);
 
   const saved = useSavedCalculations('busbar');
+  const shareLink = useShareableLink(restoreInputs);
 
   const updateSection = (id: string, patch: Partial<SingleSectionInput>) => {
     setSections(prev => prev.map(s => (s.id === id ? { ...s, ...patch } : s)));
@@ -261,6 +264,11 @@ export default function BusbarCalculator() {
     if (entitlementLoading || isPremium) return;
     setSections(prev => (prev.length > FREE_SECTION_LIMIT ? prev.slice(0, FREE_SECTION_LIMIT) : prev));
     setDurationMode(prev => (prev === 'profile' ? 'continuous' : prev));
+    // Also closes the loophole where a `?share=` link (or an old save) carries
+    // conduction-cooling / custom-material state set by a premium user.
+    setSections(prev => (prev.some(s => s.coolingEnabled) ? prev.map(s => ({ ...s, coolingEnabled: false })) : prev));
+    setMetalMaterialId(prev => (prev === 'custom' ? 'aluminium' : prev));
+    setCoolantPresetId(prev => (prev === 'custom' ? 'water' : prev));
   }, [isPremium, entitlementLoading]);
 
   const updateStep = (id: string, patch: Partial<LoadStep>) => {
@@ -671,6 +679,8 @@ export default function BusbarCalculator() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}
         <div>
@@ -717,10 +727,12 @@ export default function BusbarCalculator() {
                       <input autoComplete="off" type="number" min={0.001} value={toDisplay(s.length, unitSystem, UNIT_LENGTH)} onChange={e => updateSection(s.id, { length: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-end' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--text-2)', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                        <input type="checkbox" checked={!!s.coolingEnabled} onChange={e => updateSection(s.id, { coolingEnabled: e.target.checked })} style={{ width: 'auto' }} />
-                        Apply conduction
-                      </label>
+                      <PremiumGate feature="Conduction cooling">
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--text-2)', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                          <input type="checkbox" checked={!!s.coolingEnabled} onChange={e => updateSection(s.id, { coolingEnabled: e.target.checked })} style={{ width: 'auto' }} />
+                          Apply conduction
+                        </label>
+                      </PremiumGate>
                       {coatingThicknessMm > 0 && (
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--text-2)', fontWeight: 400, whiteSpace: 'nowrap' }}>
                           <input type="checkbox" checked={s.coatedEnabled ?? true} onChange={e => updateSection(s.id, { coatedEnabled: e.target.checked })} style={{ width: 'auto' }} />

@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTheme } from '../lib/ThemeContext';
+import { useEntitlement } from '../lib/useEntitlement';
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import PremiumGate from '../components/PremiumGate';
@@ -14,8 +15,10 @@ import {
 } from '../lib/harnessDesignerLogic';
 import { buildSchematicLayout } from '../lib/harnessSchematicLayout';
 import { WIRE_CONSTRUCTIONS, getWireConstruction } from '../lib/harnessWireTypes';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
 
 function destValue(d: Destination): string {
   if (d.kind === 'unused') return 'unused';
@@ -51,7 +54,20 @@ export default function HarnessDesigner() {
   const [activeId, setActiveId] = useState('c1');
   const active = connectors.find((c) => c.id === activeId) ?? connectors[0];
 
+  const { isPremium, loading: entitlementLoading } = useEntitlement();
+  const FREE_CONNECTOR_LIMIT = 2;
+  const maxConnectors = isPremium ? 8 : FREE_CONNECTOR_LIMIT;
+
+  // Safety net: trim back to the free connector limit if entitlement lapses
+  // mid-session, or a `?share=` link / old save carries a premium user's
+  // larger harness (mirrors the same guard on BusbarCalculator's sections).
+  useEffect(() => {
+    if (entitlementLoading || isPremium) return;
+    setConnectors((prev) => (prev.length > FREE_CONNECTOR_LIMIT ? prev.slice(0, FREE_CONNECTOR_LIMIT) : prev));
+  }, [isPremium, entitlementLoading]);
+
   const addConnector = () => {
+    if (connectors.length >= maxConnectors) return;
     const id = `c${nextConnectorId++}`;
     const conn = makeDefaultConnector(id, `CON${connectors.length + 1}`, '16');
     setConnectors((cs) => [...cs, conn]);
@@ -153,6 +169,7 @@ export default function HarnessDesigner() {
   }, []);
 
   const saved = useSavedCalculations('harness-designer');
+  const shareLink = useShareableLink(restoreInputs);
 
   const layout = useMemo(() => buildSchematicLayout(connectors), [connectors]);
 
@@ -228,10 +245,18 @@ export default function HarnessDesigner() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div className="card">
         <div className="card-title">
           <span><span className="step-num">1</span>Connectors</span>
-          <button className="btn small" onClick={addConnector} disabled={connectors.length >= 8}>+ Add connector</button>
+          {!isPremium && connectors.length >= FREE_CONNECTOR_LIMIT ? (
+            <PremiumGate feature="More than 2 connectors">
+              <button className="btn small" onClick={addConnector}>+ Add connector</button>
+            </PremiumGate>
+          ) : (
+            <button className="btn small" onClick={addConnector} disabled={connectors.length >= maxConnectors}>+ Add connector</button>
+          )}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
           {connectors.map((c) => (

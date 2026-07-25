@@ -1,10 +1,13 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTheme } from '../lib/ThemeContext';
+import { useEntitlement } from '../lib/useEntitlement';
 import { useUnitSystem } from '../lib/UnitSystemContext';
 import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH, UNIT_TEMP } from '../lib/globalUnits';
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -319,6 +322,16 @@ export default function DcLinkCalculator() {
   }, []);
 
   const saved = useSavedCalculations('dc-link');
+  const shareLink = useShareableLink(restoreInputs);
+
+  const { isPremium, loading: entitlementLoading } = useEntitlement();
+  // Safety net: fall back to catalog/no-optimizer if entitlement lapses
+  // mid-session, or a `?share=` link / old save carries a premium user's mode.
+  useEffect(() => {
+    if (entitlementLoading || isPremium) return;
+    setCapMode((prev) => (prev === 'custom' ? 'catalog' : prev));
+    setOptimizeEnabled((prev) => (prev ? false : prev));
+  }, [isPremium, entitlementLoading]);
 
   const calculationSteps: CalcStepData[] = useMemo(() => {
     const steps: CalcStepData[] = [
@@ -452,6 +465,8 @@ export default function DcLinkCalculator() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div className="two-col">
         {/* LEFT — inputs */}
         <div>
@@ -519,18 +534,20 @@ export default function DcLinkCalculator() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-2">
-                <div className="field"><label>Capacitance (µF)</label>{seriesNum(customCapUf, setCustomCapUf, { step: 1, min: 0.1 })}</div>
-                <div className="field"><label>Rated voltage (VDC)</label>{seriesNum(customRatedV, setCustomRatedV, { step: 10, min: 1 })}</div>
-                <div className="field"><label>ESR (mΩ)</label>{seriesNum(customEsrMohm, setCustomEsrMohm, { step: 0.1, min: 0.01 })}</div>
-                <div className="field"><label>ESL (nH)</label>{seriesNum(customEslNh, setCustomEslNh, { step: 1, min: 0 })}</div>
-                <div className="field"><label>Irms rating (A)</label>{seriesNum(customIrmsA, setCustomIrmsA, { step: 1, min: 0.1 })}</div>
-                <div className="field"><label>Thermal resistance Rth (°C/W)</label>{seriesNum(customRthCW, setCustomRthCW, { step: 0.5, min: 0.1 })}</div>
-                <div className="field"><label>Part number (reference)</label><input autoComplete="off" value={customPartRef} onChange={(e) => setCustomPartRef(e.target.value)} placeholder="e.g. supplier P/N" /></div>
-                <div className="field"><label>Box length L (mm)</label>{seriesNum(customLmm, setCustomLmm, { step: 1, min: 1 })}</div>
-                <div className="field"><label>Box thickness T (mm)</label>{seriesNum(customTmm, setCustomTmm, { step: 1, min: 1 })}</div>
-                <div className="field"><label>Box height H (mm)</label>{seriesNum(customHmm, setCustomHmm, { step: 1, min: 1 })}</div>
-              </div>
+              <PremiumGate feature="Custom capacitor entry">
+                <div className="grid grid-2">
+                  <div className="field"><label>Capacitance (µF)</label>{seriesNum(customCapUf, setCustomCapUf, { step: 1, min: 0.1 })}</div>
+                  <div className="field"><label>Rated voltage (VDC)</label>{seriesNum(customRatedV, setCustomRatedV, { step: 10, min: 1 })}</div>
+                  <div className="field"><label>ESR (mΩ)</label>{seriesNum(customEsrMohm, setCustomEsrMohm, { step: 0.1, min: 0.01 })}</div>
+                  <div className="field"><label>ESL (nH)</label>{seriesNum(customEslNh, setCustomEslNh, { step: 1, min: 0 })}</div>
+                  <div className="field"><label>Irms rating (A)</label>{seriesNum(customIrmsA, setCustomIrmsA, { step: 1, min: 0.1 })}</div>
+                  <div className="field"><label>Thermal resistance Rth (°C/W)</label>{seriesNum(customRthCW, setCustomRthCW, { step: 0.5, min: 0.1 })}</div>
+                  <div className="field"><label>Part number (reference)</label><input autoComplete="off" value={customPartRef} onChange={(e) => setCustomPartRef(e.target.value)} placeholder="e.g. supplier P/N" /></div>
+                  <div className="field"><label>Box length L (mm)</label>{seriesNum(customLmm, setCustomLmm, { step: 1, min: 1 })}</div>
+                  <div className="field"><label>Box thickness T (mm)</label>{seriesNum(customTmm, setCustomTmm, { step: 1, min: 1 })}</div>
+                  <div className="field"><label>Box height H (mm)</label>{seriesNum(customHmm, setCustomHmm, { step: 1, min: 1 })}</div>
+                </div>
+              </PremiumGate>
             )}
           </div>
 
@@ -578,10 +595,12 @@ export default function DcLinkCalculator() {
               </span>
             </div>
             <div className="field">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <input type="checkbox" checked={optimizeEnabled} onChange={(e) => setOptimizeEnabled(e.target.checked)} style={{ width: 'auto' }} />
-                Propose an optimum bank
-              </label>
+              <PremiumGate feature="Package optimizer">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <input type="checkbox" checked={optimizeEnabled} onChange={(e) => setOptimizeEnabled(e.target.checked)} style={{ width: 'auto' }} />
+                  Propose an optimum bank
+                </label>
+              </PremiumGate>
             </div>
             {optimizeEnabled && (
               <div className="grid grid-2">

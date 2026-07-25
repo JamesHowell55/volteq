@@ -4,13 +4,16 @@ import { useUnitSystem } from '../lib/UnitSystemContext';
 import { toDisplay, fromDisplay, unitLabel, UNIT_TEMP } from '../lib/globalUnits';
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
+import { useEntitlement } from '../lib/useEntitlement';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
 import InfoTooltip from '../components/InfoTooltip';
 import LossBreakdownBars, { type LossBar } from '../components/LossBreakdownBars';
 import { renderLossBreakdownSvg, type PdfLossBar } from '../lib/pdfDiagrams';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
 import { SIC_DEVICE_PRESETS, getSicDevice, inverterStructureLabel, type SicDevicePreset } from '../lib/sicDevices';
 import { fundamentalElectricalFreqHz } from '../lib/chokePhysics';
 import {
@@ -62,6 +65,8 @@ export default function MosfetLossCalculator() {
   const [motorSpeedRpm, setMotorSpeedRpm] = useState(6000);
   const f1Hz = fundamentalElectricalFreqHz(motorSpeedRpm, motorPolePairs);
 
+  const { isPremium, loading: entitlementLoading } = useEntitlement();
+
   // Analysis mode
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('single');
   const [phaseCurrentArms, setPhaseCurrentArms] = useState(300);
@@ -105,6 +110,15 @@ export default function MosfetLossCalculator() {
   }, []);
 
   const saved = useSavedCalculations('mosfet-loss');
+  const shareLink = useShareableLink(restoreInputs);
+
+  // Safety net: bail out of Duty cycle profile mode if entitlement lapses
+  // mid-session, or a `?share=` link / old save carries a premium user's mode
+  // (mirrors the same guard on BusbarCalculator's Load profile mode).
+  useEffect(() => {
+    if (entitlementLoading || isPremium) return;
+    setAnalysisMode((prev) => (prev === 'duty' ? 'single' : prev));
+  }, [isPremium, entitlementLoading]);
 
   // Reset current to something sensible when switching to a small discrete device
   useEffect(() => {
@@ -333,6 +347,8 @@ export default function MosfetLossCalculator() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}
         <div>
@@ -491,7 +507,9 @@ export default function MosfetLossCalculator() {
             <div className="card-title"><span><span className="step-num">3</span>Load / simulation</span></div>
             <div className="segmented">
               <button className={analysisMode === 'single' ? 'active' : ''} onClick={() => setAnalysisMode('single')}>Single point</button>
-              <button className={analysisMode === 'duty' ? 'active' : ''} onClick={() => setAnalysisMode('duty')}>Duty cycle profile</button>
+              <PremiumGate feature="Duty cycle profile">
+                <button className={analysisMode === 'duty' ? 'active' : ''} onClick={() => setAnalysisMode('duty')}>Duty cycle profile</button>
+              </PremiumGate>
             </div>
 
             {analysisMode === 'single' ? (
@@ -599,7 +617,9 @@ export default function MosfetLossCalculator() {
 
           <div className="card">
             <div className="card-title">Loss breakdown</div>
-            <LossBreakdownBars bars={lossBars} />
+            <PremiumGate feature="Loss breakdown chart">
+              <LossBreakdownBars bars={lossBars} />
+            </PremiumGate>
           </div>
 
           {isDuty && (

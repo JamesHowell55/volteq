@@ -5,6 +5,8 @@ import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH, UNIT_LENGTH_M, UNIT_TEM
 import { exportReportToPdf, type ReportSection, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -115,6 +117,7 @@ export default function CableWireSizingCalculator() {
   }, []);
 
   const saved = useSavedCalculations('cable-wire-sizing');
+  const shareLink = useShareableLink(restoreInputs);
 
   const effectiveInsulation = useMemo(
     () => (insulationId === 'custom' ? { ...insulation, maxTempC: customMaxTempC, thermalConductivity: customThermalConductivity } : insulation),
@@ -286,6 +289,8 @@ export default function CableWireSizingCalculator() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}
         <div>
@@ -354,16 +359,18 @@ export default function CableWireSizingCalculator() {
                 <span className="hint">{effectiveInsulation.label}</span>
               </div>
               {insulationId === 'custom' && (
-                <>
-                  <div className="field">
-                    <label>Max conductor temperature ({unitLabel(unitSystem, UNIT_TEMP)})</label>
-                    <input autoComplete="off" type="number" value={toDisplay(customMaxTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setCustomMaxTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                  </div>
-                  <div className="field">
-                    <label>Insulation thermal conductivity (W/m·K)</label>
-                    <input autoComplete="off" type="number" step={0.01} value={customThermalConductivity} onChange={(e) => setCustomThermalConductivity(Number(e.target.value))} />
-                  </div>
-                </>
+                <PremiumGate feature="Custom insulation class">
+                  <>
+                    <div className="field">
+                      <label>Max conductor temperature ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                      <input autoComplete="off" type="number" value={toDisplay(customMaxTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setCustomMaxTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
+                    </div>
+                    <div className="field">
+                      <label>Insulation thermal conductivity (W/m·K)</label>
+                      <input autoComplete="off" type="number" step={0.01} value={customThermalConductivity} onChange={(e) => setCustomThermalConductivity(Number(e.target.value))} />
+                    </div>
+                  </>
+                </PremiumGate>
               )}
               <div className="field">
                 <label>Insulation wall thickness ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
@@ -397,7 +404,9 @@ export default function CableWireSizingCalculator() {
                   ))}
                 </div>
                 {ambientPresetId === 'custom' ? (
-                  <input autoComplete="off" type="number" style={{ marginTop: '0.5rem' }} value={toDisplay(customAmbientTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setCustomAmbientTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
+                  <PremiumGate feature="Custom ambient temperature">
+                    <input autoComplete="off" type="number" style={{ marginTop: '0.5rem' }} value={toDisplay(customAmbientTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setCustomAmbientTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
+                  </PremiumGate>
                 ) : (
                   <span className="hint">{ambientPreset.label}</span>
                 )}

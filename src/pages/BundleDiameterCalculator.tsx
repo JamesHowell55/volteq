@@ -5,6 +5,8 @@ import { toDisplay, unitLabel, UNIT_LENGTH, UNIT_AREA } from '../lib/globalUnits
 import { exportReportToPdf, type ReportSection, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -72,6 +74,7 @@ export default function BundleDiameterCalculator() {
   }, []);
 
   const saved = useSavedCalculations('bundle-diameter');
+  const shareLink = useShareableLink(restoreInputs);
 
   const allWires = useMemo(() => {
     const list: { id: number; diameterMm: number; construction: ReturnType<typeof getWireConstruction>; groupLabel: string; awg: number }[] = [];
@@ -238,6 +241,8 @@ export default function BundleDiameterCalculator() {
           </PremiumGate>
         </CalculatorActions>
       </div>
+
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
 
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}

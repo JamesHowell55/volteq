@@ -13,10 +13,13 @@ import {
 } from '../lib/beamPhysics';
 import BeamDiagram from '../components/BeamDiagram';
 import BeamResponseChart from '../components/BeamResponseChart';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import { useEntitlement } from '../lib/useEntitlement';
 import { useBranding } from '../lib/useBranding';
 import { useTheme } from '../lib/ThemeContext';
 import { deriveAccentOnLight } from '../lib/theme';
@@ -49,7 +52,9 @@ export default function BeamCalculator() {
   const { unitSystem } = useUnitSystem();
   const { accentHex } = useTheme();
   const branding = useBranding();
+  const { isPremium } = useEntitlement();
   const saved = useSavedCalculations('beam-bending');
+  const FREE_LOAD_LIMIT = 2;
 
   const [length, setLength] = useState(2000);
   const [supportType, setSupportType] = useState<BeamSupportType>('simply-supported');
@@ -77,7 +82,8 @@ export default function BeamCalculator() {
   const [loads, setLoads] = useState<BeamLoad[]>([newLoad('point-force', 1000, 5000)]);
   const [chartExpanded, setChartExpanded] = useState<ChartKind>(null);
 
-  const addLoad = (kind: LoadKind) => setLoads((prev) => [...prev, newLoad(kind, Math.round(length / 2), kind === 'distributed' ? 5 : 5000)]);
+  const maxLoads = isPremium ? 20 : FREE_LOAD_LIMIT;
+  const addLoad = (kind: LoadKind) => setLoads((prev) => (prev.length >= maxLoads ? prev : [...prev, newLoad(kind, Math.round(length / 2), kind === 'distributed' ? 5 : 5000)]));
   const updateLoad = (id: string, patch: Partial<BeamLoad>) => setLoads((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   const removeLoad = (id: string) => setLoads((prev) => prev.filter((l) => l.id !== id));
 
@@ -185,6 +191,8 @@ export default function BeamCalculator() {
       );
     }
   }, []);
+
+  const shareLink = useShareableLink(restoreInputs);
 
   const handleExportPdf = () => {
     if (!result) return;
@@ -312,6 +320,8 @@ export default function BeamCalculator() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div className="two-col">
         <div>
           <div className="card">
@@ -373,10 +383,12 @@ export default function BeamCalculator() {
                 </select>
               </div>
               {materialId === 'custom' && (
-                <div className="field">
-                  <label>Young's modulus E ({unitLabel(unitSystem, UNIT_MODULUS)})</label>
-                  <input type="number" min={0.001} value={toDisplay(customE, unitSystem, UNIT_MODULUS)} onChange={(e) => setCustomE(fromDisplay(Number(e.target.value), unitSystem, UNIT_MODULUS))} />
-                </div>
+                <PremiumGate feature="Custom material properties">
+                  <div className="field">
+                    <label>Young's modulus E ({unitLabel(unitSystem, UNIT_MODULUS)})</label>
+                    <input type="number" min={0.001} value={toDisplay(customE, unitSystem, UNIT_MODULUS)} onChange={(e) => setCustomE(fromDisplay(Number(e.target.value), unitSystem, UNIT_MODULUS))} />
+                  </div>
+                </PremiumGate>
               )}
               <div className="field">
                 <label>Section shape</label>
@@ -420,16 +432,18 @@ export default function BeamCalculator() {
                 </>
               )}
               {sectionShape === 'custom' && (
-                <>
-                  <div className="field">
-                    <label>Second moment of area I ({unitLabel(unitSystem, UNIT_AREA_MOMENT)})</label>
-                    <input type="number" min={0.001} value={toDisplay(customI, unitSystem, UNIT_AREA_MOMENT)} onChange={(e) => setCustomI(fromDisplay(Number(e.target.value), unitSystem, UNIT_AREA_MOMENT))} />
-                  </div>
-                  <div className="field">
-                    <label>Extreme fibre distance c ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
-                    <input type="number" min={0.001} value={toDisplay(customC, unitSystem, UNIT_LENGTH)} onChange={(e) => setCustomC(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
-                  </div>
-                </>
+                <PremiumGate feature="Custom section properties">
+                  <>
+                    <div className="field">
+                      <label>Second moment of area I ({unitLabel(unitSystem, UNIT_AREA_MOMENT)})</label>
+                      <input type="number" min={0.001} value={toDisplay(customI, unitSystem, UNIT_AREA_MOMENT)} onChange={(e) => setCustomI(fromDisplay(Number(e.target.value), unitSystem, UNIT_AREA_MOMENT))} />
+                    </div>
+                    <div className="field">
+                      <label>Extreme fibre distance c ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
+                      <input type="number" min={0.001} value={toDisplay(customC, unitSystem, UNIT_LENGTH)} onChange={(e) => setCustomC(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
+                    </div>
+                  </>
+                </PremiumGate>
               )}
 
               <div className="field">
@@ -446,11 +460,17 @@ export default function BeamCalculator() {
           <div className="card">
             <div className="card-title">
               <span><span className="step-num">3</span>Loads</span>
-              <span style={{ display: 'flex', gap: '0.4rem' }}>
-                <button className="btn small" onClick={() => addLoad('point-force')}>+ Point force</button>
-                <button className="btn small" onClick={() => addLoad('point-moment')}>+ Moment</button>
-                <button className="btn small" onClick={() => addLoad('distributed')}>+ Distributed</button>
-              </span>
+              {!isPremium && loads.length >= FREE_LOAD_LIMIT ? (
+                <PremiumGate feature="More than 2 loads">
+                  <button className="btn small" onClick={() => addLoad('point-force')}>+ Point force</button>
+                </PremiumGate>
+              ) : (
+                <span style={{ display: 'flex', gap: '0.4rem' }}>
+                  <button className="btn small" onClick={() => addLoad('point-force')}>+ Point force</button>
+                  <button className="btn small" onClick={() => addLoad('point-moment')}>+ Moment</button>
+                  <button className="btn small" onClick={() => addLoad('distributed')}>+ Distributed</button>
+                </span>
+              )}
             </div>
             {loads.length === 0 && <p className="hint">Add at least one load.</p>}
             {loads.map((l, i) => (

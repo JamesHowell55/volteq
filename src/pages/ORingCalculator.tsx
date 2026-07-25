@@ -5,6 +5,8 @@ import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH, UNIT_TEMP, UNIT_PRESSUR
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -249,6 +251,7 @@ export default function ORingCalculator() {
   }, []);
 
   const saved = useSavedCalculations('o-ring');
+  const shareLink = useShareableLink(restoreInputs);
 
   // ---- Reusable toleranced-dimension input ----
   function DimInput({ label, dim, onChange, isoKind, hint }: {
@@ -281,6 +284,22 @@ export default function ORingCalculator() {
               {dim.fit}: {resolved.upper >= 0 ? '+' : ''}{fmtU(resolved.upper, unitSystem, UNIT_LENGTH, 4)} / {resolved.lower >= 0 ? '+' : ''}{fmtU(resolved.lower, unitSystem, UNIT_LENGTH, 4)} {lenUnit}
             </span>
           </>
+        ) : isoKind !== null ? (
+          // A custom-± override of a dimension that also has an ISO-fit preset — the
+          // premium path. (When isoKind is null there's no ISO alternative at all, so
+          // that case — below — stays free; it's the only way to enter that dimension.)
+          <PremiumGate feature="Custom ± tolerance">
+            <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', alignItems: 'center' }}>
+              <span className="hint">+</span>
+              <input autoComplete="off" type="number" min={0} step={0.01}
+                value={toDisplay(dim.plus, unitSystem, UNIT_LENGTH)}
+                onChange={(e) => onChange({ ...dim, mode: 'custom', plus: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+              <span className="hint">−</span>
+              <input autoComplete="off" type="number" min={0} step={0.01}
+                value={toDisplay(dim.minus, unitSystem, UNIT_LENGTH)}
+                onChange={(e) => onChange({ ...dim, mode: 'custom', minus: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+            </div>
+          </PremiumGate>
         ) : (
           <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', alignItems: 'center' }}>
             <span className="hint">+</span>
@@ -460,6 +479,8 @@ export default function ORingCalculator() {
           </PremiumGate>
         </CalculatorActions>
       </div>
+
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
 
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}

@@ -3,6 +3,8 @@ import { useTheme } from '../lib/ThemeContext';
 import { exportReportToPdf, type ReportSection, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -59,6 +61,7 @@ export default function BatteryPackSeriesParallelCalculator() {
   }, []);
 
   const saved = useSavedCalculations('battery-pack');
+  const shareLink = useShareableLink(restoreInputs);
 
   const cell = useMemo(
     () => ({ ...preset, nominalVoltage, capacityAh, internalResistanceMOhm, massG, maxContinuousDischargeC }),
@@ -185,6 +188,8 @@ export default function BatteryPackSeriesParallelCalculator() {
           </PremiumGate>
         </CalculatorActions>
       </div>
+
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
 
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}

@@ -6,6 +6,8 @@ import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepDat
 import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -226,13 +228,16 @@ export default function BoltedJointCalculator() {
   }, []);
 
   const saved = useSavedCalculations('bolted-joint');
+  const shareLink = useShareableLink(restoreInputs);
 
   const [advancedMode, setAdvancedMode] = useState(false);
   // Safety net: force advancedMode off if entitlement lapses (e.g. a subscription
   // expires) while the toggle was already on, regardless of stale local state.
   useEffect(() => {
     if (!isPremium && advancedMode) setAdvancedMode(false);
-  }, [isPremium, advancedMode]);
+    if (!isPremium && useSeparateBearingFriction) setUseSeparateBearingFriction(false);
+    if (!isPremium && propertyClassId === 'custom') setPropertyClassId('8.8');
+  }, [isPremium, advancedMode, useSeparateBearingFriction, propertyClassId]);
   const [headWasherOverride, setHeadWasherOverride] = useState<WasherOverrideState>(EMPTY_WASHER_OVERRIDE);
   const [nutWasherOverride, setNutWasherOverride] = useState<WasherOverrideState>(EMPTY_WASHER_OVERRIDE);
   const [nutTorqueOverride, setNutTorqueOverride] = useState<number | ''>('');
@@ -722,6 +727,8 @@ export default function BoltedJointCalculator() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div style={{ marginBottom: '1.25rem' }}>
         <PremiumGate feature="Advanced: override component data">
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: 'var(--text-2)', fontWeight: 600 }}>
@@ -780,16 +787,18 @@ export default function BoltedJointCalculator() {
                 <span className="hint">ISO 898-1 via designation formula (tensile=1st digit×100, proof=tensile×2nd digit/10); SAE J429 typical published values.</span>
               </div>
               {propertyClassId === 'custom' && (
-                <div className="grid grid-2" style={{ gridColumn: '1 / -1' }}>
-                  <div className="field">
-                    <label>Custom tensile strength ({unitLabel(unitSystem, UNIT_STRESS)})</label>
-                    <input autoComplete="off" type="number" min={0.01} value={toDisplay(customTensileMPa, unitSystem, UNIT_STRESS)} onChange={(e) => setCustomTensileMPa(fromDisplay(Number(e.target.value), unitSystem, UNIT_STRESS))} />
+                <PremiumGate feature="Custom property class">
+                  <div className="grid grid-2" style={{ gridColumn: '1 / -1' }}>
+                    <div className="field">
+                      <label>Custom tensile strength ({unitLabel(unitSystem, UNIT_STRESS)})</label>
+                      <input autoComplete="off" type="number" min={0.01} value={toDisplay(customTensileMPa, unitSystem, UNIT_STRESS)} onChange={(e) => setCustomTensileMPa(fromDisplay(Number(e.target.value), unitSystem, UNIT_STRESS))} />
+                    </div>
+                    <div className="field">
+                      <label>Custom proof strength ({unitLabel(unitSystem, UNIT_STRESS)})</label>
+                      <input autoComplete="off" type="number" min={0.01} value={toDisplay(customProofMPa, unitSystem, UNIT_STRESS)} onChange={(e) => setCustomProofMPa(fromDisplay(Number(e.target.value), unitSystem, UNIT_STRESS))} />
+                    </div>
                   </div>
-                  <div className="field">
-                    <label>Custom proof strength ({unitLabel(unitSystem, UNIT_STRESS)})</label>
-                    <input autoComplete="off" type="number" min={0.01} value={toDisplay(customProofMPa, unitSystem, UNIT_STRESS)} onChange={(e) => setCustomProofMPa(fromDisplay(Number(e.target.value), unitSystem, UNIT_STRESS))} />
-                  </div>
-                </div>
+                </PremiumGate>
               )}
               <div className="field" style={{ gridColumn: '1 / -1' }}>
                 <label>
@@ -1041,10 +1050,12 @@ export default function BoltedJointCalculator() {
               </div>
               <div className="field">
                 <label>&nbsp;</label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-2)', fontWeight: 400, marginBottom: '0.3rem' }}>
-                  <input type="checkbox" checked={useSeparateBearingFriction} onChange={(e) => setUseSeparateBearingFriction(e.target.checked)} style={{ width: 'auto' }} />
-                  Advanced: separate bearing-face friction
-                </label>
+                <PremiumGate feature="Advanced: separate bearing-face friction">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-2)', fontWeight: 400, marginBottom: '0.3rem' }}>
+                    <input type="checkbox" checked={useSeparateBearingFriction} onChange={(e) => setUseSeparateBearingFriction(e.target.checked)} style={{ width: 'auto' }} />
+                    Advanced: separate bearing-face friction
+                  </label>
+                </PremiumGate>
                 {useSeparateBearingFriction && (
                   <>
                     <select value={bearingFrictionPresetId} onChange={(e) => setBearingFrictionPresetId(e.target.value)}>

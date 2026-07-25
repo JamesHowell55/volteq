@@ -5,6 +5,8 @@ import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH, UNIT_TEMP } from '../li
 import { exportReportToPdf, type ReportSection, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -74,6 +76,7 @@ export default function PcbTraceCalculator() {
   }, []);
 
   const saved = useSavedCalculations('pcb-trace-width');
+  const shareLink = useShareableLink(restoreInputs);
 
   const input: PcbTraceInput = useMemo(
     () => ({ mode, layer, thicknessMm, ambientTempC, maxBoardTempC, lengthMm, widthMm, currentA, deltaTC }),
@@ -216,6 +219,8 @@ export default function PcbTraceCalculator() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}
         <div>
@@ -263,10 +268,12 @@ export default function PcbTraceCalculator() {
                 <span className="hint">{fmt(thicknessMm, 4)} mm ({fmt(mmToMils(thicknessMm), 2)} mil) thick</span>
               </div>
               {copperWeightId === 'custom' && (
-                <div className="field">
-                  <label>Custom copper weight (oz/ft²)</label>
-                  <input autoComplete="off" type="number" min={0.1} step={0.1} value={customOz} onChange={(e) => setCustomOz(Number(e.target.value))} />
-                </div>
+                <PremiumGate feature="Custom copper weight">
+                  <div className="field">
+                    <label>Custom copper weight (oz/ft²)</label>
+                    <input autoComplete="off" type="number" min={0.1} step={0.1} value={customOz} onChange={(e) => setCustomOz(Number(e.target.value))} />
+                  </div>
+                </PremiumGate>
               )}
             </div>
           </div>

@@ -295,7 +295,7 @@ export default function AccountPage() {
         <div className="page-header">
           <div className="eyebrow">● Account</div>
           <h1>Log in or sign up</h1>
-          <p>Manage your Volteq account and premium features (PDF export, custom report branding, advanced calculation modes).</p>
+          <p>Manage your Volteq account and premium features (PDF export, custom report branding, saving calculations, custom material/component entry, advanced calculation modes, and standards-reference tables).</p>
         </div>
         <AuthForm />
       </div>

@@ -5,6 +5,8 @@ import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH, UNIT_FORCE, UNIT_MOMENT
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData, type ReportGridTable } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -178,6 +180,7 @@ export default function BoltPatternCalculator() {
   }, []);
 
   const saved = useSavedCalculations('bolt-pattern');
+  const shareLink = useShareableLink(restoreInputs);
 
   const calculationSteps: CalcStepData[] = useMemo(() => {
     const steps: CalcStepData[] = [];
@@ -328,6 +331,8 @@ export default function BoltPatternCalculator() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}
         <div>
@@ -410,27 +415,29 @@ export default function BoltPatternCalculator() {
             )}
 
             {patternType === 'custom' && (
-              <>
-                <div className="card-title" style={{ marginTop: '0.5rem' }}>
-                  <span style={{ fontSize: '0.8rem' }}>Coordinates ({lenUnit})</span>
-                  <button className="btn small" onClick={addCustomPoint}>+ Point</button>
-                </div>
-                {customPoints.length === 0 && <p className="hint">Add at least 2 points.</p>}
-                {customPoints.map((p, i) => (
-                  <div className="step-row" key={p.id} style={{ gridTemplateColumns: '28px 1fr 1fr auto' }}>
-                    <div className="bar-index">{i + 1}</div>
-                    <div className="field">
-                      <label>x</label>
-                      <input autoComplete="off" type="number" value={toDisplay(p.xMm, unitSystem, UNIT_LENGTH)} onChange={(e) => updateCustomPoint(p.id, { xMm: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
-                    </div>
-                    <div className="field">
-                      <label>y</label>
-                      <input autoComplete="off" type="number" value={toDisplay(p.yMm, unitSystem, UNIT_LENGTH)} onChange={(e) => updateCustomPoint(p.id, { yMm: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
-                    </div>
-                    <button className="btn small danger" onClick={() => removeCustomPoint(p.id)}>Remove</button>
+              <PremiumGate feature="Custom bolt pattern">
+                <>
+                  <div className="card-title" style={{ marginTop: '0.5rem' }}>
+                    <span style={{ fontSize: '0.8rem' }}>Coordinates ({lenUnit})</span>
+                    <button className="btn small" onClick={addCustomPoint}>+ Point</button>
                   </div>
-                ))}
-              </>
+                  {customPoints.length === 0 && <p className="hint">Add at least 2 points.</p>}
+                  {customPoints.map((p, i) => (
+                    <div className="step-row" key={p.id} style={{ gridTemplateColumns: '28px 1fr 1fr auto' }}>
+                      <div className="bar-index">{i + 1}</div>
+                      <div className="field">
+                        <label>x</label>
+                        <input autoComplete="off" type="number" value={toDisplay(p.xMm, unitSystem, UNIT_LENGTH)} onChange={(e) => updateCustomPoint(p.id, { xMm: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+                      </div>
+                      <div className="field">
+                        <label>y</label>
+                        <input autoComplete="off" type="number" value={toDisplay(p.yMm, unitSystem, UNIT_LENGTH)} onChange={(e) => updateCustomPoint(p.id, { yMm: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+                      </div>
+                      <button className="btn small danger" onClick={() => removeCustomPoint(p.id)}>Remove</button>
+                    </div>
+                  ))}
+                </>
+              </PremiumGate>
             )}
 
             {!geometry.bendingResistant && geometry.count > 1 && (
@@ -477,10 +484,12 @@ export default function BoltPatternCalculator() {
                 </select>
               </div>
               {frictionPresetId === 'custom' && (
-                <div className="field">
-                  <label>Custom μ</label>
-                  <input autoComplete="off" type="number" min={0.01} step={0.01} value={customMu} onChange={(e) => setCustomMu(Number(e.target.value))} />
-                </div>
+                <PremiumGate feature="Custom friction">
+                  <div className="field">
+                    <label>Custom μ</label>
+                    <input autoComplete="off" type="number" min={0.01} step={0.01} value={customMu} onChange={(e) => setCustomMu(Number(e.target.value))} />
+                  </div>
+                </PremiumGate>
               )}
               <div className="field" style={{ gridColumn: '1 / -1' }}>
                 <label>Preload entry</label>

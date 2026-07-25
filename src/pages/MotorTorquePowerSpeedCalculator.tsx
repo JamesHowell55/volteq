@@ -3,6 +3,8 @@ import { useTheme } from '../lib/ThemeContext';
 import { exportReportToPdf, type ReportSection, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -64,6 +66,7 @@ export default function MotorTorquePowerSpeedCalculator() {
   }, []);
 
   const saved = useSavedCalculations('motor-torque-power-speed');
+  const shareLink = useShareableLink(restoreInputs);
 
   const torqueNmGiven = useMemo(() => convert('torque', torqueUnit, 'nm', torqueValue), [torqueUnit, torqueValue]);
   const powerWGiven = useMemo(() => convert('power', powerUnit, 'w', powerValue), [powerUnit, powerValue]);
@@ -184,6 +187,8 @@ export default function MotorTorquePowerSpeedCalculator() {
         </CalculatorActions>
       </div>
 
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
+
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}
         <div>
@@ -234,26 +239,32 @@ export default function MotorTorquePowerSpeedCalculator() {
 
           <div className="card">
             <div className="card-title"><span><span className="step-num">3</span>Cross-check: torque from current (optional, PM motor)</span></div>
-            <div className="grid grid-2">
-              <div className="field">
-                <label>Current (A)</label>
-                <input autoComplete="off" type="number" min={0} value={currentA} onChange={(e) => setCurrentA(Number(e.target.value))} />
-              </div>
-              <div className="field">
-                <label>Torque constant Kt (N·m/A)</label>
-                <input autoComplete="off" type="number" min={0} step={0.01} value={torqueConstant} onChange={(e) => setTorqueConstant(Number(e.target.value))} />
-              </div>
-            </div>
-            <span className="hint">Leave current at 0 to skip this cross-check. Assumes an ideal PM machine (T = Kt × I), valid below magnetic saturation.</span>
+            <PremiumGate feature="Cross-check: torque from current">
+              <>
+                <div className="grid grid-2">
+                  <div className="field">
+                    <label>Current (A)</label>
+                    <input autoComplete="off" type="number" min={0} value={currentA} onChange={(e) => setCurrentA(Number(e.target.value))} />
+                  </div>
+                  <div className="field">
+                    <label>Torque constant Kt (N·m/A)</label>
+                    <input autoComplete="off" type="number" min={0} step={0.01} value={torqueConstant} onChange={(e) => setTorqueConstant(Number(e.target.value))} />
+                  </div>
+                </div>
+                <span className="hint">Leave current at 0 to skip this cross-check. Assumes an ideal PM machine (T = Kt × I), valid below magnetic saturation.</span>
+              </>
+            </PremiumGate>
           </div>
 
           <div className="card">
             <div className="card-title"><span><span className="step-num">4</span>Electrical input power (optional)</span></div>
-            <div className="field">
-              <label>Efficiency (%)</label>
-              <input autoComplete="off" type="number" min={0} max={100} step={0.1} value={efficiencyPercent} onChange={(e) => setEfficiencyPercent(Number(e.target.value))} />
-              <span className="hint">Leave at 0 to skip. Assumes motoring operation: electrical input = mechanical output / efficiency.</span>
-            </div>
+            <PremiumGate feature="Electrical input power">
+              <div className="field">
+                <label>Efficiency (%)</label>
+                <input autoComplete="off" type="number" min={0} max={100} step={0.1} value={efficiencyPercent} onChange={(e) => setEfficiencyPercent(Number(e.target.value))} />
+                <span className="hint">Leave at 0 to skip. Assumes motoring operation: electrical input = mechanical output / efficiency.</span>
+              </div>
+            </PremiumGate>
           </div>
         </div>
 

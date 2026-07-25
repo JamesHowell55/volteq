@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { useSavedCalculations } from '../lib/useSavedCalculations';
+import { encodeShareState } from '../lib/shareLink';
+import PremiumGate from './PremiumGate';
 
 // The top-right action stack on every calculator page: the (premium) Export PDF
-// button passed in as children, with a "Save calculation" button beneath it.
-// Saving opens a small modal to name the calculation, then confirms it was
-// stored and is available in the Account section — replacing the old inline
-// save box at the bottom of the page.
+// button passed in as children, a free "Share" button, and a "Save calculation"
+// button beneath it. Saving opens a small modal to name the calculation, then
+// confirms it was stored and is available in the Account section — replacing
+// the old inline save box at the bottom of the page.
 
 interface Props {
   saved: ReturnType<typeof useSavedCalculations>;
@@ -15,6 +17,7 @@ interface Props {
 }
 
 type Phase = 'idle' | 'naming' | 'saving' | 'done' | 'error';
+type SharePhase = 'idle' | 'copied' | 'too-large' | 'unsupported';
 
 export default function CalculatorActions({ saved, getInputs, children }: Props) {
   const navigate = useNavigate();
@@ -22,9 +25,23 @@ export default function CalculatorActions({ saved, getInputs, children }: Props)
   const [label, setLabel] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [savedName, setSavedName] = useState('');
+  const [sharePhase, setSharePhase] = useState<SharePhase>('idle');
 
   const open = () => { setLabel(''); setErrorMsg(''); setPhase('naming'); };
   const close = () => setPhase('idle');
+
+  const doShare = async () => {
+    const encoded = encodeShareState(getInputs());
+    if (!encoded) { setSharePhase('too-large'); return; }
+    const url = `${window.location.origin}${window.location.pathname}?share=${encoded}`;
+    if (!navigator.clipboard) { setSharePhase('unsupported'); return; }
+    try {
+      await navigator.clipboard.writeText(url);
+      setSharePhase('copied');
+    } catch {
+      setSharePhase('unsupported');
+    }
+  };
 
   const doSave = async () => {
     const name = label.trim();
@@ -39,9 +56,46 @@ export default function CalculatorActions({ saved, getInputs, children }: Props)
   return (
     <div className="calc-actions">
       {children}
-      <button className="btn save-btn" onClick={open}>
-        <span aria-hidden="true">💾</span> Save calculation
+      <button className="btn save-btn" onClick={doShare}>
+        <span aria-hidden="true">🔗</span> Share
       </button>
+      <PremiumGate feature="Saving calculations">
+        <button className="btn save-btn" onClick={open}>
+          <span aria-hidden="true">💾</span> Save calculation
+        </button>
+      </PremiumGate>
+
+      {sharePhase !== 'idle' && (
+        <div className="save-modal-backdrop" onClick={() => setSharePhase('idle')} role="presentation">
+          <div className="save-modal-panel card" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            {sharePhase === 'copied' ? (
+              <>
+                <div className="card-title">✓ Link copied</div>
+                <p className="note">Anyone can open it and see this calculation, exactly as it is now — no sign-in required.</p>
+                <div className="save-modal-actions">
+                  <button className="btn primary" onClick={() => setSharePhase('idle')}>Done</button>
+                </div>
+              </>
+            ) : sharePhase === 'too-large' ? (
+              <>
+                <div className="card-title">Too large to share via link</div>
+                <p className="note" style={{ color: 'var(--neg)' }}>This calculation has too much data to fit in a shareable link. Try “Save calculation” instead.</p>
+                <div className="save-modal-actions">
+                  <button className="btn primary" onClick={() => setSharePhase('idle')}>Close</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="card-title">Couldn’t copy link</div>
+                <p className="note" style={{ color: 'var(--neg)' }}>Clipboard access isn’t available in this browser. Copy the page URL from the address bar instead.</p>
+                <div className="save-modal-actions">
+                  <button className="btn primary" onClick={() => setSharePhase('idle')}>Close</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {phase !== 'idle' && (
         <div className="save-modal-backdrop" onClick={close} role="presentation">

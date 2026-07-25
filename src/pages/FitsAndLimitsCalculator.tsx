@@ -1,10 +1,13 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTheme } from '../lib/ThemeContext';
 import { useUnitSystem } from '../lib/UnitSystemContext';
 import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH, UNIT_TEMP, UNIT_STRESS, UNIT_FORCE } from '../lib/globalUnits';
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
+import { useEntitlement } from '../lib/useEntitlement';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -148,6 +151,16 @@ export default function FitsAndLimitsCalculator() {
   }, []);
 
   const saved = useSavedCalculations('fits-and-limits');
+  const shareLink = useShareableLink(restoreInputs);
+
+  const { isPremium, loading: entitlementLoading } = useEntitlement();
+  // Safety net: fall back off a custom material if entitlement lapses
+  // mid-session, or a `?share=` link / old save carries a premium user's material.
+  useEffect(() => {
+    if (entitlementLoading || isPremium) return;
+    setShaftMaterialId((prev) => (prev === 'custom' ? 'steelAlloy4140' : prev));
+    setHubMaterialId((prev) => (prev === 'custom' ? 'steelGeneric' : prev));
+  }, [isPremium, entitlementLoading]);
 
   // ---- Reusable toleranced-fit input (nominal shared with the mating part) ----
   function TolInput({ label, tol, onChange, fitOptions, hint }: {
@@ -211,24 +224,26 @@ export default function FitsAndLimitsCalculator() {
           {FITS_MATERIAL_LIST.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         {materialId === 'custom' ? (
-          <div className="grid grid-2" style={{ marginTop: '0.5rem' }}>
-            <div className="field">
-              <label>E (GPa)</label>
-              <input autoComplete="off" type="number" min={0.1} value={custom.eGPa} onChange={(e) => onCustomChange({ ...custom, eGPa: Number(e.target.value) })} />
+          <PremiumGate feature="Custom material properties">
+            <div className="grid grid-2" style={{ marginTop: '0.5rem' }}>
+              <div className="field">
+                <label>E (GPa)</label>
+                <input autoComplete="off" type="number" min={0.1} value={custom.eGPa} onChange={(e) => onCustomChange({ ...custom, eGPa: Number(e.target.value) })} />
+              </div>
+              <div className="field">
+                <label>Poisson's ratio ν</label>
+                <input autoComplete="off" type="number" min={0} max={0.5} step={0.01} value={custom.nu} onChange={(e) => onCustomChange({ ...custom, nu: Number(e.target.value) })} />
+              </div>
+              <div className="field">
+                <label>Yield strength ({stressUnit})</label>
+                <input autoComplete="off" type="number" min={1} value={toDisplay(custom.yieldMPa, unitSystem, UNIT_STRESS)} onChange={(e) => onCustomChange({ ...custom, yieldMPa: fromDisplay(Number(e.target.value), unitSystem, UNIT_STRESS) })} />
+              </div>
+              <div className="field">
+                <label>CTE (×10⁻⁶/°C)</label>
+                <input autoComplete="off" type="number" min={0} step={0.1} value={custom.cte * 1e6} onChange={(e) => onCustomChange({ ...custom, cte: Number(e.target.value) * 1e-6 })} />
+              </div>
             </div>
-            <div className="field">
-              <label>Poisson's ratio ν</label>
-              <input autoComplete="off" type="number" min={0} max={0.5} step={0.01} value={custom.nu} onChange={(e) => onCustomChange({ ...custom, nu: Number(e.target.value) })} />
-            </div>
-            <div className="field">
-              <label>Yield strength ({stressUnit})</label>
-              <input autoComplete="off" type="number" min={1} value={toDisplay(custom.yieldMPa, unitSystem, UNIT_STRESS)} onChange={(e) => onCustomChange({ ...custom, yieldMPa: fromDisplay(Number(e.target.value), unitSystem, UNIT_STRESS) })} />
-            </div>
-            <div className="field">
-              <label>CTE (×10⁻⁶/°C)</label>
-              <input autoComplete="off" type="number" min={0} step={0.1} value={custom.cte * 1e6} onChange={(e) => onCustomChange({ ...custom, cte: Number(e.target.value) * 1e-6 })} />
-            </div>
-          </div>
+          </PremiumGate>
         ) : (
           <span className="hint">E = {fmt(mat.elasticModulusGPa, 1)} GPa · ν = {fmt(mat.poissonsRatio, 2)} · yield = {fmtU(mat.yieldStrengthMPa, unitSystem, UNIT_STRESS, 0)} {stressUnit} · CTE = {fmt(mat.thermalExpansionPerC * 1e6, 1)}×10⁻⁶/°C{mat.isBrittle ? ' · brittle — no true yield point' : ''}</span>
         )}
@@ -369,53 +384,55 @@ export default function FitsAndLimitsCalculator() {
             {!point.fitRetainedAtMin && <span className="tag" style={{ marginLeft: '0.5rem', background: 'rgba(248,113,113,0.12)', color: 'var(--neg)', borderColor: 'transparent' }}>fit lost at worst-case tolerance</span>}
           </span>
         </div>
-        <table className="data-table">
-          <thead><tr><th>Metric</th><th>Nominal</th><th>Min</th><th>Max</th></tr></thead>
-          <tbody>
-            <tr>
-              <td>Interference [{lenUnit}]</td>
-              {(['nom', 'min', 'max'] as const).map((k) => (
-                <td key={k} className={point.interferenceMm[k] <= 0 ? 'fail' : undefined}>{fmtU(point.interferenceMm[k], unitSystem, UNIT_LENGTH, 4)}</td>
-              ))}
-            </tr>
-            <tr>
-              <td>Contact Pressure [{stressUnit}]</td>
-              {(['nom', 'min', 'max'] as const).map((k) => (
-                <td key={k}>{fmtU(point.contactPressureMPa[k], unitSystem, UNIT_STRESS, 1)}</td>
-              ))}
-            </tr>
-            <tr>
-              <td>Hub Bore Hoop Stress [{stressUnit}]</td>
-              {(['nom', 'min', 'max'] as const).map((k) => (
-                <td key={k}>{fmtU(point.hubBore.hoopMPa[k], unitSystem, UNIT_STRESS, 1)}</td>
-              ))}
-            </tr>
-            <tr>
-              <td>- Safety Factor</td>
-              {(['nom', 'min', 'max'] as const).map((k) => (
-                <td key={k} className={point.hubBore.safetyFactor[k] >= safetyFactorTarget ? 'pass' : 'fail'}>{fmt(point.hubBore.safetyFactor[k], 2)}</td>
-              ))}
-            </tr>
-            <tr>
-              <td>Hub OD Hoop Stress [{stressUnit}]</td>
-              {(['nom', 'min', 'max'] as const).map((k) => (
-                <td key={k}>{fmtU(point.hubOuterHoopMPa[k], unitSystem, UNIT_STRESS, 1)}</td>
-              ))}
-            </tr>
-            <tr>
-              <td>{shaftLoc} Von Mises [{stressUnit}]</td>
-              {(['nom', 'min', 'max'] as const).map((k) => (
-                <td key={k}>{fmtU(shaftPoint.vonMisesMPa[k], unitSystem, UNIT_STRESS, 1)}</td>
-              ))}
-            </tr>
-            <tr>
-              <td>- Safety Factor</td>
-              {(['nom', 'min', 'max'] as const).map((k) => (
-                <td key={k} className={shaftPoint.safetyFactor[k] >= safetyFactorTarget ? 'pass' : 'fail'}>{fmt(shaftPoint.safetyFactor[k], 2)}</td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
+        <PremiumGate feature="Temperature-point breakdown">
+          <table className="data-table">
+            <thead><tr><th>Metric</th><th>Nominal</th><th>Min</th><th>Max</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Interference [{lenUnit}]</td>
+                {(['nom', 'min', 'max'] as const).map((k) => (
+                  <td key={k} className={point.interferenceMm[k] <= 0 ? 'fail' : undefined}>{fmtU(point.interferenceMm[k], unitSystem, UNIT_LENGTH, 4)}</td>
+                ))}
+              </tr>
+              <tr>
+                <td>Contact Pressure [{stressUnit}]</td>
+                {(['nom', 'min', 'max'] as const).map((k) => (
+                  <td key={k}>{fmtU(point.contactPressureMPa[k], unitSystem, UNIT_STRESS, 1)}</td>
+                ))}
+              </tr>
+              <tr>
+                <td>Hub Bore Hoop Stress [{stressUnit}]</td>
+                {(['nom', 'min', 'max'] as const).map((k) => (
+                  <td key={k}>{fmtU(point.hubBore.hoopMPa[k], unitSystem, UNIT_STRESS, 1)}</td>
+                ))}
+              </tr>
+              <tr>
+                <td>- Safety Factor</td>
+                {(['nom', 'min', 'max'] as const).map((k) => (
+                  <td key={k} className={point.hubBore.safetyFactor[k] >= safetyFactorTarget ? 'pass' : 'fail'}>{fmt(point.hubBore.safetyFactor[k], 2)}</td>
+                ))}
+              </tr>
+              <tr>
+                <td>Hub OD Hoop Stress [{stressUnit}]</td>
+                {(['nom', 'min', 'max'] as const).map((k) => (
+                  <td key={k}>{fmtU(point.hubOuterHoopMPa[k], unitSystem, UNIT_STRESS, 1)}</td>
+                ))}
+              </tr>
+              <tr>
+                <td>{shaftLoc} Von Mises [{stressUnit}]</td>
+                {(['nom', 'min', 'max'] as const).map((k) => (
+                  <td key={k}>{fmtU(shaftPoint.vonMisesMPa[k], unitSystem, UNIT_STRESS, 1)}</td>
+                ))}
+              </tr>
+              <tr>
+                <td>- Safety Factor</td>
+                {(['nom', 'min', 'max'] as const).map((k) => (
+                  <td key={k} className={shaftPoint.safetyFactor[k] >= safetyFactorTarget ? 'pass' : 'fail'}>{fmt(shaftPoint.safetyFactor[k], 2)}</td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </PremiumGate>
       </div>
     );
   }
@@ -439,6 +456,8 @@ export default function FitsAndLimitsCalculator() {
           </PremiumGate>
         </CalculatorActions>
       </div>
+
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
 
       <div className="two-col">
         {/* LEFT COLUMN — inputs */}

@@ -5,6 +5,8 @@ import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH, UNIT_AREA } from '../li
 import { exportReportToPdf, type ReportSection, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
+import { useShareableLink } from '../lib/useShareableLink';
+import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
@@ -160,6 +162,7 @@ export default function ChokeSizingCalculator() {
   }, []);
 
   const saved = useSavedCalculations('choke-sizing');
+  const shareLink = useShareableLink(restoreInputs);
 
   const materialEff = useMemo(
     () => ({ relativePermeability: mur, saturationFluxDensityT: bSat, lossCoeffK, lossExpFreq, lossExpFlux }),
@@ -408,6 +411,8 @@ export default function ChokeSizingCalculator() {
           </PremiumGate>
         </CalculatorActions>
       </div>
+
+      <SharedCalcBanner show={shareLink.isViewingShared} onDismiss={shareLink.dismiss} />
 
       <div className="card">
         <div className="segmented">
