@@ -133,6 +133,50 @@ export const GUIDES: GuideMeta[] = [
       'Why AC current crowds a conductor\'s surface, the skin-depth formula, and why it depends on material and frequency, not size.',
     calculator: { label: 'Skin Depth Calculator', path: '/skin-depth' },
   },
+  {
+    slug: 'cm-dm-chokes',
+    title: 'Common-Mode & Differential-Mode Choke Sizing, Explained',
+    standard: 'CM / DM Chokes',
+    seoTitle: 'Common-Mode & Differential-Mode Choke Sizing — Core, Saturation & Loss',
+    seoDescription:
+      'A plain-language guide to sizing EMC chokes for an inverter: the difference between common-mode and differential-mode, how core geometry sets inductance, and the saturation and Steinmetz core-loss limits.',
+    blurb:
+      'CM vs DM chokes, how core geometry sets inductance, and the saturation and Steinmetz core-loss limits that size them.',
+    calculator: { label: 'Choke Sizing Calculator', path: '/choke-sizing' },
+  },
+  {
+    slug: 'sic-inverter-loss',
+    title: 'SiC Inverter Losses: Conduction, Switching & Reverse Recovery',
+    standard: 'SiC Inverter Loss',
+    seoTitle: 'SiC Inverter Loss Explained — Conduction, Switching & Junction Temp',
+    seoDescription:
+      'A plain-language guide to where the losses go in a SiC traction inverter: conduction (Rds(on)), switching (Eon/Eoff scaling), reverse recovery, and how they set the junction temperature.',
+    blurb:
+      'Where a SiC inverter\'s losses go — conduction, switching, reverse recovery — and how they set junction temperature.',
+    calculator: { label: 'MOSFET Loss Calculator', path: '/mosfet-loss' },
+  },
+  {
+    slug: 'field-oriented-control',
+    title: 'Id/Iq & Field-Oriented Control: The Park Transform and MTPA',
+    standard: 'Field-Oriented Control',
+    seoTitle: 'Field-Oriented Control Explained — Id/Iq, Park Transform & MTPA',
+    seoDescription:
+      'A plain-language guide to PMSM field-oriented control: what the Clarke/Park transform does, how Id and Iq split torque into magnet and reluctance terms, and how maximum-torque-per-ampere works.',
+    blurb:
+      'What the Clarke/Park transform does, how Id/Iq split PMSM torque into magnet and reluctance terms, and how MTPA works.',
+    calculator: { label: 'Id/Iq Current Vector Calculator', path: '/id-iq-current' },
+  },
+  {
+    slug: 'bolt-group-elastic',
+    title: 'Bolt Pattern Analysis: The Elastic Method for Bolt Groups',
+    standard: 'Bolt Group (Elastic Method)',
+    seoTitle: 'Bolt Pattern Analysis Explained — Elastic Method for Bolt Groups',
+    seoDescription:
+      'A plain-language guide to bolt-group analysis by the elastic method: how direct and torsional shear combine, how out-of-plane moments distribute tension, and where the rigid-plate assumption holds.',
+    blurb:
+      'The elastic method for eccentrically-loaded bolt groups: direct + torsional shear, moment-driven tension, and its limits.',
+    calculator: { label: 'Bolt Pattern Calculator', path: '/bolt-pattern' },
+  },
 ];
 
 export const GUIDES_INDEX_PATH = '/guides';

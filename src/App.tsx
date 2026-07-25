@@ -37,6 +37,10 @@ import Iec60287Guide from './pages/guides/Iec60287Guide';
 import Iso286Guide from './pages/guides/Iso286Guide';
 import MohrsCircleGuide from './pages/guides/MohrsCircleGuide';
 import SkinEffectGuide from './pages/guides/SkinEffectGuide';
+import CmDmChokesGuide from './pages/guides/CmDmChokesGuide';
+import SicInverterLossGuide from './pages/guides/SicInverterLossGuide';
+import FieldOrientedControlGuide from './pages/guides/FieldOrientedControlGuide';
+import BoltGroupElasticGuide from './pages/guides/BoltGroupElasticGuide';
 import { ThemeProvider } from './lib/ThemeContext';
 import { AuthProvider } from './lib/AuthContext';
 import { UnitSystemProvider } from './lib/UnitSystemContext';
@@ -98,6 +102,10 @@ function App() {
               <Route path="/guides/iso-286" element={<Iso286Guide />} />
               <Route path="/guides/mohrs-circle" element={<MohrsCircleGuide />} />
               <Route path="/guides/skin-effect" element={<SkinEffectGuide />} />
+              <Route path="/guides/cm-dm-chokes" element={<CmDmChokesGuide />} />
+              <Route path="/guides/sic-inverter-loss" element={<SicInverterLossGuide />} />
+              <Route path="/guides/field-oriented-control" element={<FieldOrientedControlGuide />} />
+              <Route path="/guides/bolt-group-elastic" element={<BoltGroupElasticGuide />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               {placeholderLinks.map((link) => (

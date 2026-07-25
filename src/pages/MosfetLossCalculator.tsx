@@ -7,6 +7,7 @@ import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import LossBreakdownBars, { type LossBar } from '../components/LossBreakdownBars';
 import { renderLossBreakdownSvg, type PdfLossBar } from '../lib/pdfDiagrams';
@@ -657,6 +658,7 @@ export default function MosfetLossCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/mosfet-loss" />
         <p className="note">
           Standard analytical loss equations for a 2-level, 3-phase, sinusoidal-PWM voltage-source inverter.
           With synchronous rectification on (the normal way to run SiC), each leg device conducts half the

@@ -10,6 +10,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import BoltPatternDiagram from '../components/BoltPatternDiagram';
 import { ALL_SIZES, getFastenerSize, ALL_PROPERTY_CLASSES, getPropertyClass, FRICTION_PRESETS, getFrictionPreset, type HeadType } from '../lib/fastenerStandards';
@@ -683,6 +684,7 @@ export default function BoltPatternCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/bolt-pattern" />
         <p className="note">
           Bolt-group ("bolt pattern") analysis using the elastic method — the classic eccentrically-loaded fastener
           group treatment from Shigley's <i>Mechanical Engineering Design</i> (bolted/riveted joints loaded in

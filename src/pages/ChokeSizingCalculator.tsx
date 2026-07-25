@@ -10,6 +10,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import ChokeCoreCrossSection from '../components/ChokeCoreCrossSection';
 import { renderChokeCoreProfileSvg } from '../lib/pdfDiagrams';
@@ -761,6 +762,7 @@ export default function ChokeSizingCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/choke-sizing" />
         <p className="note">
           Toroidal and Oval/racetrack core geometry is exact closed-form from the entered dimensions.
           U-core and E-core geometry is approximated as a simple rectangular magnetic loop — real datasheets

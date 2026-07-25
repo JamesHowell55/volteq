@@ -10,6 +10,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import DqSpaceVectorDiagram from '../components/DqSpaceVectorDiagram';
 import {
@@ -494,6 +495,7 @@ export default function DqCurrentCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/id-iq-current" />
         <p className="note">
           Uses the amplitude-invariant Clarke/Park transform (the standard motor-control convention), so Id, Iq and
           the current magnitude are all peak-amplitude quantities and the d-q vector length equals the peak phase
