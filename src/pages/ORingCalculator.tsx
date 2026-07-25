@@ -10,6 +10,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import ORingGlandDiagram from '../components/ORingGlandDiagram';
 import { fitDeviationsMm, HOLE_FITS, SHAFT_FITS } from '../lib/isoFits';
@@ -841,6 +842,7 @@ export default function ORingCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/o-ring" />
         <p className="note">
           Method and limits follow the Trelleborg Sealing Solutions O-Rings design guide: initial-squeeze bands
           per cross-section and application (Figures 15/16 — chart-read values, so treat band edges as ±1%),

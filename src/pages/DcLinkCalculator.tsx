@@ -11,6 +11,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import DcLinkArrayDiagram from '../components/DcLinkArrayDiagram';
 import {
@@ -850,6 +851,7 @@ export default function DcLinkCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/dc-link" />
         <p className="note">
           Voltage rating: the capacitor's rated voltage is a PEAK limit for the (non-reversing) DC-link waveform —
           the KEMET datasheet states "the peak voltage shall not exceed the rated voltage VNDC," and TDK defines its

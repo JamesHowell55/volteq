@@ -56,6 +56,39 @@ export const GUIDES: GuideMeta[] = [
       'The cone-of-compression stiffness model and the T = K·F·d torque-preload relationship behind VDI 2230.',
     calculator: { label: 'Bolted Joint Calculator', path: '/bolted-joint' },
   },
+  {
+    slug: 'iso-6722',
+    title: 'EV Cable Sizing: What ISO 6722 Says About Ampacity',
+    standard: 'ISO 6722',
+    seoTitle: 'ISO 6722 EV Cable Sizing Explained — Ampacity & Temperature Class',
+    seoDescription:
+      'A plain-language guide to sizing EV powertrain cable to ISO 6722: how the insulation temperature class sets ampacity, why it comes from a heat balance rather than a table, and how bundling derates current.',
+    blurb:
+      'How ISO 6722 temperature classes set EV cable ampacity, why it comes from a heat balance, and how bundling derates it.',
+    calculator: { label: 'Cable & Wire Sizing Calculator', path: '/cable-sizing' },
+  },
+  {
+    slug: 'dc-link-ripple',
+    title: 'DC-Link Capacitor Ripple: The Kolar & Round Method',
+    standard: 'DC-Link Ripple',
+    seoTitle: 'DC-Link Capacitor Ripple Current Explained — Kolar & Round Formula',
+    seoDescription:
+      'A plain-language guide to DC-link capacitor ripple current in a three-phase inverter: the Kolar & Round closed-form expression, why ripple peaks near modulation index 0.6, and what actually sizes the capacitor.',
+    blurb:
+      'The Kolar & Round ripple-current formula for a three-phase inverter, why it peaks near M≈0.6, and what sizes the cap.',
+    calculator: { label: 'DC-Link Capacitor Sizing Calculator', path: '/dc-link' },
+  },
+  {
+    slug: 'as568-iso-3601',
+    title: 'O-Ring Gland Design: Squeeze, Stretch & Fill to AS568 / ISO 3601',
+    standard: 'AS568 / ISO 3601',
+    seoTitle: 'O-Ring Gland Design Explained — AS568 / ISO 3601 Squeeze & Fill',
+    seoDescription:
+      'A plain-language guide to O-ring gland design: what squeeze, stretch and gland fill mean, the AS568 / ISO 3601 size and tolerance system, and the limits that keep a seal working.',
+    blurb:
+      'Squeeze, stretch and gland fill explained, plus the AS568 / ISO 3601 size system and the limits that keep a seal working.',
+    calculator: { label: 'O-Ring Seal Calculator', path: '/o-ring' },
+  },
 ];
 
 export const GUIDES_INDEX_PATH = '/guides';
