@@ -33,6 +33,10 @@ import Vdi2230Guide from './pages/guides/Vdi2230Guide';
 import Iso6722Guide from './pages/guides/Iso6722Guide';
 import DcLinkRippleGuide from './pages/guides/DcLinkRippleGuide';
 import As568Iso3601Guide from './pages/guides/As568Iso3601Guide';
+import Iec60287Guide from './pages/guides/Iec60287Guide';
+import Iso286Guide from './pages/guides/Iso286Guide';
+import MohrsCircleGuide from './pages/guides/MohrsCircleGuide';
+import SkinEffectGuide from './pages/guides/SkinEffectGuide';
 import { ThemeProvider } from './lib/ThemeContext';
 import { AuthProvider } from './lib/AuthContext';
 import { UnitSystemProvider } from './lib/UnitSystemContext';
@@ -90,6 +94,10 @@ function App() {
               <Route path="/guides/iso-6722" element={<Iso6722Guide />} />
               <Route path="/guides/dc-link-ripple" element={<DcLinkRippleGuide />} />
               <Route path="/guides/as568-iso-3601" element={<As568Iso3601Guide />} />
+              <Route path="/guides/iec-60287" element={<Iec60287Guide />} />
+              <Route path="/guides/iso-286" element={<Iso286Guide />} />
+              <Route path="/guides/mohrs-circle" element={<MohrsCircleGuide />} />
+              <Route path="/guides/skin-effect" element={<SkinEffectGuide />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               {placeholderLinks.map((link) => (

@@ -11,6 +11,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import FitsDiagram from '../components/FitsDiagram';
 import { fitDeviationsMm, HOLE_FITS, INTERFERENCE_SHAFT_FITS } from '../lib/isoFits';
@@ -664,6 +665,7 @@ export default function FitsAndLimitsCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/fits-and-limits" />
         <p className="note">
           Contact pressure and stresses use classical Lamé thick-walled-cylinder theory for a shaft (solid or
           hollow) pressed into a hub of finite outer diameter, following the standard treatment in Shigley's

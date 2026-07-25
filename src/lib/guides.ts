@@ -89,6 +89,50 @@ export const GUIDES: GuideMeta[] = [
       'Squeeze, stretch and gland fill explained, plus the AS568 / ISO 3601 size system and the limits that keep a seal working.',
     calculator: { label: 'O-Ring Seal Calculator', path: '/o-ring' },
   },
+  {
+    slug: 'iec-60287',
+    title: 'Busbar Heating: Ampacity to IEC 60287 and Faults to IEC 60865-1',
+    standard: 'IEC 60287 / 60865-1',
+    seoTitle: 'Busbar Ampacity & Short-Circuit Heating — IEC 60287 / IEC 60865-1',
+    seoDescription:
+      'A plain-language guide to busbar thermal sizing: how continuous ampacity comes from an I²R heat balance with IEC 60287 skin effect, and how IEC 60865-1 sets the adiabatic short-circuit temperature rise.',
+    blurb:
+      'Continuous ampacity from an I²R heat balance (IEC 60287 skin effect) and adiabatic short-circuit heating per IEC 60865-1.',
+    calculator: { label: 'Busbar Calculator', path: '/busbar' },
+  },
+  {
+    slug: 'iso-286',
+    title: 'Interference Fits: ISO 286 Tolerances and Lamé Stresses',
+    standard: 'ISO 286',
+    seoTitle: 'Interference Fit Design Explained — ISO 286 Fits & Lamé Pressure',
+    seoDescription:
+      'A plain-language guide to press/shrink fits: how ISO 286 tolerance classes set the interference, how Lamé thick-cylinder theory turns it into contact pressure and stress, and why temperature can lose the fit.',
+    blurb:
+      'How ISO 286 fits set the interference and Lamé thick-cylinder theory turns it into contact pressure, stress and insertion force.',
+    calculator: { label: 'Fits & Limits Calculator', path: '/fits-and-limits' },
+  },
+  {
+    slug: 'mohrs-circle',
+    title: "Mohr's Circle & Plane-Stress Transformation, Explained",
+    standard: "Mohr's Circle",
+    seoTitle: "Mohr's Circle Explained — Plane Stress, Principal Stress & von Mises",
+    seoDescription:
+      "A plain-language guide to plane-stress transformation and Mohr's circle: principal stresses and their orientation, maximum shear, the absolute-vs-in-plane shear subtlety, and von Mises / Tresca equivalents.",
+    blurb:
+      'Plane-stress transformation and the Mohr\'s-circle construction: principal stresses, max shear, and von Mises / Tresca.',
+    calculator: { label: "Mohr's Circle Calculator", path: '/mohrs-circle' },
+  },
+  {
+    slug: 'skin-effect',
+    title: 'Skin Depth & Skin Effect: Why AC Current Crowds the Surface',
+    standard: 'Skin Effect',
+    seoTitle: 'Skin Depth Explained — Skin Effect, the δ Formula & AC Resistance',
+    seoDescription:
+      'A plain-language guide to skin effect and skin depth: why AC current concentrates near a conductor surface, the δ = √(ρ/(π·f·µ₀·µr)) formula, and why it depends on material and frequency, not conductor size.',
+    blurb:
+      'Why AC current crowds a conductor\'s surface, the skin-depth formula, and why it depends on material and frequency, not size.',
+    calculator: { label: 'Skin Depth Calculator', path: '/skin-depth' },
+  },
 ];
 
 export const GUIDES_INDEX_PATH = '/guides';

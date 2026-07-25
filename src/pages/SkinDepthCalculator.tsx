@@ -14,6 +14,7 @@ import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import {
   SKIN_DEPTH_MATERIALS,
   getSkinDepthMaterial,
@@ -318,6 +319,7 @@ export default function SkinDepthCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/skin-depth" />
         <p className="note">
           Skin effect is the tendency of AC current to concentrate near a conductor's surface as frequency
           rises, driven by the conductor's own changing magnetic field inducing eddy currents that oppose

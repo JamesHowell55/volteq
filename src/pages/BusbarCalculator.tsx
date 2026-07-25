@@ -17,6 +17,7 @@ import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import { MATERIALS, EMISSIVITY_PRESETS, COATING_PRESETS, TIM_PRESETS, COOLANT_PRESETS } from '../lib/materials';
 import {
   buildSingleBusbarNodes,
@@ -1310,6 +1311,7 @@ export default function BusbarCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/busbar" />
         <p className="note">
           Current is entered as RMS (root-mean-square) throughout — continuous, fault, and every load-profile step —
           and used directly as I in P = I²·Rac, the standard formula for average AC (or DC) power dissipation in a

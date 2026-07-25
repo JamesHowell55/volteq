@@ -10,6 +10,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import CalculatorActions from '../components/CalculatorActions';
+import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import MohrsCircleDiagram from '../components/MohrsCircleDiagram';
 import { solveMohrsCircle, transformStress, type StressState2D } from '../lib/mohrsCirclePhysics';
@@ -306,6 +307,7 @@ export default function MohrsCircleCalculator() {
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-title">Reference &amp; assumptions</div>
+        <GuideBacklink calculatorPath="/mohrs-circle" />
         <p className="note">
           This tool applies the standard plane-stress transformation equations and their Mohr's-circle
           construction (Gere &amp; Goodno, <i>Mechanics of Materials</i>; Hibbeler, <i>Mechanics of Materials</i>, Ch. 9).
