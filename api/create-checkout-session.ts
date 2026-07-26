@@ -62,6 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       customer: customerId,
       mode: plan === 'lifetime' ? 'payment' : 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
+      allow_promotion_codes: true,
       success_url: `${origin}/account?checkout=success`,
       cancel_url: `${origin}/account?checkout=cancelled`,
       client_reference_id: userId,
