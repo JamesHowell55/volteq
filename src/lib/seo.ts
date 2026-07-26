@@ -20,6 +20,11 @@ const HOME_ENTRY: SeoEntry = {
 // shouldn't be indexed — they're either private or duplicate content).
 const STATIC_ENTRIES: Record<string, SeoEntry> = {
   '/': HOME_ENTRY,
+  '/calculators': {
+    title: `All Calculators | ${SITE_NAME}`,
+    description:
+      'Every Volteq calculator in one place — electrical, power electronics, motors, battery, thermal, and mechanical, each free to use with full derivations shown.',
+  },
   '/account': {
     title: `Account | ${SITE_NAME}`,
     description: 'Manage your Volteq account and subscription.',

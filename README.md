@@ -90,7 +90,7 @@ being a manual multi-file update.
 1. Add a `src/lib/<name>Physics.ts` module with the pure calculation functions.
 2. Add a `src/pages/<Name>Calculator.tsx` page.
 3. Register the route in `src/App.tsx` and the nav link in `src/components/NavBar.tsx`.
-4. Add a tool card to `src/pages/Home.tsx`.
+4. Add a tool card to `src/pages/CalculatorsIndex.tsx`.
 5. For PDF export, build `inputSections`/`outputSections`/`calculationSteps` (see `src/lib/pdfExport.ts` types)
    from your page's state, and add an "Export PDF" button calling `exportReportToPdf(...)` — follow the existing
    calculators for the pattern.

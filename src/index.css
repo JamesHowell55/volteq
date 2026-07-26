@@ -58,6 +58,31 @@
   --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Monaco, monospace;
 
   color-scheme: dark;
+
+  /* Literal copies of the dark-mode surface tokens, immune to the
+     :root[data-theme="light"] override below — for surfaces (like .home-page)
+     that must always render dark regardless of the site-wide toggle, the same
+     way --navbar-* and --accent-on-dark already do. */
+  --fixed-dark-bg:          #0B0B0B;
+  --fixed-dark-bg-raised:   #101211;
+  --fixed-dark-bg-card:     #121412;
+  --fixed-dark-bg-input:    #171917;
+  --fixed-dark-bg-hover:    rgba(255, 255, 255, 0.04);
+
+  --fixed-dark-border:        #2a2c2a;
+  --fixed-dark-border-subtle: #1a1c1a;
+  --fixed-dark-border-strong: #3a3d3a;
+  --fixed-dark-border-hover:  #55584f;
+
+  --fixed-dark-text:       #E1F5EE;
+  --fixed-dark-text-2:     #a8b3ae;
+  --fixed-dark-text-3:     #8c968f;
+  --fixed-dark-text-faint: #6c756e;
+  --fixed-dark-text-ghost: #47504a;
+
+  --fixed-dark-accent-contrast-text: #0a0a0b;
+  --fixed-dark-shadow-card:  0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --fixed-dark-shadow-float: 0 24px 64px rgba(0, 0, 0, 0.5);
 }
 
 /* Light mode — the header/navbar is excluded (see --navbar-* above, which
@@ -205,6 +230,24 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
 }
 .navbar-theme-btn:hover { color: var(--navbar-text-hover); border-color: var(--navbar-text-hover); }
 
+/* Filled pill CTA for the account/sign-up link — distinct from the plain-text
+   nav links so it reads as the primary action, not just another route. Extra
+   specificity (.navbar-nav a.navbar-cta) is needed to beat the plain
+   ".navbar-nav a" color rule above. */
+.navbar-nav a.navbar-cta {
+  background: var(--accent-on-dark);
+  color: var(--accent-contrast-text);
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  transition: filter 0.15s var(--ease-out);
+}
+.navbar-nav a.navbar-cta:hover,
+.navbar-nav a.navbar-cta.active {
+  color: var(--accent-contrast-text);
+  filter: brightness(1.08);
+}
+
 /* ── Nav dropdowns (category menus) ─────────────────────────── */
 .nav-dropdown { position: relative; }
 
@@ -292,6 +335,16 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   font-weight: 600;
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--navbar-border);
+}
+
+.navbar-mobile-panel > a.navbar-cta {
+  background: var(--accent-on-dark);
+  color: var(--accent-contrast-text);
+  border-radius: var(--radius-pill);
+  text-align: center;
+  border-bottom: none;
+  margin-top: 0.5rem;
+  padding: 0.7rem 0;
 }
 .navbar-mobile-panel > a.active { color: var(--navbar-text-hover); }
 
@@ -725,17 +778,187 @@ input[type="number"] { font-family: var(--font-mono); }
 }
 
 /* ── Home page ──────────────────────────────────────────────── */
+
+/* Full-page reactive network canvas — fixed behind everything (footer
+   included), regardless of scroll. z-index: -1 relies on .app-shell
+   establishing no stacking context of its own (plain flex, no position/
+   transform/filter) so this paints in the root stacking context, behind all
+   normal-flow content but still behind the sticky, higher-z-index navbar. */
+.network-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--fixed-dark-bg);
+  pointer-events: none;
+}
+.network-bg canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The landing page always renders in the dark/teal brand palette, regardless
+   of the site-wide light/dark toggle — same idea as the always-black navbar.
+   Every token here is a literal (or a confirmed theme-invariant --accent-on-dark),
+   never `var(--bg)` etc., which WOULD silently re-flip in light mode. */
+.home-page {
+  --accent: var(--accent-on-dark);
+  --accent-glow: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent) 35%, transparent);
+  --accent-contrast-text: var(--fixed-dark-accent-contrast-text);
+
+  --bg: var(--fixed-dark-bg);
+  --bg-raised: var(--fixed-dark-bg-raised);
+  --bg-card: var(--fixed-dark-bg-card);
+  --bg-input: var(--fixed-dark-bg-input);
+  --bg-hover: var(--fixed-dark-bg-hover);
+
+  --border: var(--fixed-dark-border);
+  --border-subtle: var(--fixed-dark-border-subtle);
+  --border-strong: var(--fixed-dark-border-strong);
+  --border-hover: var(--fixed-dark-border-hover);
+
+  --text: var(--fixed-dark-text);
+  --text-2: var(--fixed-dark-text-2);
+  --text-3: var(--fixed-dark-text-3);
+  --text-faint: var(--fixed-dark-text-faint);
+  --text-ghost: var(--fixed-dark-text-ghost);
+
+  --shadow-card: var(--fixed-dark-shadow-card);
+  --shadow-float: var(--fixed-dark-shadow-float);
+
+  color-scheme: dark;
+  /* Deliberately no `background` here — .home-page must stay transparent so the
+     fixed .network-bg canvas (z-index: -1, sitting behind it) shows through.
+     The token overrides above still make every child (.hero, .card, etc.)
+     render with the right fixed-dark colors. */
+}
+
+.landing-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas: "copy graphic";
+  align-items: center;
+  gap: 2.5rem;
+  margin: 3rem 0;
+}
+.landing-section.reverse { grid-template-areas: "graphic copy"; }
+.landing-copy { grid-area: copy; }
+.landing-graphic { grid-area: graphic; display: flex; justify-content: center; }
+
+.landing-copy h2 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+.landing-copy p {
+  color: var(--text-2);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  max-width: 52ch;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .landing-section,
+  .landing-section.reverse {
+    grid-template-columns: 1fr;
+    grid-template-areas: "copy" "graphic";
+  }
+}
+
+.feature-grid-section { margin: 4.5rem 0; text-align: center; }
+.feature-grid-section h2 { font-size: 1.75rem; margin: 0 auto 2.5rem; max-width: 34ch; }
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  text-align: left;
+}
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+.feature-card .icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  margin-bottom: 1.1rem;
+}
+.feature-card h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+.feature-card p { color: var(--text-2); font-size: 0.85rem; line-height: 1.55; }
+
+.discipline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem 1.75rem;
+}
+.discipline-item { display: flex; gap: 0.85rem; align-items: flex-start; }
+.discipline-item .icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+}
+.discipline-item h3 { font-size: 0.95rem; margin-bottom: 0.3rem; }
+.discipline-item p { color: var(--text-2); font-size: 0.82rem; line-height: 1.5; }
+
+@media (max-width: 640px) {
+  .discipline-grid { grid-template-columns: 1fr; }
+}
+
 .hero {
   padding: 1rem 0 2.75rem;
   margin-bottom: 2.75rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+@media (max-width: 960px) {
+  .hero-grid { grid-template-columns: 1fr; }
+}
+
 .hero h1 {
   font-size: clamp(1.9rem, 3.4vw, 2.75rem);
   line-height: 1.15;
-  max-width: 18ch;
+  max-width: 20ch;
   margin-bottom: 1rem;
+}
+
+.hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+.hero-badges span::before {
+  content: '✓';
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .hero-sub {
@@ -756,6 +979,51 @@ input[type="number"] { font-family: var(--font-mono); }
 .hero-actions .btn {
   padding: 0.7rem 1.3rem;
   font-size: 0.88rem;
+}
+
+/* Hero product screenshot, framed as a tilted "window" card — a real
+   calculator screenshot, not an illustrative mockup. */
+.hero-mockup {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-float), 0 0 60px -20px var(--accent-glow);
+  transform: perspective(1400px) rotateY(-7deg) rotateX(3deg);
+  transition: transform 0.4s var(--ease-out);
+  background: var(--bg-card);
+}
+.hero-mockup:hover {
+  transform: perspective(1400px) rotateY(-3deg) rotateX(1deg);
+}
+.hero-mockup-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.85rem;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.hero-mockup-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.hero-mockup-title {
+  margin-left: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-3);
+  font-weight: 600;
+}
+.hero-mockup-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 900px) {
+  .hero-mockup { transform: none; margin-top: 2rem; }
+  .hero-mockup:hover { transform: none; }
 }
 
 .hero-stats {

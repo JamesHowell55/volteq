@@ -1,125 +1,119 @@
 import { Link } from 'react-router-dom';
-import { NAV_CATEGORIES, CONVERSIONS_LINK, type CalculatorLink } from '../lib/navCategories';
+import NetworkBackground from '../components/NetworkBackground';
+import LandingGraphic from '../components/LandingGraphic';
+import HeroCalculatorMockup from '../components/HeroCalculatorMockup';
+import { ALL_CALCULATOR_LINKS } from '../lib/navCategories';
 
-// Per-category default icon (this library now spans ~130 calculators, too many for
-// a maintainable per-path map) with a few per-path overrides for the flagship tools.
-const CATEGORY_ICONS: Record<string, string> = {
-  Electrical: '⚡',
-  'Power Electronics': '⎓',
-  Motors: '⟲',
-  Battery: '⏻',
-  Mechanical: '⚙',
-  Thermal: '♨',
-  'Vehicle & Motion': '▶',
-  Material: '⬡',
-  'Cost & Project': '◈',
-};
+const DISCIPLINES = [
+  { icon: '⚡', label: 'Electrical', description: 'Busbar, cable sizing, creepage & clearance, PCB traces, harnesses.' },
+  { icon: '⎓', label: 'Power Electronics', description: 'SiC/MOSFET loss, DC-link capacitors, CM/DM choke sizing.' },
+  { icon: '⟲', label: 'Motors', description: 'Torque/power/speed, Id/Iq field-oriented control.' },
+  { icon: '⏻', label: 'Battery', description: 'Pack series/parallel voltage, capacity, and sag under load.' },
+  { icon: '♨', label: 'Thermal', description: 'Heatsink Rth budgets, heat exchanger sizing via effectiveness-NTU.' },
+  { icon: '⚙', label: 'Mechanical', description: 'Beams, bolted joints, bolt patterns, fits, O-rings, Mohr\'s circle.' },
+];
 
-const PATH_ICON_OVERRIDES: Record<string, string> = {
-  '/busbar': '⌁',
-  '/creepage-clearance': '⏚',
-  '/bolted-joint': '⛭',
-  '/cable-sizing': '⏛',
-  '/battery-pack-series-parallel': '⫴',
-  '/speed-torque-power': 'Ω',
-  '/conversions': '⇄',
-  '/pcb-trace-width': '≣',
-};
-
-// Tighter, homepage-only taglines. navCategories.ts descriptions stay full-length
-// for the nav dropdowns and search engines; the homepage needs a faster scan.
-const SHORT_DESCRIPTIONS: Record<string, string> = {
-  '/busbar': 'Steady-state and short-circuit conductor temperature.',
-  '/cable-sizing': 'Ampacity and voltage drop for EV powertrain cables.',
-  '/creepage-clearance': 'Minimum creepage and clearance per IEC 60664-1.',
-  '/harness-bundle-diameter': 'Bundle diameter for mixed-gauge wiring harnesses.',
-  '/harness-designer': 'MIL-DTL-38999 connector pinouts and wiring schematics.',
-  '/pcb-trace-width': 'Current capacity and trace width per IPC-2221.',
-  '/skin-depth': 'AC skin depth from material, frequency, and geometry.',
-  '/choke-sizing': 'CM/DM choke sizing with saturation and core-loss checks.',
-  '/mosfet-loss': 'Conduction, switching, and thermal losses for SiC inverters.',
-  '/heatsink-thermal': 'Junction-to-ambient Rth budget and natural-convection fin-array sizing.',
-  '/heat-exchanger-sizing': 'Radiator and oil-cooler heat rejection via the effectiveness-NTU method.',
-  '/dc-link': 'DC-link capacitance, ripple current, and bank layout.',
-  '/speed-torque-power': 'Solve torque, power, or speed from the other two.',
-  '/id-iq-current': 'Id/Iq decomposition and MTPA for PMSM FOC.',
-  '/battery-pack-series-parallel': 'Pack voltage, capacity, and voltage sag under load.',
-  '/beam-bending': 'Reactions, shear, moment, and deflection for any beam and load combination.',
-  '/bolted-joint': 'Preload, torque, and yield checks to VDI 2230.',
-  '/o-ring': 'Gland design to the Trelleborg guide and AS568/ISO 3601.',
-  '/fits-and-limits': 'Interference-fit stresses to ISO 286 and Lamé theory.',
-  '/conversions': 'Unit conversions across engineering quantities.',
-};
-
-function ToolCard({ link, categoryLabel }: { link: CalculatorLink; categoryLabel: string }) {
-  const icon = PATH_ICON_OVERRIDES[link.path] ?? CATEGORY_ICONS[categoryLabel] ?? '●';
-  const description = SHORT_DESCRIPTIONS[link.path] ?? link.description;
-  if (!link.available) {
-    return (
-      <div className="tool-card">
-        <div className="icon">{icon}</div>
-        <h3>{link.label}</h3>
-        <p>{description}</p>
-        <span className="tag">Coming soon</span>
-      </div>
-    );
-  }
-  return (
-    <Link to={link.path} className="tool-card available">
-      <div className="icon">{icon}</div>
-      <h3>{link.label}</h3>
-      <p>{description}</p>
-    </Link>
-  );
-}
+const FEATURES = [
+  { icon: '◎', title: 'Accurate by design', description: 'Every calculator uses documented, citable formulas — no black-box results, ever.' },
+  { icon: '⏱', title: 'Save time', description: 'Skip the spreadsheet rebuild — get a full derivation and a client-ready PDF in minutes.' },
+  { icon: '⛨', title: 'Built with trust', description: 'Each result is checked against a published textbook or standard worked example.' },
+  { icon: '↻', title: 'Continuously improved', description: 'New calculators and guides ship regularly, covering more of the EV powertrain stack.' },
+];
 
 export default function Home() {
-  return (
-    <div className="page">
-      <section className="hero">
-        <div className="eyebrow">● Power electronics &amp; EV engineering</div>
-        <h1>The calculation layer for power electronics and EV engineering.</h1>
-        <p className="hero-sub">
-          From busbar thermals to SiC inverter losses to bolted-joint preload — every calculator shows its
-          full derivation, cites the governing standard, and exports straight to a client-ready report.
-        </p>
-        <div className="hero-actions">
-          <Link to="/busbar" className="btn primary">Start calculating</Link>
-          <Link to="/account" className="btn">Create a free account</Link>
-        </div>
-        <div className="hero-stats">
-          <span><b>22</b> calculators</span>
-          <span><b>10+</b> standards referenced</span>
-          <span><b>Full</b> derivations shown</span>
-          <span><b>PDF</b> export</span>
-        </div>
-      </section>
+  const calculatorCount = ALL_CALCULATOR_LINKS.filter((l) => l.available).length;
 
-      {NAV_CATEGORIES.map((category) => (
-        <div key={category.label} style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{category.label}</h2>
-          <div className="tool-grid">
-            {category.links.map((link) => (
-              <ToolCard key={link.path} link={link} categoryLabel={category.label} />
+  return (
+    <>
+      <NetworkBackground />
+      <div className="page home-page">
+        <section className="hero">
+          <div className="hero-grid">
+            <div>
+              <div className="eyebrow">● Engineering intelligence</div>
+              <h1>Calculators and tools for engineers.</h1>
+              <p className="hero-sub">
+                High-accuracy, first-principles engineering calculators for EV powertrain and power
+                electronics design — full derivations, cited standards, and a client-ready PDF on every result.
+              </p>
+              <div className="hero-actions">
+                <Link to="/calculators" className="btn primary">Explore calculators →</Link>
+                <Link to="/calculators" className="btn">View all tools</Link>
+              </div>
+              <div className="hero-badges">
+                <span>Built by engineers</span>
+                <span>Verified methodology</span>
+                <span>SI units by default</span>
+              </div>
+            </div>
+            <HeroCalculatorMockup />
+          </div>
+        </section>
+
+        <section className="feature-grid-section">
+          <h2>Designed for engineering teams building the future.</h2>
+          <div className="feature-grid">
+            {FEATURES.map((f) => (
+              <div className="feature-card" key={f.title}>
+                <div className="icon">{f.icon}</div>
+                <h3>{f.title}</h3>
+                <p>{f.description}</p>
+              </div>
             ))}
           </div>
-        </div>
-      ))}
+        </section>
 
-      <div>
-        <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Conversions</h2>
-        <div className="tool-grid">
-          <ToolCard link={CONVERSIONS_LINK} categoryLabel="Conversions" />
-        </div>
+        <section className="landing-section">
+          <div className="landing-copy">
+            <div className="eyebrow">● Show your work</div>
+            <h2>Every answer comes with its derivation.</h2>
+            <p>
+              No calculator on Volteq just hands you a number. Each one shows the full step-by-step
+              calculation and is checked against a published worked example from the governing standard —
+              IEC, ISO, IPC, VDI, or a recognized reference text — with a "Validated:" note on the result.
+              Export the whole thing to a client-ready PDF.
+            </p>
+          </div>
+          <div className="landing-graphic">
+            <LandingGraphic variant="motor-winding" />
+          </div>
+        </section>
+
+        <section className="landing-section reverse">
+          <div className="landing-copy">
+            <div className="eyebrow">● Built for EV powertrain &amp; power electronics</div>
+            <h2>Every discipline. Every stage.</h2>
+            <p>
+              Volteq is purpose-built for one vertical: EV powertrain and power electronics design — not
+              adapted from a generic mechanical-engineering toolbox. {calculatorCount} calculators across six
+              disciplines, with more shipping regularly.
+            </p>
+            <Link to="/calculators" className="btn">Explore all calculators →</Link>
+          </div>
+          <div className="discipline-grid">
+            {DISCIPLINES.map((d) => (
+              <div className="discipline-item" key={d.label}>
+                <div className="icon">{d.icon}</div>
+                <div>
+                  <h3>{d.label}</h3>
+                  <p>{d.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="card home-cta">
+          <div>
+            <h2>Ready to engineer better?</h2>
+            <p>
+              The calculation is always free, with no paywall on the math. Create a free account to save your
+              inputs and pick up where you left off.
+            </p>
+          </div>
+          <Link to="/account" className="btn primary">Get started for free →</Link>
+        </section>
       </div>
-
-      <section className="card home-cta">
-        <div>
-          <h2>Ready to start calculating?</h2>
-          <p>Create a free account to save your inputs and pick up where you left off.</p>
-        </div>
-        <Link to="/account" className="btn primary">Create a free account</Link>
-      </section>
-    </div>
+    </>
   );
 }

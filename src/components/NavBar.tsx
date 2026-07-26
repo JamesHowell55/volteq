@@ -22,6 +22,9 @@ export default function NavBar() {
         <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
           Home
         </NavLink>
+        <NavLink to="/calculators" className={({ isActive }) => (isActive ? 'active' : '')}>
+          All calculators
+        </NavLink>
         {NAV_CATEGORIES.map((category) => (
           <NavDropdown key={category.label} category={category} />
         ))}
@@ -31,8 +34,8 @@ export default function NavBar() {
         <NavLink to="/guides" className={({ isActive }) => (isActive ? 'active' : '')}>
           Guides
         </NavLink>
-        <NavLink to="/account" className={({ isActive }) => (isActive ? 'active' : '')}>
-          {user ? 'Account' : 'Log in'}
+        <NavLink to="/account" className={({ isActive }) => `navbar-cta${isActive ? ' active' : ''}`}>
+          {user ? 'Account' : 'Get started'}
         </NavLink>
         <UnitSystemToggle />
         <ThemeControls />
@@ -46,6 +49,9 @@ export default function NavBar() {
         <div className="navbar-mobile-panel">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')} onClick={() => setMobileOpen(false)}>
             Home
+          </NavLink>
+          <NavLink to="/calculators" className={({ isActive }) => (isActive ? 'active' : '')} onClick={() => setMobileOpen(false)}>
+            All calculators
           </NavLink>
           {NAV_CATEGORIES.map((category) => (
             <div className="navbar-mobile-group" key={category.label}>
@@ -64,8 +70,8 @@ export default function NavBar() {
           <NavLink to="/guides" className={({ isActive }) => (isActive ? 'active' : '')} onClick={() => setMobileOpen(false)}>
             Guides
           </NavLink>
-          <NavLink to="/account" className={({ isActive }) => (isActive ? 'active' : '')} onClick={() => setMobileOpen(false)}>
-            {user ? 'Account' : 'Log in'}
+          <NavLink to="/account" className={({ isActive }) => `navbar-cta${isActive ? ' active' : ''}`} onClick={() => setMobileOpen(false)}>
+            {user ? 'Account' : 'Get started'}
           </NavLink>
           <div className="navbar-mobile-theme" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
             <UnitSystemToggle />

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import Home from './pages/Home';
+import CalculatorsIndex from './pages/CalculatorsIndex';
 import BusbarCalculator from './pages/BusbarCalculator';
 import CreepageClearanceCalculator from './pages/CreepageClearanceCalculator';
 import BoltedJointCalculator from './pages/BoltedJointCalculator';
@@ -79,6 +80,7 @@ function App() {
             <NavBar />
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/calculators" element={<CalculatorsIndex />} />
               <Route path="/busbar" element={<BusbarCalculator />} />
               <Route path="/creepage-clearance" element={<CreepageClearanceCalculator />} />
               <Route path="/bolted-joint" element={<BoltedJointCalculator />} />
