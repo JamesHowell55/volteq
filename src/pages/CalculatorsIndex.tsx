@@ -66,7 +66,7 @@ function ToolCard({ link, categoryLabel }: { link: CalculatorLink; categoryLabel
   }
   return (
     <Link to={link.path} className="tool-card available">
-      <div className="icon">{icon}</div>
+      <div className="directory-card-top"><div className="icon">{icon}</div><span>Open model ↗</span></div>
       <h3>{link.label}</h3>
       <p>{description}</p>
     </Link>
@@ -77,34 +77,65 @@ function ToolCard({ link, categoryLabel }: { link: CalculatorLink; categoryLabel
 // description. Extracted out of Home.tsx (which is now a landing page) so this
 // SEO/discovery surface isn't lost; linked from the hero CTA and the navbar.
 export default function CalculatorsIndex() {
+  const calculatorCount = NAV_CATEGORIES.reduce((total, category) => total + category.links.length, 1);
+
   return (
-    <div className="page">
-      <div className="page-header">
-        <div className="eyebrow">● All calculators</div>
-        <h1>Every Volteq calculator, in one place</h1>
+    <div className="directory-page">
+      <header className="directory-hero">
+        <div className="v3-kicker"><span /> Model library</div>
+        <h1>Every engineering model.<br /><em>One clear workspace.</em></h1>
         <p>
           Electrical, power electronics, motors, battery, thermal, and mechanical — every calculator is
           free to use, shows its full derivation, and cites the standard it's checked against.
         </p>
-      </div>
+        <div className="directory-stats">
+          <span><b>{calculatorCount}</b> live calculators</span>
+          <span><b>{NAV_CATEGORIES.length + 1}</b> disciplines</span>
+          <span><b>100%</b> transparent methods</span>
+        </div>
+      </header>
 
-      {NAV_CATEGORIES.map((category) => (
-        <div key={category.label} style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{category.label}</h2>
-          <div className="tool-grid">
+      <nav className="directory-jump" aria-label="Calculator categories">
+        <span>Jump to</span>
+        {NAV_CATEGORIES.map((category, index) => (
+          <a key={category.label} href={`#${category.label.toLowerCase().replaceAll(' ', '-')}`}>
+            {String(index + 1).padStart(2, '0')} {category.label}
+          </a>
+        ))}
+        <a href="#conversions">{String(NAV_CATEGORIES.length + 1).padStart(2, '0')} Conversions</a>
+      </nav>
+
+      <main className="directory-content">
+      {NAV_CATEGORIES.map((category, index) => (
+        <section className="directory-section" id={category.label.toLowerCase().replaceAll(' ', '-')} key={category.label}>
+          <div className="directory-section-head">
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <h2>{category.label}</h2>
+            <p>{category.links.length} {category.links.length === 1 ? 'model' : 'models'}</p>
+          </div>
+          <div className="directory-grid">
             {category.links.map((link) => (
               <ToolCard key={link.path} link={link} categoryLabel={category.label} />
             ))}
           </div>
-        </div>
+        </section>
       ))}
 
-      <div>
-        <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Conversions</h2>
-        <div className="tool-grid">
+      <section className="directory-section" id="conversions">
+        <div className="directory-section-head">
+          <span>{String(NAV_CATEGORIES.length + 1).padStart(2, '0')}</span>
+          <h2>Conversions</h2><p>1 utility</p>
+        </div>
+        <div className="directory-grid">
           <ToolCard link={CONVERSIONS_LINK} categoryLabel="Conversions" />
         </div>
-      </div>
+      </section>
+      </main>
+
+      <footer className="directory-cta">
+        <div><span className="v3-section-label">Need the methodology?</span><h2>Understand the engineering<br />behind the result.</h2></div>
+        <Link to="/guides" className="btn primary">Explore technical guides ↗</Link>
+      </footer>
     </div>
   );
 }
