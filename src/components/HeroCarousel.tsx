@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import busbarScreenshot from '../assets/hero/busbar-screenshot.png';
-import dcLinkScreenshot from '../assets/hero/dc-link-screenshot.png';
-import harnessBundleScreenshot from '../assets/hero/harness-bundle-screenshot.png';
-import beamBendingScreenshot from '../assets/hero/beam-bending-screenshot.png';
+import dcLinkScreenshot from '../assets/hero/dc-link-screenshot1.png';
+import harnessBundleScreenshot from '../assets/hero/harness-bundle-screenshot1.png';
+import beamBendingScreenshot from '../assets/hero/beam-bending-screenshot1.png';
+import idIqVectorScreenshot from '../assets/hero/id-iq-vector-screenshot.png';
+import oRingScreenshot from '../assets/hero/o-ring-screenshot.png';
 import speedTorquePowerScreenshot from '../assets/hero/speed-torque-power-screenshot.png';
 
 const ROTATE_MS = 4500;
@@ -14,6 +16,8 @@ const SLIDES = [
   { title: 'Busbar Temperature & Ampacity Calculator', image: busbarScreenshot },
   { title: 'DC-Link Capacitor Sizing', image: dcLinkScreenshot },
   { title: 'Harness Bundle Diameter Calculator', image: harnessBundleScreenshot },
+  { title: 'Id / Iq Current Vector Calculator', image: idIqVectorScreenshot },
+  { title: 'O-Ring Seal Calculator', image: oRingScreenshot },
   { title: 'Beam Bending Calculator', image: beamBendingScreenshot },
   { title: 'Speed ↔ Torque ↔ Power Calculator', image: speedTorquePowerScreenshot },
 ];

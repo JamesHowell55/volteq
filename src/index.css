@@ -918,23 +918,22 @@ input[type="number"] { font-family: var(--font-mono); }
 .pricing-section { margin: 4.5rem 0; text-align: center; }
 .pricing-section h2 { font-size: 1.75rem; margin: 0.5rem auto 2.5rem; max-width: 34ch; }
 
-.pricing-carousel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
+  max-width: 1080px;
+  margin: 0 auto;
+  align-items: start;
 }
 
 .pricing-card {
   position: relative;
-  width: 100%;
-  max-width: 340px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 2rem 1.75rem;
   text-align: left;
-  animation: hero-mockup-fade-in 0.4s var(--ease-out);
 }
 .pricing-badge {
   position: absolute;
@@ -955,22 +954,9 @@ input[type="number"] { font-family: var(--font-mono); }
 .pricing-features li { color: var(--text-2); font-size: 0.88rem; padding: 0.35rem 0; }
 .pricing-card .btn { width: 100%; text-align: center; }
 
-.pricing-nav {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
+@media (max-width: 800px) {
+  .pricing-grid { grid-template-columns: 1fr; max-width: 340px; }
 }
-.pricing-nav button {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: none;
-  padding: 0;
-  background: var(--border-strong);
-  cursor: pointer;
-  transition: background 0.15s var(--ease-out), transform 0.15s var(--ease-out);
-}
-.pricing-nav button.active { background: var(--accent); transform: scale(1.3); }
 
 .hero {
   padding: 1rem 0 2.75rem;

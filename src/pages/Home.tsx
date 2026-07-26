@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import LandingGraphic from '../components/LandingGraphic';
 import HeroCarousel from '../components/HeroCarousel';
-import PricingCarousel from '../components/PricingCarousel';
+import PricingCards from '../components/PricingCards';
 import { ALL_CALCULATOR_LINKS } from '../lib/navCategories';
 
 const DISCIPLINES = [
@@ -104,7 +104,7 @@ export default function Home() {
       <section className="pricing-section">
         <div className="eyebrow" style={{ textAlign: 'center' }}>● Pricing</div>
         <h2>The calculation is always free. Premium adds the rest.</h2>
-        <PricingCarousel />
+        <PricingCards />
       </section>
 
       <section className="card home-cta">
