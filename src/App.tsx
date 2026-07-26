@@ -13,6 +13,8 @@ import BatteryPackSeriesParallelCalculator from './pages/BatteryPackSeriesParall
 import MotorTorquePowerSpeedCalculator from './pages/MotorTorquePowerSpeedCalculator';
 import ChokeSizingCalculator from './pages/ChokeSizingCalculator';
 import MosfetLossCalculator from './pages/MosfetLossCalculator';
+import HeatsinkThermalCalculator from './pages/HeatsinkThermalCalculator';
+import HeatExchangerSizingCalculator from './pages/HeatExchangerSizingCalculator';
 import BundleDiameterCalculator from './pages/BundleDiameterCalculator';
 import HarnessDesigner from './pages/HarnessDesigner';
 import PcbTraceCalculator from './pages/PcbTraceCalculator';
@@ -39,6 +41,8 @@ import MohrsCircleGuide from './pages/guides/MohrsCircleGuide';
 import SkinEffectGuide from './pages/guides/SkinEffectGuide';
 import CmDmChokesGuide from './pages/guides/CmDmChokesGuide';
 import SicInverterLossGuide from './pages/guides/SicInverterLossGuide';
+import HeatsinkThermalGuide from './pages/guides/HeatsinkThermalGuide';
+import HeatExchangerNtuGuide from './pages/guides/HeatExchangerNtuGuide';
 import FieldOrientedControlGuide from './pages/guides/FieldOrientedControlGuide';
 import BoltGroupElasticGuide from './pages/guides/BoltGroupElasticGuide';
 import EulerBernoulliBeamsGuide from './pages/guides/EulerBernoulliBeamsGuide';
@@ -90,6 +94,8 @@ function App() {
               <Route path="/id-iq-current" element={<DqCurrentCalculator />} />
               <Route path="/choke-sizing" element={<ChokeSizingCalculator />} />
               <Route path="/mosfet-loss" element={<MosfetLossCalculator />} />
+              <Route path="/heatsink-thermal" element={<HeatsinkThermalCalculator />} />
+              <Route path="/heat-exchanger-sizing" element={<HeatExchangerSizingCalculator />} />
               <Route path="/dc-link" element={<DcLinkCalculator />} />
               <Route path="/harness-bundle-diameter" element={<BundleDiameterCalculator />} />
               <Route path="/harness-designer" element={<HarnessDesigner />} />
@@ -109,6 +115,8 @@ function App() {
               <Route path="/guides/skin-effect" element={<SkinEffectGuide />} />
               <Route path="/guides/cm-dm-chokes" element={<CmDmChokesGuide />} />
               <Route path="/guides/sic-inverter-loss" element={<SicInverterLossGuide />} />
+              <Route path="/guides/heatsink-thermal" element={<HeatsinkThermalGuide />} />
+              <Route path="/guides/heat-exchanger-ntu" element={<HeatExchangerNtuGuide />} />
               <Route path="/guides/field-oriented-control" element={<FieldOrientedControlGuide />} />
               <Route path="/guides/bolt-group-elastic" element={<BoltGroupElasticGuide />} />
               <Route path="/guides/euler-bernoulli-beams" element={<EulerBernoulliBeamsGuide />} />

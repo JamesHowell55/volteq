@@ -38,6 +38,8 @@ const SHORT_DESCRIPTIONS: Record<string, string> = {
   '/skin-depth': 'AC skin depth from material, frequency, and geometry.',
   '/choke-sizing': 'CM/DM choke sizing with saturation and core-loss checks.',
   '/mosfet-loss': 'Conduction, switching, and thermal losses for SiC inverters.',
+  '/heatsink-thermal': 'Junction-to-ambient Rth budget and natural-convection fin-array sizing.',
+  '/heat-exchanger-sizing': 'Radiator and oil-cooler heat rejection via the effectiveness-NTU method.',
   '/dc-link': 'DC-link capacitance, ripple current, and bank layout.',
   '/speed-torque-power': 'Solve torque, power, or speed from the other two.',
   '/id-iq-current': 'Id/Iq decomposition and MTPA for PMSM FOC.',

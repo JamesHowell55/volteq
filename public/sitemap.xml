@@ -62,6 +62,16 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://volteq.io/heatsink-thermal</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/heat-exchanger-sizing</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://volteq.io/speed-torque-power</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -178,6 +188,16 @@
   </url>
   <url>
     <loc>https://volteq.io/guides/sic-inverter-loss</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/guides/heatsink-thermal</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/guides/heat-exchanger-ntu</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

@@ -63,6 +63,13 @@ export const NAV_CATEGORIES: NavCategory[] = [
     ],
   },
   {
+    label: 'Thermal',
+    links: [
+      { label: 'Heat Exchanger Sizing', path: '/heat-exchanger-sizing', available: true, seoTitle: 'Heat Exchanger Sizing Calculator — Radiator & Oil Cooler (ε-NTU)', description: 'Liquid-to-air heat exchanger sizing (radiator, oil cooler, chiller core) via the effectiveness-NTU crossflow method — round-tube plate-fin, louvered-fin, or microchannel flat-tube core geometry, coolant flow rate and inlet temperature, air face velocity and temperature, giving heat rejected and both outlet temperatures.' },
+      { label: 'Heatsink Thermal Calculator', path: '/heatsink-thermal', available: true, seoTitle: 'Heatsink Thermal Calculator — Junction-to-Ambient Rth Sizing', description: 'Junction-to-ambient thermal budget for a power device (pairs with the MOSFET Loss calculator) — check a sink\'s thermal resistance directly, or size a natural-convection fin array from its geometry via the Churchill-Chu correlation and rectangular-fin efficiency.' },
+    ],
+  },
+  {
     label: 'Mechanical',
     links: [
       { label: 'Beam Bending Calculator', path: '/beam-bending', available: true, description: 'Reactions, shear force, bending moment, and deflection for simply supported, cantilever, fixed-fixed, propped-cantilever, and overhanging beams under any combination of point loads, point moments, and distributed loads — solved numerically (unit-load/virtual-work method for indeterminate cases) and cross-checked against Roark\'s Formulas for Stress and Strain.' },

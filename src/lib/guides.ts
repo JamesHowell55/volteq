@@ -222,6 +222,28 @@ export const GUIDES: GuideMeta[] = [
     calculator: { label: 'Harness Bundle Diameter Calculator', path: '/harness-bundle-diameter' },
   },
   {
+    slug: 'heat-exchanger-ntu',
+    title: 'Heat Exchanger Sizing: The Effectiveness-NTU Method',
+    standard: 'Effectiveness-NTU',
+    seoTitle: 'Effectiveness-NTU Method Explained — Radiator & Heat Exchanger Sizing',
+    seoDescription:
+      'A plain-language guide to sizing a liquid-to-air heat exchanger with the effectiveness-NTU method: what UA, NTU, Cmin and Cr mean, why crossflow effectiveness has its own formula, and what limits a core\'s heat rejection.',
+    blurb:
+      'What UA, NTU, Cmin and Cr mean, the crossflow-both-unmixed effectiveness formula, and what really limits a core\'s heat rejection.',
+    calculator: { label: 'Heat Exchanger Sizing Calculator', path: '/heat-exchanger-sizing' },
+  },
+  {
+    slug: 'heatsink-thermal',
+    title: 'Heatsink Sizing: Junction-to-Ambient Rth and Natural-Convection Fin Arrays',
+    standard: 'Heatsink Thermal Design',
+    seoTitle: 'Heatsink Thermal Design Explained — Rth Budget & Fin-Array Sizing',
+    seoDescription:
+      'A plain-language guide to heatsink thermal design: how the junction-to-ambient Rth chain sets the sink budget, and how the Churchill-Chu correlation and fin efficiency size a natural-convection fin array.',
+    blurb:
+      'How the Rjc+Rcs+Rsa chain sets the sink budget, and how Churchill-Chu convection and fin efficiency size a natural-convection fin array.',
+    calculator: { label: 'Heatsink Thermal Calculator', path: '/heatsink-thermal' },
+  },
+  {
     slug: 'mil-dtl-38999',
     title: 'MIL-DTL-38999 Connectors: Contact Sizes, Ratings & Pinouts',
     standard: 'MIL-DTL-38999',

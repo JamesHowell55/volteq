@@ -35,7 +35,7 @@
 import { dcResistancePerMetre, skinEffectFactor, STEFAN_BOLTZMANN } from './busbarPhysics';
 import type { Material } from './materials';
 
-const GRAVITY = 9.81; // m/s²
+export const GRAVITY = 9.81; // m/s²
 const EMISSIVITY_JACKET = 0.9; // typical dark rubber/plastic cable jacket, matches this project's existing "painted/matte dark" preset
 
 export interface InsulationPreset {
@@ -97,7 +97,7 @@ const AIR_PROPERTY_POINTS: { tC: number; nu: number; k: number; pr: number }[] =
   { tC: 227, nu: 38.79e-6, k: 40.7e-3, pr: 0.684 },
 ];
 
-function airProperties(filmTempC: number): { nu: number; k: number; pr: number } {
+export function airProperties(filmTempC: number): { nu: number; k: number; pr: number } {
   const pts = AIR_PROPERTY_POINTS;
   if (filmTempC <= pts[0].tC) return { nu: pts[0].nu, k: pts[0].k, pr: pts[0].pr };
   if (filmTempC >= pts[pts.length - 1].tC) return { nu: pts[pts.length - 1].nu, k: pts[pts.length - 1].k, pr: pts[pts.length - 1].pr };
