@@ -7,9 +7,9 @@ import dcLinkScreenshot from '../assets/hero/dc-link-screenshot1.png';
 import beamScreenshot from '../assets/hero/beam-bending-screenshot1.png';
 
 const PRINCIPLES = [
-  { index: '01', title: 'Physics, not guesswork', description: 'First-principles models with visible assumptions, intermediate values, and governing equations.' },
-  { index: '02', title: 'Traceable by default', description: 'Methods reference recognised standards and validation examples, so every result has a defensible basis.' },
-  { index: '03', title: 'Made for iteration', description: 'Move from an early estimate to a reviewable design record without rebuilding another spreadsheet.' },
+  { index: '01', icon: '∫', title: 'Physics, not guesswork', description: 'First-principles models with visible assumptions, intermediate values, and governing equations.' },
+  { index: '02', icon: '✓', title: 'Traceable by default', description: 'Methods reference recognised standards and validation examples, so every result has a defensible basis.' },
+  { index: '03', icon: '↻', title: 'Made for iteration', description: 'Move from an early estimate to a reviewable design record without rebuilding another spreadsheet.' },
 ];
 
 const DISCIPLINES = [
@@ -86,8 +86,10 @@ export default function Home() {
       <section className="v3-principles">
         {PRINCIPLES.map((principle) => (
           <article key={principle.index}>
-            <span className="v3-index">{principle.index}</span>
-            <div className="v3-principle-mark" aria-hidden="true"><span /></div>
+            <div className="v3-principle-top">
+              <span className="v3-index">{principle.index}</span>
+              <div className="v3-principle-icon" aria-hidden="true">{principle.icon}</div>
+            </div>
             <h3>{principle.title}</h3>
             <p>{principle.description}</p>
           </article>

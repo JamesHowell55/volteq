@@ -16,7 +16,7 @@ interface Props {
 
 export default function GuideLayout({ guide, children }: Props) {
   return (
-    <div className="page">
+    <div className="page guide-page">
       <div className="page-header">
         <div className="eyebrow">● {guide.standard} Guide</div>
         <h1>{guide.title}</h1>
