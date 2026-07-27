@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useEntitlement, type Plan } from '../lib/useEntitlement';
+import { useTheme } from '../lib/ThemeContext';
+import { DEFAULT_ACCENT, isValidHex } from '../lib/theme';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 
@@ -104,6 +106,49 @@ function AuthForm() {
         credentials are handled directly by Supabase's authentication service. Confirmation emails will come
         from a Supabase address (noreply@mail.supabase.io).
       </p>
+    </div>
+  );
+}
+
+function AppearanceSection() {
+  const { accentHex, setAccentHex, resetAccent } = useTheme();
+  const [draftHex, setDraftHex] = useState(accentHex);
+
+  useEffect(() => setDraftHex(accentHex), [accentHex]);
+
+  const draftValid = isValidHex(draftHex);
+
+  return (
+    <div className="card">
+      <div className="card-title">Appearance</div>
+      <p className="note" style={{ marginBottom: '0.85rem' }}>Sets the accent colour used throughout the Volteq interface (site-wide, not just PDF reports).</p>
+      <div className="field">
+        <label>Accent colour</label>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <input
+            autoComplete="off"
+            type="color"
+            value={draftValid ? draftHex : accentHex}
+            onChange={(e) => { setDraftHex(e.target.value); setAccentHex(e.target.value); }}
+            style={{ width: 36, height: 36, padding: 2 }}
+          />
+          <input
+            autoComplete="off"
+            type="text"
+            value={draftHex}
+            onChange={(e) => {
+              setDraftHex(e.target.value);
+              if (isValidHex(e.target.value)) setAccentHex(e.target.value);
+            }}
+            placeholder="#5DCAA5"
+            style={{ fontFamily: 'var(--font-mono)', maxWidth: 160 }}
+          />
+        </div>
+        {!draftValid && <span className="hint" style={{ color: 'var(--neg)' }}>Enter a valid hex code, e.g. #5DCAA5</span>}
+        <button className="btn small" style={{ marginTop: '0.6rem' }} onClick={resetAccent} disabled={accentHex === DEFAULT_ACCENT}>
+          Reset to Volteq default
+        </button>
+      </div>
     </div>
   );
 }
@@ -332,6 +377,8 @@ export default function AccountPage() {
         )}
         <button className="btn small" style={{ marginTop: '0.75rem', marginLeft: plan === 'premium_subscription' ? '0.5rem' : 0 }} onClick={signOut}>Log out</button>
       </div>
+
+      <AppearanceSection />
 
       <SavedCalculationsOverview />
 
