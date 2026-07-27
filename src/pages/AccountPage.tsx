@@ -378,10 +378,9 @@ export default function AccountPage() {
         <button className="btn small" style={{ marginTop: '0.75rem', marginLeft: plan === 'premium_subscription' ? '0.5rem' : 0 }} onClick={signOut}>Log out</button>
       </div>
 
-      <AppearanceSection />
-
       <SavedCalculationsOverview />
 
+      {isPremium && <AppearanceSection />}
       {isPremium && <BrandingSection />}
     </div>
   );
