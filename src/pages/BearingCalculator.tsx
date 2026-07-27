@@ -474,11 +474,14 @@ export default function BearingCalculator() {
               <div className={`status-banner ${bearingResult.overallPass ? 'pass' : 'fail'}`}>
                 {bearingResult.overallPass
                   ? `✓ ${bearingResult.entry.designation} meets the target life and static safety factor`
-                  : `✗ No standard bore up to ${fmt(bearingResult.entry.boreMm, 0)} mm meets the target — see notes`}
+                  : bearingResult.noCandidate
+                    ? `✗ No catalogue ${resolvedType.shortLabel.toLowerCase()} bearing fits a ${fmt(shaftDiameterMm, 0)} mm shaft — largest shown`
+                    : `✗ No listed ${resolvedType.shortLabel.toLowerCase()} bearing up to ${fmt(bearingResult.entry.boreMm, 0)} mm bore meets the target — largest shown`}
               </div>
               {bearingResult.equivalentLoad.warning && <p className="note" style={{ color: 'var(--warn)' }}>⚠ {bearingResult.equivalentLoad.warning}</p>}
               {!bearingResult.lubrication.ok && bearingResult.lubrication.notes.map((n, i) => <p key={i} className="note" style={{ color: 'var(--warn)' }}>⚠ {n}</p>)}
               {thermalNote && <p className="note" style={{ color: 'var(--warn)' }}>⚠ {thermalNote}</p>}
+              {resolvedType.factorNote && <p className="hint" style={{ marginBottom: '0.6rem' }}>ⓘ {resolvedType.factorNote}</p>}
               <div className="result-grid">
                 <div className="result-tile">
                   <div className="label">Recommended bearing</div>
@@ -526,7 +529,8 @@ export default function BearingCalculator() {
                 <table className="data-table">
                   <tbody>
                     <tr><td>Speed factor n·dm</td><td>{fmt(bearingResult.lubrication.ndm, 0)} mm·rpm</td></tr>
-                    <tr><td>Limiting speed for {LUBRICATION_METHODS.find((m) => m.id === lubricationMethod)?.label}</td><td>{fmt(bearingResult.lubrication.limitRpm, 0)} rpm</td></tr>
+                    <tr><td>Typical n·dm limit ({LUBRICATION_METHODS.find((m) => m.id === lubricationMethod)?.label})</td><td>{fmt(bearingResult.lubrication.ndmLimit, 0)} mm·rpm</td></tr>
+                    {bearingResult.lubrication.catalogueLimitRpm != null && <tr><td>Catalogue limiting speed</td><td>{fmt(bearingResult.lubrication.catalogueLimitRpm, 0)} rpm</td></tr>}
                     {relube !== null && <tr><td>Estimated grease relube interval</td><td>{isFinite(relube) ? `${fmt(relube, 0)} h` : '—'}</td></tr>}
                     <tr><td>Recommended base oil viscosity</td><td>{recommendedIsoVg(bearingResult.lubrication.ndm)}</td></tr>
                   </tbody>
@@ -578,42 +582,42 @@ export default function BearingCalculator() {
         <p className="note">
           Rolling-element bearings are sized by ISO 281 basic rating life, L10 = (C/P)^p million revolutions
           (p = 3 for ball bearings, 10/3 for roller bearings), converted to hours via L10h = 10⁶·L10 /
-          (60·n). The equivalent dynamic load P = X·Fr + Y·Fa uses representative X/Y/e factors for each
-          bearing family — deep groove ball's e and Y vary with Fa/C0 per the classic combined-load table;
-          angular contact (25°/40°), tapered roller, and spherical roller use a single representative e/X/Y
-          set for that family; cylindrical roller and needle roller carry no axial load (P = Fr, and any
-          entered axial load is flagged as unsupported); thrust ball carries axial load only (P = Fa). An
-          optional duty/shock factor (1.0-2.5×) inflates the equivalent load before sizing, and an ISO 281
-          reliability factor a1 (90-99%) adjusts the achieved life. Static adequacy is checked separately via
-          s0 = C0 / P0 against a target safety factor that scales up for roller (line-contact) bearings, which
-          conventionally need a higher static margin than ball bearings for the same duty. The catalogue
-          candidate returned (designation, envelope, C, C0, limiting speed) comes from a parametric model —
-          calibrated at a d = 25 mm reference bearing against a published typical figure for that family, then
-          scaled with standard catalogue growth trends (dynamic capacity ~ d^1.8-1.9, envelope tapering at
-          larger bores) — not a literal line-by-line transcription of any manufacturer's current catalogue;
-          treat the returned designation as a realistic starting candidate and confirm its exact dimensions
-          and ratings against the current SKF (or equivalent) datasheet before procurement or final design.
-          Lubrication guidance compares the operating speed against a representative grease/oil limiting
-          speed for the candidate bearing and the housing temperature against typical grease/seal service
-          limits; the relubrication interval and recommended viscosity band are rule-of-thumb estimates, not
-          a substitute for the manufacturer's full lubrication-selection procedure. The shaft/housing
-          temperature difference drives a qualitative internal-clearance advisory (differential thermal
-          expansion), not a quantitative clearance calculation. Plain bushes are sized by the pressure-
-          velocity (PV) method — P = Fr/(d·L), V = π·d·n, checked individually and as PV against representative
-          material limits — rather than a fatigue life, since a plain bearing has no rolling-contact fatigue
-          mechanism. This is a sizing/guidance tool; have the complete bearing arrangement (mounting, fits,
-          internal clearance class, seals) reviewed before production use.
+          (60·n). The candidate designation, envelope (d, D, B), dynamic rating C, static rating C0, fatigue
+          load limit Pu, and limiting speed are taken from the <b>real SKF "Rolling bearings" general
+          catalogue</b> (PUB BU/P1 17000/1 EN, 2018 edition) — the mainstream series of each type, extracted
+          directly from the published product tables. From all catalogue bearings whose bore fits the shaft,
+          the tool selects the smallest-capacity one that meets both the life and static-safety targets (so a
+          light series is proposed where it suffices, stepping up to a medium/heavy series or larger bore
+          only as the loads demand). The equivalent dynamic load P = X·Fr + Y·Fa uses the catalogue's own
+          factor method: deep groove ball's e and Y vary with f0·Fa/C0 (SKF table 9, Normal clearance);
+          angular contact uses the 25°/40° contact-angle factor set; spherical roller uses the double-row
+          form (P = Fr + Y1·Fa below e); cylindrical and needle roller carry no axial load (P = Fr, and any
+          entered axial load is flagged as unsupported); thrust ball carries axial load only (P = Fa). Where
+          a family's e/Y vary per designation (tapered and spherical roller), a representative mainstream-
+          series value is used, noted alongside the result. An optional duty/shock factor (1.0-2.5×) inflates
+          the equivalent load before sizing, and the ISO 281:2007 reliability factor a1 (90-99%) adjusts the
+          achieved life. Static adequacy is checked via s0 = C0 / P0 against a target that scales up for
+          roller (line-contact) bearings. Lubrication guidance compares the speed factor n·dm against a
+          representative grease/oil limit for the family and the catalogue limiting speed, plus the housing
+          temperature against typical grease/seal service limits; the relubrication interval and viscosity
+          band are rule-of-thumb estimates, not a substitute for the manufacturer's full lubrication-
+          selection procedure. The shaft/housing temperature difference drives a qualitative internal-
+          clearance advisory, not a quantitative clearance calculation. Plain bushes are sized by the
+          pressure-velocity (PV) method against representative material limits, not a fatigue life. Bearing
+          dimensions and ratings are ISO-standardised and stable across catalogue editions, but confirm the
+          final designation against the current manufacturer datasheet, and have the complete arrangement
+          (mounting, fits, internal clearance class, seals) reviewed before production use.
         </p>
         <p className="note">
           <b>Validated:</b> deep groove ball, shaft diameter 25 mm, radial load 2,000 N, axial load 0 N, speed
           1,500 rpm, target life 4,000 h at 90% reliability, steady duty, normal static duty (all other
-          defaults) returns the calibration-bore candidate 6205 (C = 14,800 N, C0 = 7,844 N) directly, with no
-          size-up needed. By hand: since Fa = 0, X = 1 and Y = 0 regardless of the load-ratio table, so
-          P = Fr = 2,000 N exactly. L10 = (14,800/2,000)³ = 405.2 million revolutions, so L10h = 10⁶ × 405.2 /
-          (60 × 1,500) = 4,502 h — comfortably above the 4,000 h target, matching "pass". The static side:
-          P0 = max(0.6×2,000 + 0.5×0, 2,000) = 2,000 N, required C0 = 1.5 × 2,000 = 3,000 N against an actual
-          C0 of 7,844 N (s0 = 3.92) — also matching a hand check. This calculator returns exactly these
-          figures for that input set.
+          defaults) returns the real catalogue bearing <b>6205</b> — SKF-published C = 14.8 kN, C0 = 7.8 kN,
+          d 25 / D 52 / B 15 mm. By hand: since Fa = 0, X = 1 and Y = 0, so P = Fr = 2,000 N. L10 =
+          (14,800/2,000)³ = 405.2 million revolutions, so L10h = 10⁶ × 405.2 / (60 × 1,500) = 4,502 h —
+          above the 4,000 h target. Static side: P0 = max(0.6×2,000, 2,000) = 2,000 N, required C0 =
+          1.5 × 2,000 = 3,000 N against the catalogue C0 of 7,800 N (s0 = 3.9). This calculator returns
+          exactly these figures, and the 6205 dimensions and ratings match the SKF catalogue product table
+          entry directly.
         </p>
       </div>
 

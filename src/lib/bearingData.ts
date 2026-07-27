@@ -1,19 +1,14 @@
-// Reference data for the Bearing Calculator: bearing-type metadata, a parametric
-// catalogue model (envelope + dynamic/static load rating vs. bore, calibrated to
-// published reference bearings), ISO/DIN designation coding, ISO 281 equivalent
-// dynamic/static load factors, and plain-bush (sleeve bearing) material limits.
+// Bearing-type metadata and the ISO 281 / SKF factor tables used by the Bearing
+// Calculator. The per-designation dimensions and load ratings now come from the
+// real SKF catalogue (see bearingCatalogue.ts); this file holds the type-level
+// engineering constants: equivalent-load X/Y/e factors, static-load factors,
+// reliability and duty factors, and the plain-bush (PV-method) material limits.
 //
-// The load-rating tables below are NOT a literal transcription of the current SKF
-// catalogue — that runs to thousands of designations and updates over time. Instead
-// each rolling-element type is calibrated at a d = 25 mm reference bearing against a
-// real, published bore/OD/width/dynamic-rating combination (e.g. 6205: d25 D52 B15
-// C14.8kN is a widely published deep-groove figure), then scaled to other bore sizes
-// with standard catalogue growth trends (capacity ~ d^1.8-1.9, envelope growth
-// tapering off at larger bores). This gives a realistic, internally consistent,
-// continuously-scaling candidate for any shaft diameter — but the exact designation
-// returned is a representative candidate, not a guaranteed-accurate catalogue
-// lookup. Always confirm the final designation's dimensions and ratings against the
-// current SKF (or equivalent) product datasheet before procurement or final design.
+// Factor sources: SKF 'Rolling bearings' catalogue (PUB BU/P1 17000/1 EN, 2018),
+// section B.3 (Bearing size) and each product section's "Loads" pages. Where a
+// bearing family's e/Y vary per designation in the catalogue (tapered and
+// spherical roller especially), a single representative set for the mainstream
+// series is used and is documented as such in the calculator's assumptions note.
 
 export type BearingTypeId =
   | 'deep-groove-ball'
@@ -28,39 +23,26 @@ export type BearingTypeId =
 export type AxialCapability = 'both' | 'one-direction' | 'none' | 'axial-only';
 export type RollingElementShape = 'ball' | 'cylindrical-roller' | 'tapered-roller' | 'spherical-roller' | 'needle' | 'none';
 
-// Equivalent dynamic load P = X.Fr + Y.Fa. Three shapes cover every rolling-element
-// type here:
-//  - 'radial-only': the bearing type cannot react thrust at all (X=1, Y=0 always) —
-//    cylindrical roller (NU) and needle roller.
-//  - 'axial-only': the bearing type cannot react radial load at all (X=0, Y=1
-//    always) — thrust ball.
-//  - 'combined-fixed' / 'combined-table': X1=1,Y1=0 while Fa/Fr <= e; above e,
-//    X2/Y2 apply. 'combined-table' additionally varies e and Y2 with Fa/C0
-//    (deep-groove ball's classic behaviour); 'combined-fixed' uses one e/X2/Y2
-//    triple regardless of load ratio (typical of how a single angular-contact/
-//    tapered/spherical-roller series is presented).
+// Equivalent dynamic load P = X.Fr + Y.Fa. Shapes:
+//  - 'radial-only'  : no thrust capacity (P = Fr) — cylindrical & needle roller.
+//  - 'axial-only'   : no radial capacity (P = Fa) — thrust ball.
+//  - 'combined-fixed': single-row combined. Fa/Fr <= e -> P = Fr; above -> X2.Fr + Y2.Fa.
+//    (angular contact, tapered roller)
+//  - 'combined-table': deep groove ball. e and Y vary with f0.Fa/C0 (SKF table 9,
+//    Normal clearance); a representative f0 is applied since f0 is a per-bearing
+//    calculation factor not carried in this model.
+//  - 'double-row'   : spherical roller. Fa/Fr <= e -> P = Fr + Y1.Fa;
+//    above -> X2.Fr + Y2.Fa (both rows react axial load even below e).
 export type DynamicFactorModel =
   | { kind: 'radial-only' }
   | { kind: 'axial-only' }
   | { kind: 'combined-fixed'; e: number; x2: number; y2: number }
-  | { kind: 'combined-table'; faOverC0: readonly number[]; eTable: readonly number[]; y2Table: readonly number[]; x2: number };
+  | { kind: 'combined-table'; f0: number; faOverC0: readonly number[]; eTable: readonly number[]; y2Table: readonly number[]; x2: number }
+  | { kind: 'double-row'; e: number; y1: number; x2: number; y2: number };
 
 export interface StaticFactors {
   x0: number;
   y0: number;
-}
-
-export interface CatalogueReference {
-  boreMm: number; // calibration bore, mm
-  odMm: number; // D at calibration bore
-  widthMm: number; // B (or T for tapered, overall height for thrust), at calibration bore
-  dynamicKN: number; // C at calibration bore
-  staticOverDynamic: number; // C0 / C, held constant across bore range
-  capacityExponent: number; // C(d) = dynamicKN * (d / boreMm) ^ capacityExponent
-  envelopeExponent: number; // radial build height & width scale as (d / boreMm) ^ this
-  greaseLimitRpmAtRef: number; // limiting speed (grease) at the calibration bore
-  speedExponent: number; // n_lim(d) = greaseLimitRpmAtRef * (boreMm / d) ^ speedExponent
-  oilLimitFactor: number; // oil limiting speed = grease limit * this factor
 }
 
 export interface BearingTypeMeta {
@@ -72,34 +54,19 @@ export interface BearingTypeMeta {
   rowCount: 1 | 2;
   axial: AxialCapability;
   isFatigueRated: boolean;
-  designation: (boreMm: number) => string;
-  reference: CatalogueReference;
+  hasCatalogue: boolean; // false for plain bush (sized by PV, not a catalogue lookup)
   dynamicFactors: DynamicFactorModel;
   staticFactors: StaticFactors;
-  contactAngleDeg: number; // 0 for pure-radial types, 90 for thrust, else nominal ball/roller contact angle
+  contactAngleDeg: number;
+  factorNote?: string; // disclosed when representative (not per-designation) factors are used
   mountingNote?: string;
 }
 
-// ---- ISO/DIN bore coding (metric bearings, bore 10-495 mm) ----
-// Bore codes 00/01/02/03 = 10/12/15/17 mm; from 20 mm up in 5 mm steps the code is
-// bore/5 (e.g. 25 mm -> '05', 100 mm -> '20'). This part of the designation is a
-// fixed, deterministic industry convention, not an estimate.
-export function boreCode(dMm: number): string {
-  const rounded = Math.round(dMm * 100) / 100;
-  if (rounded === 10) return '00';
-  if (rounded === 12) return '01';
-  if (rounded === 15) return '02';
-  if (rounded === 17) return '03';
-  return String(Math.round(dMm / 5)).padStart(2, '0');
-}
-
-// Standard bore progression this tool searches over when proposing a bearing.
-export const STANDARD_BORES_MM: number[] = [
-  10, 12, 15, 17, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 120, 130, 140, 150,
-];
-
+// SKF catalogue table 9 (deep groove ball, Normal clearance, single row):
+// e and Y as a function of f0.Fa/C0. X = 0.56 when Fa/Fr > e.
 const DEEP_GROOVE_TABLE = {
-  faOverC0: [0.014, 0.028, 0.056, 0.084, 0.11, 0.17, 0.28, 0.42, 0.56],
+  f0: 13, // representative calculation factor for the mainstream 60/62/63 series (catalogue range ~11-17)
+  faOverC0: [0.172, 0.345, 0.689, 1.03, 1.38, 2.07, 3.45, 5.17, 6.89],
   eTable: [0.19, 0.22, 0.26, 0.28, 0.30, 0.34, 0.38, 0.42, 0.44],
   y2Table: [2.30, 1.99, 1.71, 1.55, 1.45, 1.31, 1.15, 1.04, 1.00],
   x2: 0.56,
@@ -115,8 +82,7 @@ export const BEARING_TYPES: Record<BearingTypeId, BearingTypeMeta> = {
     rowCount: 1,
     axial: 'both',
     isFatigueRated: true,
-    designation: (d) => `62${boreCode(d)}`,
-    reference: { boreMm: 25, odMm: 52, widthMm: 15, dynamicKN: 14.8, staticOverDynamic: 0.53, capacityExponent: 1.8, envelopeExponent: 0.75, greaseLimitRpmAtRef: 15000, speedExponent: 0.85, oilLimitFactor: 1.3 },
+    hasCatalogue: true,
     dynamicFactors: { kind: 'combined-table', ...DEEP_GROOVE_TABLE },
     staticFactors: { x0: 0.6, y0: 0.5 },
     contactAngleDeg: 0,
@@ -130,24 +96,23 @@ export const BEARING_TYPES: Record<BearingTypeId, BearingTypeMeta> = {
     rowCount: 1,
     axial: 'one-direction',
     isFatigueRated: true,
-    designation: (d) => `72${boreCode(d)} B`,
-    reference: { boreMm: 25, odMm: 52, widthMm: 15, dynamicKN: 14.5, staticOverDynamic: 0.64, capacityExponent: 1.8, envelopeExponent: 0.75, greaseLimitRpmAtRef: 13000, speedExponent: 0.85, oilLimitFactor: 1.3 },
-    dynamicFactors: { kind: 'combined-fixed', e: 0.68, x2: 0.41, y2: 0.87 },
+    hasCatalogue: true,
+    // 40° contact (7xxx B series). Overridden for 25° in resolveBearingType.
+    dynamicFactors: { kind: 'combined-fixed', e: 1.14, x2: 0.35, y2: 0.57 },
     staticFactors: { x0: 0.5, y0: 0.26 },
-    contactAngleDeg: 25,
+    contactAngleDeg: 40,
     mountingNote: 'Single row shown — carries axial load in one direction only. Pair back-to-back/face-to-face for both directions.',
   },
   'cylindrical-roller': {
     id: 'cylindrical-roller',
     label: 'Cylindrical roller',
     shortLabel: 'Cylindrical roller',
-    description: 'Line-contact roller bearing (NU type): high radial capacity in a compact envelope, but no axial (thrust) capacity at all — a separate bearing must locate the shaft axially.',
+    description: 'Line-contact roller bearing (NU type): high radial capacity in a compact envelope, but no axial (thrust) capacity — a separate bearing must locate the shaft axially.',
     rollingElement: 'cylindrical-roller',
     rowCount: 1,
     axial: 'none',
     isFatigueRated: true,
-    designation: (d) => `NU 2${boreCode(d)} ECP`,
-    reference: { boreMm: 25, odMm: 52, widthMm: 15, dynamicKN: 28.0, staticOverDynamic: 1.07, capacityExponent: 1.9, envelopeExponent: 0.75, greaseLimitRpmAtRef: 12000, speedExponent: 0.85, oilLimitFactor: 1.35 },
+    hasCatalogue: true,
     dynamicFactors: { kind: 'radial-only' },
     staticFactors: { x0: 1, y0: 0 },
     contactAngleDeg: 0,
@@ -162,11 +127,11 @@ export const BEARING_TYPES: Record<BearingTypeId, BearingTypeMeta> = {
     rowCount: 1,
     axial: 'one-direction',
     isFatigueRated: true,
-    designation: (d) => `302${boreCode(d)}`,
-    reference: { boreMm: 25, odMm: 52, widthMm: 16.25, dynamicKN: 28.0, staticOverDynamic: 1.09, capacityExponent: 1.9, envelopeExponent: 0.75, greaseLimitRpmAtRef: 10000, speedExponent: 0.85, oilLimitFactor: 1.35 },
+    hasCatalogue: true,
     dynamicFactors: { kind: 'combined-fixed', e: 0.37, x2: 0.4, y2: 1.6 },
-    staticFactors: { x0: 0.5, y0: 1.0 },
+    staticFactors: { x0: 0.5, y0: 0.8 },
     contactAngleDeg: 15,
+    factorNote: 'Tapered-roller e, Y and Y0 vary per designation in the catalogue; representative mainstream-series values (e≈0.37, Y≈1.6, Y0≈0.8) are used here.',
     mountingNote: 'Single row shown — carries axial load in one direction only. Pair (direct or indirect mount) for both directions.',
   },
   'spherical-roller': {
@@ -178,11 +143,11 @@ export const BEARING_TYPES: Record<BearingTypeId, BearingTypeMeta> = {
     rowCount: 2,
     axial: 'both',
     isFatigueRated: true,
-    designation: (d) => `222${boreCode(d)} E`,
-    reference: { boreMm: 25, odMm: 52, widthMm: 18, dynamicKN: 44.0, staticOverDynamic: 1.09, capacityExponent: 1.9, envelopeExponent: 0.78, greaseLimitRpmAtRef: 8000, speedExponent: 0.85, oilLimitFactor: 1.35 },
-    dynamicFactors: { kind: 'combined-fixed', e: 0.30, x2: 0.67, y2: 2.6 },
-    staticFactors: { x0: 0.5, y0: 2.5 },
+    hasCatalogue: true,
+    dynamicFactors: { kind: 'double-row', e: 0.30, y1: 2.6, x2: 0.67, y2: 3.9 },
+    staticFactors: { x0: 1, y0: 2.6 },
     contactAngleDeg: 10,
+    factorNote: 'Spherical-roller e, Y1, Y2 and Y0 vary per designation in the catalogue; representative mainstream-series values (e≈0.30, Y1≈2.6, Y2≈3.9, Y0≈2.6) are used here.',
   },
   'needle-roller': {
     id: 'needle-roller',
@@ -193,12 +158,11 @@ export const BEARING_TYPES: Record<BearingTypeId, BearingTypeMeta> = {
     rowCount: 1,
     axial: 'none',
     isFatigueRated: true,
-    designation: (d) => `NA 49${boreCode(d)}`,
-    reference: { boreMm: 25, odMm: 42, widthMm: 17, dynamicKN: 26.0, staticOverDynamic: 1.12, capacityExponent: 1.9, envelopeExponent: 0.7, greaseLimitRpmAtRef: 9000, speedExponent: 0.85, oilLimitFactor: 1.3 },
+    hasCatalogue: true,
     dynamicFactors: { kind: 'radial-only' },
     staticFactors: { x0: 1, y0: 0 },
     contactAngleDeg: 0,
-    mountingNote: 'No axial capacity — a separate bearing must locate the shaft. Usually run against a hardened, ground shaft surface (an inner ring removes that requirement).',
+    mountingNote: 'No axial capacity — a separate bearing must locate the shaft. SKF recommends a static safety factor s0 >= 3 for needle roller bearings.',
   },
   'thrust-ball': {
     id: 'thrust-ball',
@@ -209,8 +173,7 @@ export const BEARING_TYPES: Record<BearingTypeId, BearingTypeMeta> = {
     rowCount: 1,
     axial: 'axial-only',
     isFatigueRated: true,
-    designation: (d) => `512${boreCode(d)}`,
-    reference: { boreMm: 25, odMm: 47, widthMm: 15, dynamicKN: 27.0, staticOverDynamic: 1.9, capacityExponent: 1.8, envelopeExponent: 0.7, greaseLimitRpmAtRef: 4000, speedExponent: 1.0, oilLimitFactor: 1.4 },
+    hasCatalogue: true,
     dynamicFactors: { kind: 'axial-only' },
     staticFactors: { x0: 0, y0: 1 },
     contactAngleDeg: 90,
@@ -225,8 +188,7 @@ export const BEARING_TYPES: Record<BearingTypeId, BearingTypeMeta> = {
     rowCount: 1,
     axial: 'none',
     isFatigueRated: false,
-    designation: (d) => `Bush ${d.toFixed(0)}×${(d * 1.2).toFixed(0)}×${d.toFixed(0)}`,
-    reference: { boreMm: 25, odMm: 30, widthMm: 25, dynamicKN: 0, staticOverDynamic: 1, capacityExponent: 1, envelopeExponent: 1, greaseLimitRpmAtRef: 0, speedExponent: 1, oilLimitFactor: 1 },
+    hasCatalogue: false,
     dynamicFactors: { kind: 'radial-only' },
     staticFactors: { x0: 1, y0: 0 },
     contactAngleDeg: 0,
@@ -293,10 +255,6 @@ export const LUBRICATION_METHODS: LubricationMethodMeta[] = [
 ];
 
 // ---- Duty / shock (application) factor ----
-// Multiplies the calculated equivalent dynamic load before sizing, per the
-// classic radial/shock-load guidance reproduced across bearing-selection guides
-// (e.g. steady load 1.0-1.3, light shock/out-of-balance 1.3-2.0, heavy shock or
-// vibration 2.0-3.0) — representative midpoints are used here.
 export interface DutyFactorOption {
   id: 'steady' | 'light-shock' | 'heavy-shock';
   label: string;
@@ -310,7 +268,7 @@ export const DUTY_FACTORS: DutyFactorOption[] = [
   { id: 'heavy-shock', label: 'Heavy shock / vibration', factor: 2.5, description: 'Impact loading, reciprocating machinery, or significant vibration.' },
 ];
 
-// ---- Target-life presets ----
+// ---- Target-life presets (SKF catalogue table 1, guideline specification life) ----
 export interface LifePreset {
   id: string;
   label: string;
@@ -319,27 +277,26 @@ export interface LifePreset {
 }
 
 export const LIFE_PRESETS: LifePreset[] = [
-  { id: 'intermittent', label: 'Intermittent use', hours: 1000, hint: '500-2,000 h' },
-  { id: 'occasional', label: 'Occasional use', hours: 8000, hint: '5,000-10,000 h' },
-  { id: 'normal', label: 'Normal operation', hours: 30000, hint: '20,000-50,000 h' },
-  { id: 'continuous', label: 'Continuous operation', hours: 90000, hint: '75,000-100,000 h' },
-  { id: 'high-reliability', label: 'High reliability', hours: 150000, hint: '>100,000 h' },
+  { id: 'intermittent', label: 'Intermittent use', hours: 4000, hint: '3,000-8,000 h — short-period tools' },
+  { id: 'eight-hour', label: '8 h/day, industrial', hours: 20000, hint: '10,000-25,000 h — general machinery' },
+  { id: 'normal', label: '8 h/day, fully utilised', hours: 30000, hint: '20,000-30,000 h' },
+  { id: 'continuous', label: 'Continuous 24 h', hours: 50000, hint: '40,000-50,000 h' },
+  { id: 'high-reliability', label: 'Continuous, high reliability', hours: 100000, hint: '60,000-100,000 h' },
 ];
 
-// ISO 281 reliability (a1) life-adjustment factor.
+// SKF catalogue table 3 (ISO 281:2007) reliability (a1) life-adjustment factor.
 export const RELIABILITY_A1: { reliabilityPct: number; a1: number }[] = [
   { reliabilityPct: 90, a1: 1.00 },
-  { reliabilityPct: 95, a1: 0.62 },
-  { reliabilityPct: 96, a1: 0.53 },
-  { reliabilityPct: 97, a1: 0.44 },
-  { reliabilityPct: 98, a1: 0.33 },
-  { reliabilityPct: 99, a1: 0.21 },
+  { reliabilityPct: 95, a1: 0.64 },
+  { reliabilityPct: 96, a1: 0.55 },
+  { reliabilityPct: 97, a1: 0.47 },
+  { reliabilityPct: 98, a1: 0.37 },
+  { reliabilityPct: 99, a1: 0.25 },
 ];
 
-// Static-safety-factor guideline (duty x smoothness), representative of published
-// guidance for rotating/oscillating machinery under normal duty. Roller bearings
-// (line contact) conventionally want a higher static safety factor than ball
-// bearings (point contact) for the same duty band — applied as a multiplier.
+// Static-safety-factor guideline (duty x smoothness). Roller bearings (line
+// contact) conventionally want a higher static safety factor than ball bearings
+// (point contact) for the same duty — applied as a multiplier.
 export const STATIC_SAFETY_TARGET: { id: 'low' | 'normal' | 'heavy'; label: string; ballTarget: number; rollerMultiplier: number }[] = [
   { id: 'low', label: 'Low — smooth, no vibration', ballTarget: 1.0, rollerMultiplier: 1.5 },
   { id: 'normal', label: 'Normal duty', ballTarget: 1.5, rollerMultiplier: 1.33 },
