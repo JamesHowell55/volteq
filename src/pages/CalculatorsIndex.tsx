@@ -45,6 +45,7 @@ const SHORT_DESCRIPTIONS: Record<string, string> = {
   '/id-iq-current': 'Id/Iq decomposition and MTPA for PMSM FOC.',
   '/battery-pack-series-parallel': 'Pack voltage, capacity, and voltage sag under load.',
   '/beam-bending': 'Reactions, shear, moment, and deflection for any beam and load combination.',
+  '/bearing-calculator': 'ISO 281 life-based bearing selection with lubrication guidance.',
   '/bolted-joint': 'Preload, torque, and yield checks to VDI 2230.',
   '/o-ring': 'Gland design to the Trelleborg guide and AS568/ISO 3601.',
   '/fits-and-limits': 'Interference-fit stresses to ISO 286 and Lamé theory.',

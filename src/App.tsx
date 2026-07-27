@@ -9,6 +9,7 @@ import BoltedJointCalculator from './pages/BoltedJointCalculator';
 import BoltPatternCalculator from './pages/BoltPatternCalculator';
 import BomCompareCalculator from './pages/BomCompareCalculator';
 import BeamCalculator from './pages/BeamCalculator';
+import BearingCalculator from './pages/BearingCalculator';
 import CableWireSizingCalculator from './pages/CableWireSizingCalculator';
 import BatteryPackSeriesParallelCalculator from './pages/BatteryPackSeriesParallelCalculator';
 import MotorTorquePowerSpeedCalculator from './pages/MotorTorquePowerSpeedCalculator';
@@ -87,6 +88,7 @@ function App() {
               <Route path="/bolt-pattern" element={<BoltPatternCalculator />} />
               <Route path="/bom-compare" element={<BomCompareCalculator />} />
               <Route path="/beam-bending" element={<BeamCalculator />} />
+              <Route path="/bearing-calculator" element={<BearingCalculator />} />
               <Route path="/o-ring" element={<ORingCalculator />} />
               <Route path="/fits-and-limits" element={<FitsAndLimitsCalculator />} />
               <Route path="/mohrs-circle" element={<MohrsCircleCalculator />} />
