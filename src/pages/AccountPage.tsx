@@ -206,7 +206,12 @@ function BrandingSection() {
       <div className="field">
         <label>Company logo</label>
         <input type="file" accept="image/*" disabled={uploading} onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])} />
-        {logoUrl && <img src={logoUrl} alt="Company logo" style={{ height: '2.5rem', marginTop: '0.5rem', display: 'block' }} />}
+        {logoUrl && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.5rem' }}>
+            <img src={logoUrl} alt="Company logo" style={{ height: '2.5rem', display: 'block' }} />
+            <button className="btn small" onClick={() => setLogoUrl(null)}>Remove logo</button>
+          </div>
+        )}
       </div>
       {error && <p className="note" style={{ color: 'var(--neg)', marginTop: '0.5rem' }}>{error}</p>}
       <button className="btn primary" onClick={handleSave} disabled={saving} style={{ marginTop: '0.5rem' }}>
