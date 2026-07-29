@@ -13,6 +13,8 @@ import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import { MATERIALS, type Material } from '../lib/materials';
+import MotorProfilePicker from '../components/MotorProfilePicker';
+import type { MotorProfileParams } from '../lib/motorProfiles';
 import {
   INSULATION_PRESETS,
   STANDARD_CROSS_SECTIONS_MM2,
@@ -82,6 +84,11 @@ export default function CableWireSizingCalculator() {
 
   const [targetCurrentA, setTargetCurrentA] = useState(150);
   const [systemVoltage, setSystemVoltage] = useState(400);
+
+  const applyMotorProfile = (p: MotorProfileParams) => {
+    const current = p.continuousCurrentARms ?? p.peakCurrentARms;
+    if (current != null) setTargetCurrentA(current);
+  };
 
   const getInputs = useCallback((): Record<string, unknown> => ({
     mode, materialId, sizeUnit, crossSectionMm2, awgSize, insulationId,
@@ -446,6 +453,9 @@ export default function CableWireSizingCalculator() {
                   <div className="field">
                     <label>System voltage (for % voltage drop)</label>
                     <input autoComplete="off" type="number" min={0} value={systemVoltage} onChange={(e) => setSystemVoltage(Number(e.target.value))} />
+                  </div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <MotorProfilePicker onApply={applyMotorProfile} hint="Sets the target current from a saved motor profile's continuous (preferred) or peak current rating — continuous duty is the usual basis for cable ampacity." />
                   </div>
                 </>
               )}

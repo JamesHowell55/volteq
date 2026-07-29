@@ -254,6 +254,28 @@ export const GUIDES: GuideMeta[] = [
       'What MIL-DTL-38999 covers, how contact size sets current rating, and how a point-to-point harness pinout is laid out.',
     calculator: { label: 'Harness Designer', path: '/harness-designer' },
   },
+  {
+    slug: 'iso-281',
+    title: 'Bearing Life & Selection: How ISO 281 Rates a Rolling Bearing',
+    standard: 'ISO 281',
+    seoTitle: 'ISO 281 Bearing Life Explained — L10, Dynamic Load Rating & C/P',
+    seoDescription:
+      'A plain-language guide to rolling-bearing selection to ISO 281: where the L10 = (C/P)^p rating-life formula comes from, the equivalent load P = X·Fr + Y·Fa, the static safety check, and how speed and lubrication set the limits.',
+    blurb:
+      'Where the L10 = (C/P)^p rating-life formula comes from, the equivalent load P = X·Fr + Y·Fa, and the static and lubrication limits.',
+    calculator: { label: 'Bearing Calculator', path: '/bearing-calculator' },
+  },
+  {
+    slug: 'iso-4156',
+    title: 'Involute Splines: Geometry, Measurement Over Pins & Torque Capacity',
+    standard: 'ISO 4156',
+    seoTitle: 'Involute Splines Explained — ISO 4156 Geometry, Pin Measurement & Torque',
+    seoDescription:
+      'A plain-language guide to involute splines to ISO 4156 / ANSI B92.2M: how module and pressure angle set the geometry, how measurement over pins inspects tooth thickness, and how the SAE method rates torque capacity.',
+    blurb:
+      'How module and pressure angle set involute-spline geometry, how measurement over pins works, and how splines are rated for torque.',
+    calculator: { label: 'Spline Sizing Calculator', path: '/spline-sizing' },
+  },
 ];
 
 export const GUIDES_INDEX_PATH = '/guides';

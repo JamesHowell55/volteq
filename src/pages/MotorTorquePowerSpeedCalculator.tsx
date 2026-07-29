@@ -11,6 +11,8 @@ import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
 import { getCategory, convert } from '../lib/unitConversions';
 import { solveTorquePowerSpeed, torqueFromCurrent, electricalInputPower, type SolveFor } from '../lib/motorTorquePowerSpeedPhysics';
+import MotorProfilePicker from '../components/MotorProfilePicker';
+import type { MotorProfileParams } from '../lib/motorProfiles';
 
 function fmt(n: number, digits = 3): string {
   if (!isFinite(n)) return '—';
@@ -45,6 +47,18 @@ export default function MotorTorquePowerSpeedCalculator() {
   const [currentA, setCurrentA] = useState(0);
   const [torqueConstant, setTorqueConstant] = useState(0.5);
   const [efficiencyPercent, setEfficiencyPercent] = useState(0);
+
+  // Applies whichever fields the profile has — including the field currently
+  // "solved for" (its input is disabled/computed, so setting it is harmless
+  // and it's simplest to just apply everything available rather than branch
+  // on solveFor). Units are forced to the SI ids the values are expressed in.
+  const applyMotorProfile = (p: MotorProfileParams) => {
+    setTorqueValue(p.peakTorqueNm); setTorqueUnit('nm');
+    setPowerValue(p.ratedPowerKw); setPowerUnit('kw');
+    const speed = p.ratedSpeedRpm ?? p.maxSpeedRpm;
+    if (speed != null) { setSpeedValue(speed); setSpeedUnit('rpm'); }
+    if (p.ktNmPerA != null) setTorqueConstant(p.ktNmPerA);
+  };
 
   const getInputs = useCallback((): Record<string, unknown> => ({
     solveFor, torqueValue, torqueUnit, powerValue, powerUnit,
@@ -234,6 +248,9 @@ export default function MotorTorquePowerSpeedCalculator() {
                 <select value={speedUnit} onChange={(e) => setSpeedUnit(e.target.value)}>
                   {SPEED_UNITS.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}
                 </select>
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <MotorProfilePicker onApply={applyMotorProfile} hint="Sets peak torque, rated power, rated (or max) speed, and Kt from a saved motor profile." />
               </div>
             </div>
           </div>

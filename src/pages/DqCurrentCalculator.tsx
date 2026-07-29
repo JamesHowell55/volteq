@@ -13,6 +13,8 @@ import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import DqSpaceVectorDiagram from '../components/DqSpaceVectorDiagram';
+import MotorProfilePicker from '../components/MotorProfilePicker';
+import type { MotorProfileParams } from '../lib/motorProfiles';
 import {
   rmsToPeak,
   magnitudeAngleFromDq,
@@ -94,6 +96,15 @@ export default function DqCurrentCalculator() {
       setLdMh(p.ldMh);
       setLqMh(p.type === 'spm' ? p.ldMh : p.lqMh);
     }
+  };
+
+  const applyMotorProfile = (p: MotorProfileParams) => {
+    if (p.motorType === 'spm' || p.motorType === 'ipm') setMotorType(p.motorType);
+    if (p.polePairs != null) setPolePairs(p.polePairs);
+    if (p.fluxLinkageWb != null) setFluxLinkageWb(p.fluxLinkageWb);
+    if (p.ldMh != null) setLdMh(p.ldMh);
+    if (p.lqMh != null) setLqMh(p.lqMh);
+    setPresetId('custom');
   };
 
   // Surface-PM machines have no saliency: Lq is forced equal to Ld.
@@ -353,6 +364,9 @@ export default function DqCurrentCalculator() {
                 <select value={presetId} onChange={(e) => applyPreset(e.target.value)}>
                   {MOTOR_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                 </select>
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <MotorProfilePicker onApply={applyMotorProfile} hint="Pulls motor type, pole pairs, flux linkage, and Ld/Lq from a saved motor profile. Only fields present on the profile are applied." />
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
                 <label>Motor type</label>

@@ -42,6 +42,21 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://volteq.io/spline-sizing</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/shaft-sizing</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/shaft-bearing-system</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://volteq.io/harness-designer</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -90,6 +105,11 @@
     <loc>https://volteq.io/id-iq-current</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/motor-profiles</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://volteq.io/battery-pack-series-parallel</loc>
@@ -243,6 +263,16 @@
   </url>
   <url>
     <loc>https://volteq.io/guides/mil-dtl-38999</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/guides/iso-281</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/guides/iso-4156</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

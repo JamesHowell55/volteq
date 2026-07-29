@@ -9,6 +9,8 @@
 // the PDF template already hardcodes, so they render correctly regardless
 // of the live site's current theme.
 
+import { generateProfilePoints, type SplineGeometry } from './splinePhysics';
+
 const TEXT_2 = '#565C53';
 const TEXT_FAINT = '#9A9D95';
 const BORDER_STRONG = '#C8CBC5';
@@ -951,4 +953,33 @@ export function renderBeamResponseChartSvg(xs: number[], values: number[], color
 
 function fmtNum(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+/** To-scale end view of an external involute spline for the PDF report — mirrors
+ *  SplineProfileDiagram.tsx with hardcoded light-theme colors. */
+export function renderSplineProfileSvg(g: SplineGeometry, accentColor: string): string {
+  const W = 460, H = 400, CX = W / 2, CY = 180;
+  const rTip = g.majorDiaMm / 2;
+  if (!(rTip > 0) || g.teeth < 3) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}"></svg>`;
+  const scale = 150 / rTip;
+  const toX = (x: number) => CX + x * scale;
+  const toY = (y: number) => CY - y * scale;
+  const pts = generateProfilePoints(g, 14);
+  const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${toX(p.x).toFixed(2)},${toY(p.y).toFixed(2)}`).join(' ') + ' Z';
+  const circ = (dMm: number, dash: string, stroke: string) =>
+    `<circle cx="${CX}" cy="${CY}" r="${((dMm / 2) * scale).toFixed(2)}" fill="none" stroke="${stroke}" stroke-width="1" stroke-dasharray="${dash}"/>`;
+  const pinCentreR = (g.measurementOverPinsMm / 2 - g.pinDiameterMm / 2) * scale;
+  const pinR = (g.pinDiameterMm / 2) * scale;
+  const mopHalf = (g.measurementOverPinsMm / 2) * scale;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" font-family="ui-monospace, monospace">
+    ${circ(g.majorDiaMm, '', TEXT_FAINT)}${circ(g.minorDiaMm, '', TEXT_FAINT)}${circ(g.pitchDiaMm, '5 3', accentColor)}${circ(g.baseDiaMm, '2 3', TEXT_FAINT)}
+    <path d="${path}" fill="none" stroke="${accentColor}" stroke-width="1.4"/>
+    <circle cx="${CX}" cy="${(CY - pinCentreR).toFixed(2)}" r="${pinR.toFixed(2)}" fill="none" stroke="${WARN}" stroke-width="1.3" stroke-dasharray="3 2"/>
+    <circle cx="${CX}" cy="${(CY + pinCentreR).toFixed(2)}" r="${pinR.toFixed(2)}" fill="none" stroke="${WARN}" stroke-width="1.3" stroke-dasharray="3 2"/>
+    <line x1="${CX + 150}" y1="${(CY - mopHalf).toFixed(2)}" x2="${CX + 150}" y2="${(CY + mopHalf).toFixed(2)}" stroke="${TEXT_2}" stroke-width="1"/>
+    <text x="${CX + 156}" y="${CY + 4}" font-size="10" fill="${TEXT_2}">MOP ${fmtNum(g.measurementOverPinsMm)} mm</text>
+    <text x="${CX}" y="${(toY(rTip) - 6).toFixed(2)}" text-anchor="middle" font-size="9.5" fill="${TEXT_FAINT}">Dee ${fmtNum(g.majorDiaMm)} mm</text>
+    <text x="${W / 2}" y="${H - 20}" text-anchor="middle" font-size="10" fill="${TEXT_2}">z = ${g.teeth} · m = ${g.moduleMm} · &#945; = ${g.pressureAngleDeg}° · Ø${fmtNum(g.pinDiameterMm)} pins</text>
+    <text x="${W / 2}" y="${H - 6}" text-anchor="middle" font-size="9" fill="${TEXT_FAINT}">external spline end view · true involute profile · to scale</text>
+  </svg>`;
 }

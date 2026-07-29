@@ -98,3 +98,37 @@ create policy "delete own saved calculations" on saved_calculations
 -- logged-in `authenticated` role would hit "permission denied" (SQLSTATE 42501)
 -- even with correct RLS. RLS still restricts each user to their own rows.
 grant select, insert, update, delete on table public.saved_calculations to authenticated;
+
+-- Per-user, named component profiles (Motor, and later Battery/Cable/Inverter)
+-- that are reusable ACROSS calculators — distinct from saved_calculations,
+-- which snapshots one calculator's full input set. A profile is edited once
+-- (e.g. "My 250kW IPM traction motor") and then pulled into any calculator
+-- that consumes that component type (Id/Iq, DC-Link, Cable Sizing, Motor
+-- Torque/Power/Speed for a motor profile), via the useComponentProfiles hook.
+-- Single generic table keyed by `type` rather than one table per component
+-- type, so a new component type later is a schema no-op.
+create table if not exists component_profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  type text not null,           -- component type, e.g. 'motor' (future: 'battery', 'cable', 'inverter')
+  label text not null,          -- user-chosen name, e.g. "250kW IPM traction motor"
+  params jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table component_profiles enable row level security;
+
+create index if not exists component_profiles_user_type_idx
+  on component_profiles (user_id, type, updated_at desc);
+
+create policy "read own component profiles" on component_profiles
+  for select using (auth.uid() = user_id);
+create policy "insert own component profiles" on component_profiles
+  for insert with check (auth.uid() = user_id);
+create policy "update own component profiles" on component_profiles
+  for update using (auth.uid() = user_id);
+create policy "delete own component profiles" on component_profiles
+  for delete using (auth.uid() = user_id);
+
+grant select, insert, update, delete on table public.component_profiles to authenticated;
