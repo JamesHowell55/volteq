@@ -119,9 +119,9 @@ function renderGridTable(grid: ReportGridTable, accent: string): string {
 // baked into the vector, see volteq-logo-black.svg) entirely when set.
 function renderBrandMark(spec: ReportSpec): string {
   if (spec.companyLogoUrl) {
-    return `<img src="${spec.companyLogoUrl}" crossorigin="anonymous" style="height:36px; max-width:200px; object-fit:contain;" />`;
+    return `<img src="${spec.companyLogoUrl}" crossorigin="anonymous" style="height:72px; max-width:400px; object-fit:contain;" />`;
   }
-  return `<div style="height:36px; width:auto;">${volteqLogoBlack}</div>`;
+  return `<div style="height:72px; width:auto;">${volteqLogoBlack}</div>`;
 }
 
 function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
