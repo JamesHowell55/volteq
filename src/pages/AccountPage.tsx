@@ -156,18 +156,17 @@ function AppearanceSection() {
 function BrandingSection() {
   const { user } = useAuth();
   const [companyName, setCompanyName] = useState('');
-  const [accentHex, setAccentHex] = useState('#5DCAA5');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('branding').select('company_name, logo_url, accent_hex').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+    supabase.from('branding').select('company_name, logo_url').eq('user_id', user.id).maybeSingle().then(({ data }) => {
       if (data) {
         setCompanyName(data.company_name ?? '');
-        setAccentHex(data.accent_hex ?? '#5DCAA5');
         setLogoUrl(data.logo_url ?? null);
       }
     });
@@ -176,9 +175,12 @@ function BrandingSection() {
   const handleLogoUpload = async (file: File) => {
     if (!user) return;
     setUploading(true);
+    setError(null);
     const path = `${user.id}/logo-${Date.now()}.${file.name.split('.').pop()}`;
-    const { error } = await supabase.storage.from('branding-logos').upload(path, file, { upsert: true });
-    if (!error) {
+    const { error: uploadError } = await supabase.storage.from('branding-logos').upload(path, file, { upsert: true });
+    if (uploadError) {
+      setError(`Logo upload failed: ${uploadError.message}`);
+    } else {
       const { data } = supabase.storage.from('branding-logos').getPublicUrl(path);
       setLogoUrl(data.publicUrl);
     }
@@ -188,8 +190,13 @@ function BrandingSection() {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    await supabase.from('branding').upsert({ user_id: user.id, company_name: companyName, logo_url: logoUrl, accent_hex: accentHex, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    setError(null);
+    const { error: saveError } = await supabase.from('branding').upsert({ user_id: user.id, company_name: companyName, logo_url: logoUrl, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     setSaving(false);
+    if (saveError) {
+      setError(`Save failed: ${saveError.message}`);
+      return;
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -204,15 +211,12 @@ function BrandingSection() {
           <input autoComplete="off" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
         </div>
         <div className="field">
-          <label>Accent colour</label>
-          <input autoComplete="off" type="color" value={accentHex} onChange={(e) => setAccentHex(e.target.value)} style={{ height: '2.4rem' }} />
-        </div>
-        <div className="field" style={{ gridColumn: '1 / -1' }}>
           <label>Company logo</label>
           <input type="file" accept="image/*" disabled={uploading} onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])} />
           {logoUrl && <img src={logoUrl} alt="Company logo" style={{ height: '2.5rem', marginTop: '0.5rem', display: 'block' }} />}
         </div>
       </div>
+      {error && <p className="note" style={{ color: 'var(--neg)', marginTop: '0.5rem' }}>{error}</p>}
       <button className="btn primary" onClick={handleSave} disabled={saving} style={{ marginTop: '0.5rem' }}>
         {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save branding'}
       </button>

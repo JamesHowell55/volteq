@@ -1,4 +1,5 @@
 import { deriveAccentOnLight } from './theme';
+import volteqLogoBlack from '../assets/brand/volteq-logo-black.svg?raw';
 
 export interface ReportRow {
   label: string;
@@ -114,8 +115,29 @@ function renderGridTable(grid: ReportGridTable, accent: string): string {
     </div>`;
 }
 
+// Header brand mark: a Premium user's own logo/name takes over entirely when
+// set (no Volteq mark or text mixed in); a plain company name with no logo is
+// text-only (showing Volteq's icon next to someone else's name would read as
+// a branding mismatch); with neither set, the default black Volteq lockup
+// (icon + wordmark already baked into the vector, see volteq-logo-black.svg)
+// is shown alone — no separate "VOLTEQ" text label, since that would just
+// duplicate the wordmark already in the mark.
+function renderBrandMark(spec: ReportSpec, accent: string): string {
+  if (spec.companyLogoUrl) {
+    const nameHtml = spec.companyName
+      ? `<div style="font-size:12px; font-weight:700; letter-spacing:0.05em; color:${accent};">${escapeHtml(spec.companyName)}</div>`
+      : '';
+    return `<img src="${spec.companyLogoUrl}" crossorigin="anonymous" style="height:20px; max-width:120px; object-fit:contain;" />${nameHtml}`;
+  }
+  if (spec.companyName) {
+    return `<div style="font-size:12px; font-weight:700; letter-spacing:0.05em; color:${accent};">${escapeHtml(spec.companyName)}</div>`;
+  }
+  return `<div style="height:20px; width:auto;">${volteqLogoBlack}</div>`;
+}
+
 function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
   const accent = deriveAccentOnLight(spec.accentHex);
+  const brandMarkHtml = renderBrandMark(spec, accent);
   const now = new Date();
   const timestamp = now.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -155,8 +177,7 @@ function buildPrintableDom(spec: ReportSpec): HTMLDivElement {
       <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid ${accent}; padding-bottom:10px; margin-bottom:14px;">
         <div>
           <div style="display:flex; align-items:center; gap:8px;">
-            ${spec.companyLogoUrl ? `<img src="${spec.companyLogoUrl}" style="height:20px; max-width:120px; object-fit:contain;" />` : ''}
-            <div style="font-size:12px; font-weight:700; letter-spacing:0.05em; color:${accent};">${escapeHtml(spec.companyName || 'VOLTEQ')}</div>
+            ${brandMarkHtml}
           </div>
           <div style="font-size:16px; font-weight:700; margin-top:2px;">${escapeHtml(spec.pageTitle)}</div>
         </div>
@@ -203,7 +224,7 @@ export async function exportReportToPdf(spec: ReportSpec): Promise<void> {
     filename: buildPdfFilename(spec.tabName),
     windowWidth: 750,
     image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+    html2canvas: { scale: 2, backgroundColor: '#ffffff', useCORS: true },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['css'] },
   };
