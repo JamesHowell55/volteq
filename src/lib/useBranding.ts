@@ -4,13 +4,12 @@ import { useAuth } from './AuthContext';
 import { useEntitlement } from './useEntitlement';
 
 export interface Branding {
-  companyName?: string;
   companyLogoUrl?: string;
 }
 
 // Only premium users' saved branding is ever returned — free users always get
 // an empty object, so their exports fall back to the default Volteq mark
-// (see pdfExport.ts: companyName/companyLogoUrl are optional).
+// (see pdfExport.ts: companyLogoUrl is optional).
 export function useBranding(): Branding {
   const { user } = useAuth();
   const { isPremium } = useEntitlement();
@@ -23,11 +22,11 @@ export function useBranding(): Branding {
     }
     supabase
       .from('branding')
-      .select('company_name, logo_url')
+      .select('logo_url')
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data }) => {
-        setBranding({ companyName: data?.company_name ?? undefined, companyLogoUrl: data?.logo_url ?? undefined });
+        setBranding({ companyLogoUrl: data?.logo_url ?? undefined });
       });
   }, [user, isPremium]);
 

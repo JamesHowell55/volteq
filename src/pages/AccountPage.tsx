@@ -155,7 +155,6 @@ function AppearanceSection() {
 
 function BrandingSection() {
   const { user } = useAuth();
-  const [companyName, setCompanyName] = useState('');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -164,9 +163,8 @@ function BrandingSection() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('branding').select('company_name, logo_url').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+    supabase.from('branding').select('logo_url').eq('user_id', user.id).maybeSingle().then(({ data }) => {
       if (data) {
-        setCompanyName(data.company_name ?? '');
         setLogoUrl(data.logo_url ?? null);
       }
     });
@@ -191,7 +189,7 @@ function BrandingSection() {
     if (!user) return;
     setSaving(true);
     setError(null);
-    const { error: saveError } = await supabase.from('branding').upsert({ user_id: user.id, company_name: companyName, logo_url: logoUrl, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    const { error: saveError } = await supabase.from('branding').upsert({ user_id: user.id, logo_url: logoUrl, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     setSaving(false);
     if (saveError) {
       setError(`Save failed: ${saveError.message}`);
@@ -204,17 +202,11 @@ function BrandingSection() {
   return (
     <div className="card">
       <div className="card-title">Report branding</div>
-      <p className="note" style={{ marginBottom: '0.85rem' }}>Shown on exported PDF reports in place of the Volteq mark.</p>
-      <div className="grid grid-2">
-        <div className="field">
-          <label>Company name</label>
-          <input autoComplete="off" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-        </div>
-        <div className="field">
-          <label>Company logo</label>
-          <input type="file" accept="image/*" disabled={uploading} onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])} />
-          {logoUrl && <img src={logoUrl} alt="Company logo" style={{ height: '2.5rem', marginTop: '0.5rem', display: 'block' }} />}
-        </div>
+      <p className="note" style={{ marginBottom: '0.85rem' }}>Your logo replaces the Volteq mark on exported PDF reports.</p>
+      <div className="field">
+        <label>Company logo</label>
+        <input type="file" accept="image/*" disabled={uploading} onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])} />
+        {logoUrl && <img src={logoUrl} alt="Company logo" style={{ height: '2.5rem', marginTop: '0.5rem', display: 'block' }} />}
       </div>
       {error && <p className="note" style={{ color: 'var(--neg)', marginTop: '0.5rem' }}>{error}</p>}
       <button className="btn primary" onClick={handleSave} disabled={saving} style={{ marginTop: '0.5rem' }}>
