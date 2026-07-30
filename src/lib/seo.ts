@@ -35,6 +35,11 @@ const STATIC_ENTRIES: Record<string, SeoEntry> = {
     description: 'Reset your Volteq account password.',
     noindex: true,
   },
+  '/motor-profiles': {
+    title: `Motor Profiles | ${SITE_NAME}`,
+    description: 'Manage your saved motor profiles.',
+    noindex: true,
+  },
 };
 
 const GUIDES_INDEX_ENTRY: SeoEntry = {

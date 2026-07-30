@@ -5,6 +5,8 @@ import { useTheme } from '../lib/ThemeContext';
 import { DEFAULT_ACCENT, isValidHex } from '../lib/theme';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { useComponentProfiles } from '../lib/useComponentProfiles';
+import { motorProfileSummary, type MotorProfileParams } from '../lib/motorProfiles';
 
 const PLAN_LABELS: Record<Plan, string> = {
   free: 'Free',
@@ -106,6 +108,51 @@ function AuthForm() {
         credentials are handled directly by Supabase's authentication service. Confirmation emails will come
         from a Supabase address (noreply@mail.supabase.io).
       </p>
+    </div>
+  );
+}
+
+// Premium "saved equipment" — named component profiles (Motor today; Battery/
+// Cable/Inverter are the same pattern later) reused across multiple
+// calculators, distinct from a single calculator's saved inputs above. Lives
+// in Account because saving a profile is itself the Premium feature (see
+// MotorProfilePicker's PremiumGate) — the full create/edit form stays on its
+// own page (/motor-profiles), this is just an at-a-glance list + quick delete.
+function SavedEquipmentSection() {
+  const navigate = useNavigate();
+  const { profiles, loading, remove } = useComponentProfiles<MotorProfileParams>('motor');
+
+  if (loading) return <div className="card"><div className="card-title">Saved equipment</div><p className="note">Loading…</p></div>;
+
+  return (
+    <div className="card">
+      <div className="card-title">Saved equipment</div>
+      <p className="note" style={{ marginBottom: '0.85rem' }}>
+        Named component profiles reused across calculators (Id/Iq, DC-Link, Cable Sizing, Speed/Torque/Power).
+      </p>
+      {profiles.length === 0 ? (
+        <p className="note">No motor profiles yet.</p>
+      ) : (
+        <div style={{ marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '0.85rem', margin: '0.5rem 0 0.4rem', opacity: 0.7 }}>Motors</h3>
+          <table className="data-table" style={{ width: '100%', fontSize: '0.8rem' }}>
+            <thead><tr><th>Name</th><th>Summary</th><th></th></tr></thead>
+            <tbody>
+              {profiles.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.label}</td>
+                  <td style={{ color: 'var(--text-2)' }}>{motorProfileSummary(p.params)}</td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button className="btn small" onClick={() => navigate(`/motor-profiles?edit=${p.id}`)}>Edit</button>
+                    <button className="btn small" style={{ marginLeft: '0.4rem' }} onClick={() => { if (confirm(`Delete "${p.label}"?`)) remove(p.id); }}>Delete</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <button className="btn small" onClick={() => navigate('/motor-profiles')}>+ New motor profile</button>
     </div>
   );
 }
@@ -381,6 +428,7 @@ export default function AccountPage() {
 
       <SavedCalculationsOverview />
 
+      {isPremium && <SavedEquipmentSection />}
       {isPremium && <AppearanceSection />}
       {isPremium && <BrandingSection />}
     </div>

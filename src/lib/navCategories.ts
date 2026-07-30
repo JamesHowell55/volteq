@@ -54,7 +54,6 @@ export const NAV_CATEGORIES: NavCategory[] = [
     links: [
       { label: 'Speed ↔ Torque ↔ Power', path: '/speed-torque-power', available: true, seoTitle: 'Torque, Power & Speed Calculator (P = T·ω)', description: 'Solve for any one of torque, power, or speed given the other two (P = T·ω), with common unit conversions built in, plus optional cross-checks for a PM motor\'s torque constant and efficiency-adjusted electrical input power.' },
       { label: 'Id / Iq Current Vector', path: '/id-iq-current', available: true, seoTitle: 'Id/Iq Current Vector Calculator — PMSM Field-Oriented Control', description: 'Convert between phase-current magnitude (peak or RMS), current angle, and the rotor-frame d-/q-axis currents (Id, Iq) of a PMSM under field-oriented control, with a space-vector diagram plus derived torque (magnet + reluctance), MTPA comparison, and speed-dependent back-EMF and shaft power.' },
-      { label: 'Motor Profiles', path: '/motor-profiles', available: true, seoTitle: 'Motor Profiles — Reusable Motor Parameters Across Calculators', description: 'Define a motor once — type, rated power, peak torque, Kt/Ke, pole pairs, Ld/Lq — under a name, then pull its parameters straight into the Id/Iq, DC-Link, Cable Sizing, and Speed/Torque/Power calculators instead of retyping them.' },
     ],
   },
   {

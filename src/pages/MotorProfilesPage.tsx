@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import PremiumGate from '../components/PremiumGate';
 import InfoTooltip from '../components/InfoTooltip';
@@ -87,6 +87,24 @@ export default function MotorProfilesPage() {
   const startNew = () => setEditing({ id: null, form: { label: '', params: { ...BLANK_MOTOR_PROFILE } } });
   const startEdit = (p: ComponentProfile<MotorProfileParams>) => setEditing({ id: p.id, form: { label: p.label, params: p.params } });
 
+  // Deep-link edit: arriving with ?edit=<id> (e.g. from Account's "Saved
+  // equipment" list) opens that profile's edit form directly, same convention
+  // as SavedCalculations' ?load=<id> handling.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editedRef = useRef<string | null>(null);
+  const editId = searchParams.get('edit');
+  useEffect(() => {
+    if (!editId || editedRef.current === editId) return;
+    const match = profiles.find((p) => p.id === editId);
+    if (match) {
+      editedRef.current = editId;
+      startEdit(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete('edit');
+      setSearchParams(next, { replace: true });
+    }
+  }, [editId, profiles, searchParams, setSearchParams]);
+
   const handleSave = async (f: FormState) => {
     setSaving(true);
     const result = editing?.id ? await update(editing.id, f.label, f.params) : await save(f.label, f.params);
@@ -105,6 +123,7 @@ export default function MotorProfilesPage() {
           Id/Iq Current Vector, DC-Link Capacitor Sizing, Cable/Wire Sizing, and Speed↔Torque↔Power
           calculators instead of retyping the same numbers in each one.
         </p>
+        <p style={{ marginTop: '0.5rem' }}><Link to="/account">← Back to Account</Link></p>
       </div>
 
       {!user ? (
