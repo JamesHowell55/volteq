@@ -19,6 +19,7 @@ import { SIC_DEVICE_PRESETS, getSicDevice, inverterStructureLabel, type SicDevic
 import { fundamentalElectricalFreqHz } from '../lib/chokePhysics';
 import ControllerProfilePicker from '../components/ControllerProfilePicker';
 import type { ControllerProfileParams } from '../lib/controllerProfiles';
+import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
 import {
   solveDeviceLosses, solveDutyCycle,
   type OperatingPoint, type DutyStep, type DeviceLossResult,
@@ -65,6 +66,7 @@ export default function MosfetLossCalculator() {
     setVdc(p.maxDcVoltageV);
     if (p.switchingFrequencyKhz != null) setSwitchingFreqKhz(p.switchingFrequencyKhz);
   };
+  usePowertrainPrefill({ onController: applyControllerProfile });
   const [deadTimeNs, setDeadTimeNs] = useState(500);
   const [caseTempC, setCaseTempC] = useState(65);
   const [syncRect, setSyncRect] = useState(true);

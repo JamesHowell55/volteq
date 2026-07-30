@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { useAuth } from './AuthContext';
 
-// Named, reusable component profiles (Motor, Battery, Controller; Cable is
-// the same shape as a future `type`) that get pulled into MULTIPLE
-// calculators — distinct from useSavedCalculations, which snapshots one
-// calculator's full input set. See component_profiles in supabase/migration.sql.
+// Named, reusable component profiles (Motor, Battery, Controller; plus the
+// 'powertrain' bundle that references one of each) that get pulled into
+// MULTIPLE calculators — distinct from useSavedCalculations, which snapshots
+// one calculator's full input set. See component_profiles in
+// supabase/migration.sql.
 
-export type ComponentProfileType = 'motor' | 'battery' | 'controller';
+export type ComponentProfileType = 'motor' | 'battery' | 'controller' | 'powertrain';
 
 export interface ComponentProfile<TParams = Record<string, unknown>> {
   id: string;
@@ -17,13 +18,18 @@ export interface ComponentProfile<TParams = Record<string, unknown>> {
   updated_at: string;
 }
 
-export function useComponentProfiles<TParams = Record<string, unknown>>(type: ComponentProfileType) {
+// `enabled` lets a caller skip the fetch entirely (e.g. usePowertrainPrefill,
+// which only needs the motor/battery/controller lists when a ?powertrain=
+// param is actually present — otherwise it would add pointless per-calculator
+// fetches on every page load).
+export function useComponentProfiles<TParams = Record<string, unknown>>(type: ComponentProfileType, opts?: { enabled?: boolean }) {
+  const enabled = opts?.enabled ?? true;
   const { user } = useAuth();
   const [profiles, setProfiles] = useState<ComponentProfile<TParams>[]>([]);
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!user || !isSupabaseConfigured) return;
+    if (!user || !isSupabaseConfigured || !enabled) return;
     setLoading(true);
     const { data } = await supabase
       .from('component_profiles')
@@ -32,7 +38,7 @@ export function useComponentProfiles<TParams = Record<string, unknown>>(type: Co
       .order('updated_at', { ascending: false });
     setProfiles((data as ComponentProfile<TParams>[] | null) ?? []);
     setLoading(false);
-  }, [user, type]);
+  }, [user, type, enabled]);
 
   useEffect(() => { refresh(); }, [refresh]);
 

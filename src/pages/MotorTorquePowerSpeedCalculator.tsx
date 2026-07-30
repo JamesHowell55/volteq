@@ -13,6 +13,7 @@ import { getCategory, convert } from '../lib/unitConversions';
 import { solveTorquePowerSpeed, torqueFromCurrent, electricalInputPower, type SolveFor } from '../lib/motorTorquePowerSpeedPhysics';
 import MotorProfilePicker from '../components/MotorProfilePicker';
 import type { MotorProfileParams } from '../lib/motorProfiles';
+import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
 
 function fmt(n: number, digits = 3): string {
   if (!isFinite(n)) return '—';
@@ -59,6 +60,8 @@ export default function MotorTorquePowerSpeedCalculator() {
     if (speed != null) { setSpeedValue(speed); setSpeedUnit('rpm'); }
     if (p.ktNmPerA != null) setTorqueConstant(p.ktNmPerA);
   };
+
+  usePowertrainPrefill({ onMotor: applyMotorProfile });
 
   const getInputs = useCallback((): Record<string, unknown> => ({
     solveFor, torqueValue, torqueUnit, powerValue, powerUnit,

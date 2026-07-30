@@ -16,6 +16,7 @@ import ChokeCoreCrossSection from '../components/ChokeCoreCrossSection';
 import { renderChokeCoreProfileSvg } from '../lib/pdfDiagrams';
 import ControllerProfilePicker from '../components/ControllerProfilePicker';
 import type { ControllerProfileParams } from '../lib/controllerProfiles';
+import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
 import {
   CORE_PROFILES,
   computeCoreGeometry,
@@ -105,6 +106,7 @@ export default function ChokeSizingCalculator() {
     setVDc(p.maxDcVoltageV);
     if (p.switchingFrequencyKhz != null) setSwitchingFreqHz(p.switchingFrequencyKhz * 1000);
   };
+  usePowertrainPrefill({ onController: applyControllerProfile });
   const [motorSpeedRpm, setMotorSpeedRpm] = useState(6000);
   const f1Hz = fundamentalElectricalFreqHz(motorSpeedRpm, motorPolePairs);
 

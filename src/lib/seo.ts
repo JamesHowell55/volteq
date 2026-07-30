@@ -50,6 +50,11 @@ const STATIC_ENTRIES: Record<string, SeoEntry> = {
     description: 'Manage your saved motor controller / inverter profiles.',
     noindex: true,
   },
+  '/powertrain': {
+    title: `Powertrain Workspace | ${SITE_NAME}`,
+    description: 'Bundle your saved motor, battery, and controller profiles into one powertrain.',
+    noindex: true,
+  },
 };
 
 const GUIDES_INDEX_ENTRY: SeoEntry = {

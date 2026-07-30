@@ -15,6 +15,7 @@ import InfoTooltip from '../components/InfoTooltip';
 import DqSpaceVectorDiagram from '../components/DqSpaceVectorDiagram';
 import MotorProfilePicker from '../components/MotorProfilePicker';
 import type { MotorProfileParams } from '../lib/motorProfiles';
+import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
 import {
   rmsToPeak,
   magnitudeAngleFromDq,
@@ -106,6 +107,8 @@ export default function DqCurrentCalculator() {
     if (p.lqMh != null) setLqMh(p.lqMh);
     setPresetId('custom');
   };
+
+  usePowertrainPrefill({ onMotor: applyMotorProfile });
 
   // Surface-PM machines have no saliency: Lq is forced equal to Ld.
   const effectiveLqMh = motorType === 'spm' ? ldMh : lqMh;

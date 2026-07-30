@@ -4,11 +4,12 @@ import { useEntitlement, type Plan } from '../lib/useEntitlement';
 import { useTheme } from '../lib/ThemeContext';
 import { DEFAULT_ACCENT, isValidHex } from '../lib/theme';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useComponentProfiles, type ComponentProfile } from '../lib/useComponentProfiles';
 import { motorProfileSummary, type MotorProfileParams } from '../lib/motorProfiles';
 import { batteryProfileSummary, type BatteryProfileParams } from '../lib/batteryProfiles';
 import { controllerProfileSummary, type ControllerProfileParams } from '../lib/controllerProfiles';
+import type { PowertrainProfileParams } from '../lib/powertrainProfiles';
 
 const PLAN_LABELS: Record<Plan, string> = {
   free: 'Free',
@@ -180,6 +181,44 @@ function SavedEquipmentSection() {
       <EquipmentGroup title="Motors" singular="motor" profiles={motor.profiles} summarize={motorProfileSummary} path="/motor-profiles" remove={motor.remove} navigate={navigate} emptyLabel="No motor profiles yet." />
       <EquipmentGroup title="Batteries" singular="battery" profiles={battery.profiles} summarize={batteryProfileSummary} path="/battery-profiles" remove={battery.remove} navigate={navigate} emptyLabel="No battery profiles yet." />
       <EquipmentGroup title="Controllers" singular="controller" profiles={controller.profiles} summarize={controllerProfileSummary} path="/controller-profiles" remove={controller.remove} navigate={navigate} emptyLabel="No controller profiles yet." />
+    </div>
+  );
+}
+
+// Powertrains — bundles of the above equipment. Kept as its own card (not an
+// EquipmentGroup) since it's a higher-level object: the full create/edit +
+// concept-phase overview + "open in calculator" links live on /powertrain.
+function PowertrainSection() {
+  const navigate = useNavigate();
+  const { profiles, loading, remove } = useComponentProfiles<PowertrainProfileParams>('powertrain');
+
+  if (loading) return <div className="card"><div className="card-title">Powertrains</div><p className="note">Loading…</p></div>;
+
+  return (
+    <div className="card">
+      <div className="card-title">Powertrains</div>
+      <p className="note" style={{ marginBottom: '0.85rem' }}>
+        Bundle a motor, battery, and controller into one system, then open any calculator pre-filled. <Link to="/powertrain">Open the workspace →</Link>
+      </p>
+      {profiles.length === 0 ? (
+        <p className="note">No powertrains yet.</p>
+      ) : (
+        <table className="data-table" style={{ width: '100%', fontSize: '0.8rem' }}>
+          <thead><tr><th>Name</th><th></th></tr></thead>
+          <tbody>
+            {profiles.map((pt) => (
+              <tr key={pt.id}>
+                <td>{pt.label}</td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button className="btn small" onClick={() => navigate(`/powertrain?edit=${pt.id}`)}>Edit</button>
+                  <button className="btn small" style={{ marginLeft: '0.4rem' }} onClick={() => { if (confirm(`Delete "${pt.label}"?`)) remove(pt.id); }}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <button className="btn small" style={{ marginTop: '0.4rem' }} onClick={() => navigate('/powertrain')}>+ New powertrain</button>
     </div>
   );
 }
@@ -455,6 +494,7 @@ export default function AccountPage() {
 
       <SavedCalculationsOverview />
 
+      {isPremium && <PowertrainSection />}
       {isPremium && <SavedEquipmentSection />}
       {isPremium && <AppearanceSection />}
       {isPremium && <BrandingSection />}

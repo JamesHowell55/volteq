@@ -20,6 +20,7 @@ import BatteryProfilePicker from '../components/BatteryProfilePicker';
 import type { BatteryProfileParams } from '../lib/batteryProfiles';
 import ControllerProfilePicker from '../components/ControllerProfilePicker';
 import type { ControllerProfileParams } from '../lib/controllerProfiles';
+import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
 import {
   CAP_SUPPLIERS, DC_LINK_CAPACITORS, seriesForSupplier, voltagesForSeries, partsFor, leadsFor,
   maxOperatingVoltage, estimateLifeHours, type DcLinkCapacitor,
@@ -85,6 +86,8 @@ export default function DcLinkCalculator() {
     setBusVoltageV(p.maxDcVoltageV);
     if (p.switchingFrequencyKhz != null) setSwitchingFreqKhz(p.switchingFrequencyKhz);
   };
+
+  usePowertrainPrefill({ onController: applyControllerProfile, onBattery: applyBatteryProfile, onMotor: applyMotorProfile });
 
   // ── Capacitor selection ──
   const [capMode, setCapMode] = useState<'catalog' | 'custom'>('catalog');

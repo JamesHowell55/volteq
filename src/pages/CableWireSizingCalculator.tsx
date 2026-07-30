@@ -19,6 +19,7 @@ import BatteryProfilePicker from '../components/BatteryProfilePicker';
 import type { BatteryProfileParams } from '../lib/batteryProfiles';
 import ControllerProfilePicker from '../components/ControllerProfilePicker';
 import type { ControllerProfileParams } from '../lib/controllerProfiles';
+import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
 import {
   INSULATION_PRESETS,
   STANDARD_CROSS_SECTIONS_MM2,
@@ -103,6 +104,18 @@ export default function CableWireSizingCalculator() {
     const current = p.continuousCurrentARms ?? p.peakCurrentARms;
     if (current != null) setTargetCurrentA(current);
   };
+
+  usePowertrainPrefill({
+    onController: applyControllerProfile,
+    onBattery: applyBatteryProfile,
+    onMotor: applyMotorProfile,
+    // A powertrain feeds a current + the DC cable length, so switch to the
+    // check-current mode (where those inputs live) and set the run length.
+    onSystem: (pt) => {
+      setMode('checkCurrent');
+      if (pt.dcCableLengthM != null) setLengthM(pt.dcCableLengthM);
+    },
+  });
 
   const getInputs = useCallback((): Record<string, unknown> => ({
     mode, materialId, sizeUnit, crossSectionMm2, awgSize, insulationId,
