@@ -28,6 +28,7 @@ import FitsAndLimitsCalculator from './pages/FitsAndLimitsCalculator';
 import MohrsCircleCalculator from './pages/MohrsCircleCalculator';
 import DqCurrentCalculator from './pages/DqCurrentCalculator';
 import MotorProfilesPage from './pages/MotorProfilesPage';
+import BatteryProfilesPage from './pages/BatteryProfilesPage';
 import DcLinkCalculator from './pages/DcLinkCalculator';
 import SkinDepthCalculator from './pages/SkinDepthCalculator';
 import ConversionsCalculator from './pages/ConversionsCalculator';
@@ -106,6 +107,7 @@ function App() {
               <Route path="/speed-torque-power" element={<MotorTorquePowerSpeedCalculator />} />
               <Route path="/id-iq-current" element={<DqCurrentCalculator />} />
               <Route path="/motor-profiles" element={<MotorProfilesPage />} />
+              <Route path="/battery-profiles" element={<BatteryProfilesPage />} />
               <Route path="/choke-sizing" element={<ChokeSizingCalculator />} />
               <Route path="/mosfet-loss" element={<MosfetLossCalculator />} />
               <Route path="/heatsink-thermal" element={<HeatsinkThermalCalculator />} />

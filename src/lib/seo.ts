@@ -40,6 +40,11 @@ const STATIC_ENTRIES: Record<string, SeoEntry> = {
     description: 'Manage your saved motor profiles.',
     noindex: true,
   },
+  '/battery-profiles': {
+    title: `Battery Profiles | ${SITE_NAME}`,
+    description: 'Manage your saved battery profiles.',
+    noindex: true,
+  },
 };
 
 const GUIDES_INDEX_ENTRY: SeoEntry = {

@@ -15,6 +15,8 @@ import InfoTooltip from '../components/InfoTooltip';
 import { MATERIALS, type Material } from '../lib/materials';
 import MotorProfilePicker from '../components/MotorProfilePicker';
 import type { MotorProfileParams } from '../lib/motorProfiles';
+import BatteryProfilePicker from '../components/BatteryProfilePicker';
+import type { BatteryProfileParams } from '../lib/batteryProfiles';
 import {
   INSULATION_PRESETS,
   STANDARD_CROSS_SECTIONS_MM2,
@@ -88,6 +90,10 @@ export default function CableWireSizingCalculator() {
   const applyMotorProfile = (p: MotorProfileParams) => {
     const current = p.continuousCurrentARms ?? p.peakCurrentARms;
     if (current != null) setTargetCurrentA(current);
+  };
+
+  const applyBatteryProfile = (p: BatteryProfileParams) => {
+    setSystemVoltage(p.maxVoltageV);
   };
 
   const getInputs = useCallback((): Record<string, unknown> => ({
@@ -456,6 +462,9 @@ export default function CableWireSizingCalculator() {
                   </div>
                   <div className="field" style={{ gridColumn: '1 / -1' }}>
                     <MotorProfilePicker onApply={applyMotorProfile} hint="Sets the target current from a saved motor profile's continuous (preferred) or peak current rating — continuous duty is the usual basis for cable ampacity." />
+                  </div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <BatteryProfilePicker onApply={applyBatteryProfile} hint="Sets the system voltage from a saved battery profile's max voltage." />
                   </div>
                 </>
               )}

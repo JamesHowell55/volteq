@@ -5,8 +5,9 @@ import { useTheme } from '../lib/ThemeContext';
 import { DEFAULT_ACCENT, isValidHex } from '../lib/theme';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { useComponentProfiles } from '../lib/useComponentProfiles';
+import { useComponentProfiles, type ComponentProfile } from '../lib/useComponentProfiles';
 import { motorProfileSummary, type MotorProfileParams } from '../lib/motorProfiles';
+import { batteryProfileSummary, type BatteryProfileParams } from '../lib/batteryProfiles';
 
 const PLAN_LABELS: Record<Plan, string> = {
   free: 'Free',
@@ -112,17 +113,60 @@ function AuthForm() {
   );
 }
 
-// Premium "saved equipment" — named component profiles (Motor today; Battery/
+// One equipment-type's group within the Saved equipment card: a name+summary
+// table with inline Edit (deep-links to that type's page, e.g. ?edit=<id>)
+// and Delete, plus an "+ New" link. Shared by every profile type so adding a
+// new one (Cable, Inverter) later is just another call to this, not a new
+// table implementation.
+function EquipmentGroup<TParams>({ title, profiles, summarize, path, remove, navigate, emptyLabel }: {
+  title: string;
+  profiles: ComponentProfile<TParams>[];
+  summarize: (p: TParams) => string;
+  path: string;
+  remove: (id: string) => void;
+  navigate: ReturnType<typeof useNavigate>;
+  emptyLabel: string;
+}) {
+  return (
+    <div style={{ marginBottom: '1rem' }}>
+      <h3 style={{ fontSize: '0.85rem', margin: '0.5rem 0 0.4rem', opacity: 0.7 }}>{title}</h3>
+      {profiles.length === 0 ? (
+        <p className="note">{emptyLabel}</p>
+      ) : (
+        <table className="data-table" style={{ width: '100%', fontSize: '0.8rem' }}>
+          <thead><tr><th>Name</th><th>Summary</th><th></th></tr></thead>
+          <tbody>
+            {profiles.map((p) => (
+              <tr key={p.id}>
+                <td>{p.label}</td>
+                <td style={{ color: 'var(--text-2)' }}>{summarize(p.params)}</td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button className="btn small" onClick={() => navigate(`${path}?edit=${p.id}`)}>Edit</button>
+                  <button className="btn small" style={{ marginLeft: '0.4rem' }} onClick={() => { if (confirm(`Delete "${p.label}"?`)) remove(p.id); }}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <button className="btn small" style={{ marginTop: '0.4rem' }} onClick={() => navigate(path)}>+ New {title.toLowerCase().replace(/s$/, '')}</button>
+    </div>
+  );
+}
+
+// Premium "saved equipment" — named component profiles (Motor, Battery;
 // Cable/Inverter are the same pattern later) reused across multiple
 // calculators, distinct from a single calculator's saved inputs above. Lives
 // in Account because saving a profile is itself the Premium feature (see
-// MotorProfilePicker's PremiumGate) — the full create/edit form stays on its
-// own page (/motor-profiles), this is just an at-a-glance list + quick delete.
+// MotorProfilePicker's PremiumGate) — the full create/edit form for each type
+// stays on its own page (/motor-profiles, /battery-profiles), this is just an
+// at-a-glance list + quick delete per type.
 function SavedEquipmentSection() {
   const navigate = useNavigate();
-  const { profiles, loading, remove } = useComponentProfiles<MotorProfileParams>('motor');
+  const motor = useComponentProfiles<MotorProfileParams>('motor');
+  const battery = useComponentProfiles<BatteryProfileParams>('battery');
 
-  if (loading) return <div className="card"><div className="card-title">Saved equipment</div><p className="note">Loading…</p></div>;
+  if (motor.loading || battery.loading) return <div className="card"><div className="card-title">Saved equipment</div><p className="note">Loading…</p></div>;
 
   return (
     <div className="card">
@@ -130,29 +174,8 @@ function SavedEquipmentSection() {
       <p className="note" style={{ marginBottom: '0.85rem' }}>
         Named component profiles reused across calculators (Id/Iq, DC-Link, Cable Sizing, Speed/Torque/Power).
       </p>
-      {profiles.length === 0 ? (
-        <p className="note">No motor profiles yet.</p>
-      ) : (
-        <div style={{ marginBottom: '1rem' }}>
-          <h3 style={{ fontSize: '0.85rem', margin: '0.5rem 0 0.4rem', opacity: 0.7 }}>Motors</h3>
-          <table className="data-table" style={{ width: '100%', fontSize: '0.8rem' }}>
-            <thead><tr><th>Name</th><th>Summary</th><th></th></tr></thead>
-            <tbody>
-              {profiles.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.label}</td>
-                  <td style={{ color: 'var(--text-2)' }}>{motorProfileSummary(p.params)}</td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button className="btn small" onClick={() => navigate(`/motor-profiles?edit=${p.id}`)}>Edit</button>
-                    <button className="btn small" style={{ marginLeft: '0.4rem' }} onClick={() => { if (confirm(`Delete "${p.label}"?`)) remove(p.id); }}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <button className="btn small" onClick={() => navigate('/motor-profiles')}>+ New motor profile</button>
+      <EquipmentGroup title="Motors" profiles={motor.profiles} summarize={motorProfileSummary} path="/motor-profiles" remove={motor.remove} navigate={navigate} emptyLabel="No motor profiles yet." />
+      <EquipmentGroup title="Batteries" profiles={battery.profiles} summarize={batteryProfileSummary} path="/battery-profiles" remove={battery.remove} navigate={navigate} emptyLabel="No battery profiles yet." />
     </div>
   );
 }

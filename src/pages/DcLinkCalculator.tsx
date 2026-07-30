@@ -16,6 +16,8 @@ import InfoTooltip from '../components/InfoTooltip';
 import DcLinkArrayDiagram from '../components/DcLinkArrayDiagram';
 import MotorProfilePicker from '../components/MotorProfilePicker';
 import type { MotorProfileParams } from '../lib/motorProfiles';
+import BatteryProfilePicker from '../components/BatteryProfilePicker';
+import type { BatteryProfileParams } from '../lib/batteryProfiles';
 import {
   CAP_SUPPLIERS, DC_LINK_CAPACITORS, seriesForSupplier, voltagesForSeries, partsFor, leadsFor,
   maxOperatingVoltage, estimateLifeHours, type DcLinkCapacitor,
@@ -70,6 +72,11 @@ export default function DcLinkCalculator() {
   const applyMotorProfile = (p: MotorProfileParams) => {
     const current = p.peakCurrentARms ?? p.continuousCurrentARms;
     if (current != null) setPhaseCurrentRmsA(current);
+  };
+
+  const applyBatteryProfile = (p: BatteryProfileParams) => {
+    setBusVoltageV(p.maxVoltageV);
+    if (p.inductanceUh != null) setCableInductanceUh(p.inductanceUh);
   };
 
   // ── Capacitor selection ──
@@ -495,6 +502,9 @@ export default function DcLinkCalculator() {
               <div className="field"><label>Cable inductance (µH)</label>{seriesNum(cableInductanceUh, setCableInductanceUh, { step: 0.1, min: 0 })}</div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
                 <MotorProfilePicker onApply={applyMotorProfile} hint="Sets the phase current from a saved motor profile's peak (preferred) or continuous current rating." />
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <BatteryProfilePicker onApply={applyBatteryProfile} hint="Sets the bus voltage from a saved battery profile's max voltage, and cable inductance from its pack inductance if set." />
               </div>
             </div>
           </div>
