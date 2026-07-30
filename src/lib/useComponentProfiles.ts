@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { useAuth } from './AuthContext';
 
-// Named, reusable component profiles (Motor, Battery; Cable/Inverter are the
-// same shape as a future `type`) that get pulled into MULTIPLE calculators —
-// distinct from useSavedCalculations, which snapshots one calculator's full
-// input set. See component_profiles in supabase/migration.sql.
+// Named, reusable component profiles (Motor, Battery, Controller; Cable is
+// the same shape as a future `type`) that get pulled into MULTIPLE
+// calculators — distinct from useSavedCalculations, which snapshots one
+// calculator's full input set. See component_profiles in supabase/migration.sql.
 
-export type ComponentProfileType = 'motor' | 'battery';
+export type ComponentProfileType = 'motor' | 'battery' | 'controller';
 
 export interface ComponentProfile<TParams = Record<string, unknown>> {
   id: string;

@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useComponentProfiles, type ComponentProfile } from '../lib/useComponentProfiles';
 import { motorProfileSummary, type MotorProfileParams } from '../lib/motorProfiles';
 import { batteryProfileSummary, type BatteryProfileParams } from '../lib/batteryProfiles';
+import { controllerProfileSummary, type ControllerProfileParams } from '../lib/controllerProfiles';
 
 const PLAN_LABELS: Record<Plan, string> = {
   free: 'Free',
@@ -118,8 +119,9 @@ function AuthForm() {
 // and Delete, plus an "+ New" link. Shared by every profile type so adding a
 // new one (Cable, Inverter) later is just another call to this, not a new
 // table implementation.
-function EquipmentGroup<TParams>({ title, profiles, summarize, path, remove, navigate, emptyLabel }: {
+function EquipmentGroup<TParams>({ title, singular, profiles, summarize, path, remove, navigate, emptyLabel }: {
   title: string;
+  singular: string;
   profiles: ComponentProfile<TParams>[];
   summarize: (p: TParams) => string;
   path: string;
@@ -149,7 +151,7 @@ function EquipmentGroup<TParams>({ title, profiles, summarize, path, remove, nav
           </tbody>
         </table>
       )}
-      <button className="btn small" style={{ marginTop: '0.4rem' }} onClick={() => navigate(path)}>+ New {title.toLowerCase().replace(/s$/, '')}</button>
+      <button className="btn small" style={{ marginTop: '0.4rem' }} onClick={() => navigate(path)}>+ New {singular}</button>
     </div>
   );
 }
@@ -165,17 +167,19 @@ function SavedEquipmentSection() {
   const navigate = useNavigate();
   const motor = useComponentProfiles<MotorProfileParams>('motor');
   const battery = useComponentProfiles<BatteryProfileParams>('battery');
+  const controller = useComponentProfiles<ControllerProfileParams>('controller');
 
-  if (motor.loading || battery.loading) return <div className="card"><div className="card-title">Saved equipment</div><p className="note">Loading…</p></div>;
+  if (motor.loading || battery.loading || controller.loading) return <div className="card"><div className="card-title">Saved equipment</div><p className="note">Loading…</p></div>;
 
   return (
     <div className="card">
       <div className="card-title">Saved equipment</div>
       <p className="note" style={{ marginBottom: '0.85rem' }}>
-        Named component profiles reused across calculators (Id/Iq, DC-Link, Cable Sizing, Speed/Torque/Power).
+        Named component profiles reused across calculators (Id/Iq, DC-Link, Cable Sizing, Speed/Torque/Power, MOSFET Loss, Choke Sizing).
       </p>
-      <EquipmentGroup title="Motors" profiles={motor.profiles} summarize={motorProfileSummary} path="/motor-profiles" remove={motor.remove} navigate={navigate} emptyLabel="No motor profiles yet." />
-      <EquipmentGroup title="Batteries" profiles={battery.profiles} summarize={batteryProfileSummary} path="/battery-profiles" remove={battery.remove} navigate={navigate} emptyLabel="No battery profiles yet." />
+      <EquipmentGroup title="Motors" singular="motor" profiles={motor.profiles} summarize={motorProfileSummary} path="/motor-profiles" remove={motor.remove} navigate={navigate} emptyLabel="No motor profiles yet." />
+      <EquipmentGroup title="Batteries" singular="battery" profiles={battery.profiles} summarize={batteryProfileSummary} path="/battery-profiles" remove={battery.remove} navigate={navigate} emptyLabel="No battery profiles yet." />
+      <EquipmentGroup title="Controllers" singular="controller" profiles={controller.profiles} summarize={controllerProfileSummary} path="/controller-profiles" remove={controller.remove} navigate={navigate} emptyLabel="No controller profiles yet." />
     </div>
   );
 }

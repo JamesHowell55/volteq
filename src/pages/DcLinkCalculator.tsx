@@ -18,6 +18,8 @@ import MotorProfilePicker from '../components/MotorProfilePicker';
 import type { MotorProfileParams } from '../lib/motorProfiles';
 import BatteryProfilePicker from '../components/BatteryProfilePicker';
 import type { BatteryProfileParams } from '../lib/batteryProfiles';
+import ControllerProfilePicker from '../components/ControllerProfilePicker';
+import type { ControllerProfileParams } from '../lib/controllerProfiles';
 import {
   CAP_SUPPLIERS, DC_LINK_CAPACITORS, seriesForSupplier, voltagesForSeries, partsFor, leadsFor,
   maxOperatingVoltage, estimateLifeHours, type DcLinkCapacitor,
@@ -77,6 +79,11 @@ export default function DcLinkCalculator() {
   const applyBatteryProfile = (p: BatteryProfileParams) => {
     setBusVoltageV(p.maxVoltageV);
     if (p.inductanceUh != null) setCableInductanceUh(p.inductanceUh);
+  };
+
+  const applyControllerProfile = (p: ControllerProfileParams) => {
+    setBusVoltageV(p.maxDcVoltageV);
+    if (p.switchingFrequencyKhz != null) setSwitchingFreqKhz(p.switchingFrequencyKhz);
   };
 
   // ── Capacitor selection ──
@@ -505,6 +512,9 @@ export default function DcLinkCalculator() {
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
                 <BatteryProfilePicker onApply={applyBatteryProfile} hint="Sets the bus voltage from a saved battery profile's max voltage, and cable inductance from its pack inductance if set." />
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <ControllerProfilePicker onApply={applyControllerProfile} hint="Sets the bus voltage from a saved controller profile's max DC voltage, and switching frequency if set." />
               </div>
             </div>
           </div>

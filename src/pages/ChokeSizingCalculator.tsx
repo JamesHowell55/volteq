@@ -14,6 +14,8 @@ import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import ChokeCoreCrossSection from '../components/ChokeCoreCrossSection';
 import { renderChokeCoreProfileSvg } from '../lib/pdfDiagrams';
+import ControllerProfilePicker from '../components/ControllerProfilePicker';
+import type { ControllerProfileParams } from '../lib/controllerProfiles';
 import {
   CORE_PROFILES,
   computeCoreGeometry,
@@ -98,6 +100,11 @@ export default function ChokeSizingCalculator() {
   const [vDc, setVDc] = useState(400);
   const [switchingFreqHz, setSwitchingFreqHz] = useState(10000);
   const [motorPolePairs, setMotorPolePairs] = useState(4);
+
+  const applyControllerProfile = (p: ControllerProfileParams) => {
+    setVDc(p.maxDcVoltageV);
+    if (p.switchingFrequencyKhz != null) setSwitchingFreqHz(p.switchingFrequencyKhz * 1000);
+  };
   const [motorSpeedRpm, setMotorSpeedRpm] = useState(6000);
   const f1Hz = fundamentalElectricalFreqHz(motorSpeedRpm, motorPolePairs);
 
@@ -640,6 +647,9 @@ export default function ChokeSizingCalculator() {
                 <label>Motor/generator speed (rpm)</label>
                 <input autoComplete="off" type="number" min={0} value={motorSpeedRpm} onChange={(e) => setMotorSpeedRpm(Number(e.target.value))} />
                 <span className="hint">f1 = {fmt(f1Hz, 1)} Hz (context only — ripple sizing uses switching frequency)</span>
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <ControllerProfilePicker onApply={applyControllerProfile} hint="Sets DC bus voltage from a saved controller profile's max DC voltage, and switching frequency if set." />
               </div>
             </div>
           </div>

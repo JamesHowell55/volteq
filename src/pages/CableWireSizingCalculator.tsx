@@ -17,6 +17,8 @@ import MotorProfilePicker from '../components/MotorProfilePicker';
 import type { MotorProfileParams } from '../lib/motorProfiles';
 import BatteryProfilePicker from '../components/BatteryProfilePicker';
 import type { BatteryProfileParams } from '../lib/batteryProfiles';
+import ControllerProfilePicker from '../components/ControllerProfilePicker';
+import type { ControllerProfileParams } from '../lib/controllerProfiles';
 import {
   INSULATION_PRESETS,
   STANDARD_CROSS_SECTIONS_MM2,
@@ -94,6 +96,12 @@ export default function CableWireSizingCalculator() {
 
   const applyBatteryProfile = (p: BatteryProfileParams) => {
     setSystemVoltage(p.maxVoltageV);
+  };
+
+  const applyControllerProfile = (p: ControllerProfileParams) => {
+    setSystemVoltage(p.maxDcVoltageV);
+    const current = p.continuousCurrentARms ?? p.peakCurrentARms;
+    if (current != null) setTargetCurrentA(current);
   };
 
   const getInputs = useCallback((): Record<string, unknown> => ({
@@ -465,6 +473,9 @@ export default function CableWireSizingCalculator() {
                   </div>
                   <div className="field" style={{ gridColumn: '1 / -1' }}>
                     <BatteryProfilePicker onApply={applyBatteryProfile} hint="Sets the system voltage from a saved battery profile's max voltage." />
+                  </div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <ControllerProfilePicker onApply={applyControllerProfile} hint="Sets the system voltage from a saved controller profile's max DC voltage, and the target current from its continuous (preferred) or peak current rating." />
                   </div>
                 </>
               )}

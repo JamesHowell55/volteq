@@ -17,6 +17,8 @@ import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import { SIC_DEVICE_PRESETS, getSicDevice, inverterStructureLabel, type SicDevicePreset } from '../lib/sicDevices';
 import { fundamentalElectricalFreqHz } from '../lib/chokePhysics';
+import ControllerProfilePicker from '../components/ControllerProfilePicker';
+import type { ControllerProfileParams } from '../lib/controllerProfiles';
 import {
   solveDeviceLosses, solveDutyCycle,
   type OperatingPoint, type DutyStep, type DeviceLossResult,
@@ -58,6 +60,11 @@ export default function MosfetLossCalculator() {
   const [switchingFreqKhz, setSwitchingFreqKhz] = useState(10);
   const [modulationIndex, setModulationIndex] = useState(1.0);
   const [cosPhiMag, setCosPhiMag] = useState(0.9);
+
+  const applyControllerProfile = (p: ControllerProfileParams) => {
+    setVdc(p.maxDcVoltageV);
+    if (p.switchingFrequencyKhz != null) setSwitchingFreqKhz(p.switchingFrequencyKhz);
+  };
   const [deadTimeNs, setDeadTimeNs] = useState(500);
   const [caseTempC, setCaseTempC] = useState(65);
   const [syncRect, setSyncRect] = useState(true);
@@ -500,6 +507,9 @@ export default function MosfetLossCalculator() {
                   <InfoTooltip>Eon/Eoff scale as (Vdc/Vtest)^kv from the datasheet test voltage. Datasheet energy-vs-voltage curves are typically slightly superlinear (~1.2-1.4); 1.0 (linear) is the conservative default when Vdc is below the test voltage.</InfoTooltip>
                 </label>
                 <input autoComplete="off" type="number" min={0.5} max={2} step={0.05} value={voltageExponent} onChange={(e) => setVoltageExponent(Number(e.target.value))} />
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <ControllerProfilePicker onApply={applyControllerProfile} hint="Sets DC bus voltage from a saved controller profile's max DC voltage, and switching frequency if set." />
               </div>
             </div>
           </div>
