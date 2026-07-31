@@ -116,6 +116,21 @@ export default function Home() {
         <Link to="/calculators" className="v3-inline-link">View the complete calculator library <span>↗</span></Link>
       </section>
 
+      <section className="v3-workflow v3-section">
+        <div className="v3-discipline-lead" style={{ maxWidth: '52ch' }}>
+          <div className="v3-section-label">Worksuite · Virtual powertrain</div>
+          <h2>Model the whole powertrain, once.</h2>
+          <p>Define your motor, battery, and inverter as reusable profiles, bundle them into a powertrain, and every calculator pulls the shared numbers automatically—no retyping the same DC voltage, current, and switching frequency across tools.</p>
+        </div>
+        <div className="v3-workflow-line">
+          <article><span>01</span><h3>Define components</h3><p>Save each motor, battery, and controller once—the parameters straight off the datasheet, entered a single time.</p></article>
+          <article><span>02</span><h3>Bundle a powertrain</h3><p>Group one of each into a named system, plus system-level details like the DC cable length.</p></article>
+          <article><span>03</span><h3>Open pre-filled</h3><p>Jump into DC-link, cable, MOSFET-loss, magnetics, and motor calculators with the right values already in place.</p></article>
+          <article><span>04</span><h3>Iterate as one system</h3><p>Edit a component once and the change flows through every linked calculation—no stale copies, no re-entry.</p></article>
+        </div>
+        <Link to="/account" className="v3-inline-link" style={{ marginTop: '2.5rem' }}>Build your first powertrain <span>↗</span></Link>
+      </section>
+
       <section className="v3-disciplines v3-section">
         <div className="v3-discipline-lead">
           <div className="v3-section-label">Coverage</div>
