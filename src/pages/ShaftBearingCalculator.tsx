@@ -224,7 +224,6 @@ export default function ShaftBearingCalculator() {
                   </>
                 ) : null}
               </div>
-              {!isPremium && <PremiumGate feature="Opposed angular-contact pair (back-to-back / face-to-face) with induced axial loads"><span /></PremiumGate>}
             </div>
             {arrangement === 'fixed-floating' ? (
               <div className="field">

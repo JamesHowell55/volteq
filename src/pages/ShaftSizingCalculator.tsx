@@ -216,9 +216,8 @@ export default function ShaftSizingCalculator() {
               <button className="btn small" onClick={addSection}>+ Add section</button>
             ) : isPremium && sections.length < MAX_SECTION_CAP ? (
               <button className="btn small" onClick={addSection}>+ Add section ({sections.length}/{MAX_SECTION_CAP})</button>
-            ) : !isPremium ? (
-              <PremiumGate feature={`More than ${FREE_SECTION_CAP} sections (up to ${MAX_SECTION_CAP})`}><span /></PremiumGate>
-            ) : <span className="hint">Maximum {MAX_SECTION_CAP} sections.</span>}
+            ) : !isPremium ? null
+            : <span className="hint">Maximum {MAX_SECTION_CAP} sections.</span>}
             <div className="grid grid-2" style={{ marginTop: '0.6rem' }}>
               <div className="field"><label>Bearing A position ({lenL})</label><input type="number" min={0} value={toDisplay(bearingAPosMm, unitSystem, UNIT_LENGTH)} onChange={(e) => setBearingAPosMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} /></div>
               <div className="field"><label>Bearing B position ({lenL})</label><input type="number" min={0} value={toDisplay(bearingBPosMm, unitSystem, UNIT_LENGTH)} onChange={(e) => setBearingBPosMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} /></div>
@@ -287,9 +286,7 @@ export default function ShaftSizingCalculator() {
               <div className="field"><label>Fatigue criterion</label>
                 {isPremium ? (
                   <select value={fatigueCriterion} onChange={(e) => setFatigueCriterion(e.target.value as FatigueCriterionId)}>{FATIGUE_CRITERIA.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</select>
-                ) : (
-                  <PremiumGate feature="Alternative fatigue criteria (Gerber / elliptic / Soderberg)"><span /></PremiumGate>
-                )}
+                ) : null}
                 {!isPremium && <span className="hint">DE-Goodman (free)</span>}
               </div>
             </div>
