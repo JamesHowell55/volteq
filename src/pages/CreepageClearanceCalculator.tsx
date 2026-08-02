@@ -13,6 +13,7 @@ import { useEntitlement } from '../lib/useEntitlement';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import PremiumGate from '../components/PremiumGate';
+import ExportPdfButton from '../components/ExportPdfButton';
 import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
 import {
@@ -322,7 +323,7 @@ export default function CreepageClearanceCalculator() {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+      <div className="page-header page-header-actions">
         <div>
           <div className="eyebrow">● Creepage &amp; Clearance Calculator</div>
           <h1>Creepage &amp; Clearance Distance Calculator</h1>
@@ -334,9 +335,7 @@ export default function CreepageClearanceCalculator() {
           </p>
         </div>
         <CalculatorActions saved={saved} getInputs={getInputs}>
-          <PremiumGate feature="PDF export">
-            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-          </PremiumGate>
+          <ExportPdfButton onClick={handleExportPdf} />
         </CalculatorActions>
       </div>
 

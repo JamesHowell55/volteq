@@ -16,6 +16,7 @@ import BeamResponseChart from '../components/BeamResponseChart';
 import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
+import ExportPdfButton from '../components/ExportPdfButton';
 import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
@@ -303,7 +304,7 @@ export default function BeamCalculator() {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+      <div className="page-header page-header-actions">
         <div>
           <div className="eyebrow">● Mechanical</div>
           <h1>Beam Bending Calculator</h1>
@@ -315,9 +316,7 @@ export default function BeamCalculator() {
           </p>
         </div>
         <CalculatorActions saved={saved} getInputs={getInputs}>
-          <PremiumGate feature="PDF export">
-            <button className="btn primary" onClick={handleExportPdf} disabled={!result}>Export PDF</button>
-          </PremiumGate>
+          <ExportPdfButton onClick={handleExportPdf} disabled={!result} />
         </CalculatorActions>
       </div>
 

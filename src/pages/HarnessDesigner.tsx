@@ -4,6 +4,7 @@ import { useEntitlement } from '../lib/useEntitlement';
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import PremiumGate from '../components/PremiumGate';
+import ExportPdfButton from '../components/ExportPdfButton';
 import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
 import HarnessSchematicDiagram from '../components/HarnessSchematicDiagram';
@@ -230,7 +231,7 @@ export default function HarnessDesigner() {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+      <div className="page-header page-header-actions">
         <div>
           <div className="eyebrow">● Harness Designer</div>
           <h1>Harness Designer</h1>
@@ -240,9 +241,7 @@ export default function HarnessDesigner() {
           </p>
         </div>
         <CalculatorActions saved={saved} getInputs={getInputs}>
-          <PremiumGate feature="PDF export">
-            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-          </PremiumGate>
+          <ExportPdfButton onClick={handleExportPdf} />
         </CalculatorActions>
       </div>
 

@@ -410,6 +410,25 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   font-size: 0.92rem;
 }
 
+/* Header row pairing the title/eyebrow/description block with the
+   CalculatorActions button row. Desktop: side by side. Mobile: text goes
+   full width and the actions drop to their own row underneath, above the
+   calculator body. A separate class from .page-header since that class is
+   also used, unmodified, on pages with no action row. */
+.page-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .page-header-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 /* ── Cards ──────────────────────────────────────────────────── */
 .card {
   background: var(--bg-card);
@@ -1326,19 +1345,50 @@ footer.site-footer {
 .chart-modal-panel .chart-modal-body { flex: 1; min-height: 0; display: flex; align-items: center; }
 .chart-modal-panel .chart-modal-body svg { height: 100%; }
 
-/* ── Calculator action stack (Export PDF + Save) ─────────────────── */
+/* ── Calculator action row (Export PDF + Share + Save) ───────────── */
 .calc-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: stretch;
-  min-width: 168px;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
 }
-/* Make the passed-in Export PDF button (and its Premium lock variant) fill the
-   stack width so it lines up with the Save button below it. */
-.calc-actions > .btn,
-.calc-actions > a.btn { width: 100%; }
-.save-btn { gap: 0.4rem; }
+
+/* Icon-only action button: transparent bg, brand-accent glyph. 40px keeps
+   the touch target near the 40-44px guideline despite the compact look. */
+.calc-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+}
+.calc-action-btn svg { width: 20px; height: 20px; }
+
+.calc-action-btn:hover,
+.calc-action-btn:focus-visible {
+  background: var(--accent-glow);
+  border-color: var(--accent-border);
+  outline: none;
+}
+
+.calc-action-btn:disabled {
+  color: var(--text-3);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.calc-action-btn:disabled:hover { background: transparent; border-color: transparent; }
+
+/* Non-premium Export/Save: plain greyed-out icon, still a live link to
+   /account rather than a disabled control. */
+.calc-action-btn.locked { color: var(--text-3); }
 
 .save-modal-backdrop {
   position: fixed;
