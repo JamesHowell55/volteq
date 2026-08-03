@@ -6,6 +6,7 @@ import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepDat
 import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
 import PremiumGate from '../components/PremiumGate';
+import ExportPdfButton from '../components/ExportPdfButton';
 import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
@@ -17,6 +18,9 @@ import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import { SIC_DEVICE_PRESETS, getSicDevice, inverterStructureLabel, type SicDevicePreset } from '../lib/sicDevices';
 import { fundamentalElectricalFreqHz } from '../lib/chokePhysics';
+import ControllerProfilePicker from '../components/ControllerProfilePicker';
+import type { ControllerProfileParams } from '../lib/controllerProfiles';
+import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
 import {
   solveDeviceLosses, solveDutyCycle,
   type OperatingPoint, type DutyStep, type DeviceLossResult,
@@ -58,6 +62,12 @@ export default function MosfetLossCalculator() {
   const [switchingFreqKhz, setSwitchingFreqKhz] = useState(10);
   const [modulationIndex, setModulationIndex] = useState(1.0);
   const [cosPhiMag, setCosPhiMag] = useState(0.9);
+
+  const applyControllerProfile = (p: ControllerProfileParams) => {
+    setVdc(p.maxDcVoltageV);
+    if (p.switchingFrequencyKhz != null) setSwitchingFreqKhz(p.switchingFrequencyKhz);
+  };
+  usePowertrainPrefill({ onController: applyControllerProfile });
   const [deadTimeNs, setDeadTimeNs] = useState(500);
   const [caseTempC, setCaseTempC] = useState(65);
   const [syncRect, setSyncRect] = useState(true);
@@ -331,7 +341,7 @@ export default function MosfetLossCalculator() {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+      <div className="page-header page-header-actions">
         <div>
           <div className="eyebrow">● MOSFET Loss Calculator</div>
           <h1>MOSFET Loss Calculator (1200 V SiC Inverter)</h1>
@@ -342,9 +352,7 @@ export default function MosfetLossCalculator() {
           </p>
         </div>
         <CalculatorActions saved={saved} getInputs={getInputs}>
-          <PremiumGate feature="PDF export">
-            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-          </PremiumGate>
+          <ExportPdfButton onClick={handleExportPdf} />
         </CalculatorActions>
       </div>
 
@@ -500,6 +508,9 @@ export default function MosfetLossCalculator() {
                   <InfoTooltip>Eon/Eoff scale as (Vdc/Vtest)^kv from the datasheet test voltage. Datasheet energy-vs-voltage curves are typically slightly superlinear (~1.2-1.4); 1.0 (linear) is the conservative default when Vdc is below the test voltage.</InfoTooltip>
                 </label>
                 <input autoComplete="off" type="number" min={0.5} max={2} step={0.05} value={voltageExponent} onChange={(e) => setVoltageExponent(Number(e.target.value))} />
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <ControllerProfilePicker onApply={applyControllerProfile} hint="Sets DC bus voltage from a saved controller profile's max DC voltage, and switching frequency if set." />
               </div>
             </div>
           </div>

@@ -13,7 +13,7 @@ export interface SeoEntry {
 const HOME_ENTRY: SeoEntry = {
   title: 'Volteq — First-Principles Engineering Calculators',
   description:
-    'Free, first-principles engineering calculators for electrical, power electronics, motor, battery, and mechanical design — busbar temperature, creepage & clearance, bolted joints, beam bending, cable sizing, and more, cross-checked against IEC, ISO, and Roark’s standards.',
+    'Free, first-principles engineering calculators for electrical, power electronics, motor, battery, and mechanical design — busbar temperature, creepage & clearance, bolted joints, beam bending, cable sizing, and more, cross-checked against IEC, ISO, and Roark’s standards. Bundle a motor, battery, and inverter into a reusable powertrain that pre-fills every calculator.',
 };
 
 // Paths not covered by navCategories.ts (auth/account pages have no SEO value and
@@ -33,6 +33,26 @@ const STATIC_ENTRIES: Record<string, SeoEntry> = {
   '/reset-password': {
     title: `Reset Password | ${SITE_NAME}`,
     description: 'Reset your Volteq account password.',
+    noindex: true,
+  },
+  '/motor-profiles': {
+    title: `Motor Profiles | ${SITE_NAME}`,
+    description: 'Manage your saved motor profiles.',
+    noindex: true,
+  },
+  '/battery-profiles': {
+    title: `Battery Profiles | ${SITE_NAME}`,
+    description: 'Manage your saved battery profiles.',
+    noindex: true,
+  },
+  '/controller-profiles': {
+    title: `Controller Profiles | ${SITE_NAME}`,
+    description: 'Manage your saved motor controller / inverter profiles.',
+    noindex: true,
+  },
+  '/powertrain': {
+    title: `Powertrain Workspace | ${SITE_NAME}`,
+    description: 'Bundle your saved motor, battery, and controller profiles into one powertrain.',
     noindex: true,
   },
 };

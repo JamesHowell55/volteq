@@ -1,121 +1,173 @@
 import { Link } from 'react-router-dom';
-import LandingGraphic from '../components/LandingGraphic';
 import HeroCarousel from '../components/HeroCarousel';
 import PricingCards from '../components/PricingCards';
 import { ALL_CALCULATOR_LINKS } from '../lib/navCategories';
+import busbarScreenshot from '../assets/hero/busbar-screenshot.png';
+import dcLinkScreenshot from '../assets/hero/dc-link-screenshot1.png';
+import beamScreenshot from '../assets/hero/beam-bending-screenshot1.png';
 
-const DISCIPLINES = [
-  { icon: '⚡', label: 'Electrical', description: 'Busbar, cable sizing, creepage & clearance, PCB traces, harnesses.' },
-  { icon: '⎓', label: 'Power Electronics', description: 'SiC/MOSFET loss, DC-link capacitors, CM/DM choke sizing.' },
-  { icon: '⟲', label: 'Motors', description: 'Torque/power/speed, Id/Iq field-oriented control.' },
-  { icon: '⏻', label: 'Battery', description: 'Pack series/parallel voltage, capacity, and sag under load.' },
-  { icon: '♨', label: 'Thermal', description: 'Heatsink Rth budgets, heat exchanger sizing via effectiveness-NTU.' },
-  { icon: '⚙', label: 'Mechanical', description: 'Beams, bolted joints, bolt patterns, fits, O-rings, Mohr\'s circle.' },
+const PRINCIPLES = [
+  { index: '01', icon: '∫', title: 'Physics, not guesswork', description: 'First-principles models with visible assumptions, intermediate values, and governing equations.' },
+  { index: '02', icon: '✓', title: 'Traceable by default', description: 'Methods reference recognised standards and validation examples, so every result has a defensible basis.' },
+  { index: '03', icon: '↻', title: 'Made for iteration', description: 'Move from an early estimate to a reviewable design record without rebuilding another spreadsheet.' },
 ];
 
-const FEATURES = [
-  { icon: '◎', title: 'Accurate by design', description: 'Every calculator uses documented, citable formulas — no black-box results, ever.' },
-  { icon: '⏱', title: 'Save time', description: 'Skip the spreadsheet rebuild — get a full derivation and a client-ready PDF in minutes.' },
-  { icon: '⛨', title: 'Built with trust', description: 'Each result is checked against a published textbook or standard worked example.' },
-  { icon: '↻', title: 'Continuously improved', description: 'New calculators and guides ship regularly, covering more of the EV powertrain stack.' },
+const DISCIPLINES = [
+  ['Electrical', 'Busbars, cable sizing, insulation, PCB traces'],
+  ['Power electronics', 'SiC losses, DC-link capacitors, magnetics'],
+  ['Thermal', 'Heatsinks, exchangers, temperature rise'],
+  ['Mechanical', 'Beams, joints, seals, fits, stress'],
+  ['Motors & control', 'Torque, power, speed, Id/Iq vectors'],
+  ['Battery systems', 'Pack architecture, capacity, voltage sag'],
+];
+
+const PRODUCT_SHOTS = [
+  { eyebrow: 'Electrical', title: 'Busbar thermal modelling', image: busbarScreenshot, className: 'shot-busbar' },
+  { eyebrow: 'Power electronics', title: 'DC-link capacitor sizing', image: dcLinkScreenshot, className: 'shot-dclink' },
+  { eyebrow: 'Mechanical', title: 'Beam response analysis', image: beamScreenshot, className: 'shot-beam' },
 ];
 
 export default function Home() {
-  const calculatorCount = ALL_CALCULATOR_LINKS.filter((l) => l.available).length;
+  const calculatorCount = ALL_CALCULATOR_LINKS.filter((link) => link.available).length;
 
   return (
-    <div className="page home-page">
-      <section className="hero">
-        <div className="hero-grid">
-          <div>
-            <div className="eyebrow">● Engineering intelligence</div>
-            <h1>Calculators and tools for engineers.</h1>
-            <p className="hero-sub">
-              High-accuracy, first-principles engineering calculators for EV powertrain and power
-              electronics design — full derivations, cited standards, and a client-ready PDF on every result.
+    <div className="page home-page home-v3">
+      <section className="v3-hero">
+        <div className="v3-hero-grid">
+          <div className="v3-hero-copy">
+            <div className="v3-kicker"><span /> Engineering intelligence</div>
+            <h1>Engineering decisions,<br /><em>made visible.</em></h1>
+            <p>
+              High-fidelity calculators for teams designing electrified systems. Model real constraints,
+              interrogate every step, and turn first-principles analysis into work ready for review.
             </p>
-            <div className="hero-actions">
-              <Link to="/calculators" className="btn primary">Explore calculators →</Link>
-              <Link to="/calculators" className="btn">View all tools</Link>
+            <div className="v3-actions">
+              <Link to="/calculators" className="btn primary">Explore calculators <span>↗</span></Link>
+              <Link to="/guides" className="v3-text-action">Read the methodology <span>→</span></Link>
             </div>
-            <div className="hero-badges">
-              <span>Built by engineers</span>
-              <span>Verified methodology</span>
-              <span>SI units by default</span>
+            <div className="v3-meta">
+              <span><b>{calculatorCount}</b> live calculators</span>
+              <span><b>47</b> technical routes</span>
+              <span><b>6</b> disciplines</span>
             </div>
           </div>
-          <HeroCarousel />
+
+          <div className="v3-stage">
+            <svg className="v3-wave" viewBox="0 0 900 650" aria-hidden="true">
+              {Array.from({ length: 16 }, (_, index) => (
+                <path key={index} d={`M-80 ${560 + index * 5} C140 ${360 - index * 9} 345 ${650 - index * 7} 555 ${325 - index * 6} S800 ${120 + index * 4} 980 ${90 + index * 2}`} />
+              ))}
+            </svg>
+            <div className="v3-stage-axis axis-x" /><div className="v3-stage-axis axis-y" />
+            <div className="v3-stage-label label-a">SOLVE / VERIFY / EXPORT</div>
+            <div className="v3-stage-label label-b">MODEL_01</div>
+            <HeroCarousel />
+            <div className="v3-stage-readout"><span>MODEL STATUS</span><b><i /> VALIDATED</b></div>
+          </div>
         </div>
       </section>
 
-      <section className="feature-grid-section">
-        <h2>Designed for engineering teams building the future.</h2>
-        <div className="feature-grid">
-          {FEATURES.map((f) => (
-            <div className="feature-card" key={f.title}>
-              <div className="icon">{f.icon}</div>
-              <h3>{f.title}</h3>
-              <p>{f.description}</p>
+      <section className="v3-trusted" aria-label="Trusted by engineers at">
+        <span>Trusted by engineers at</span>
+        <div className="v3-logo-space" aria-hidden="true" />
+      </section>
+
+      <section className="v3-intro v3-section">
+        <div className="v3-section-label">The platform</div>
+        <div className="v3-intro-copy">
+          <h2>Move faster without<br />losing the engineering.</h2>
+          <p>
+            Volteq sits between a quick online calculator and a bespoke simulation. Fast enough for the
+            design loop; rigorous enough to expose how the answer was reached.
+          </p>
+        </div>
+      </section>
+
+      <section className="v3-principles">
+        {PRINCIPLES.map((principle) => (
+          <article key={principle.index}>
+            <div className="v3-principle-top">
+              <span className="v3-index">{principle.index}</span>
+              <div className="v3-principle-icon" aria-hidden="true">{principle.icon}</div>
             </div>
+            <h3>{principle.title}</h3>
+            <p>{principle.description}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="v3-showcase v3-section">
+        <div className="v3-showcase-head">
+          <div>
+            <div className="v3-section-label">Inside the toolkit</div>
+            <h2>One environment.<br />Multiple domains.</h2>
+          </div>
+          <p>Purpose-built models for the calculations that connect electrical, thermal, and mechanical design.</p>
+        </div>
+        <div className="v3-shot-stage">
+          <div className="v3-shot-grid" aria-hidden="true" />
+          {PRODUCT_SHOTS.map((shot) => (
+            <article className={`v3-product-shot ${shot.className}`} key={shot.title}>
+              <div className="v3-shot-caption"><span>{shot.eyebrow}</span><b>{shot.title}</b></div>
+              <img src={shot.image} alt={`${shot.title} calculator interface`} />
+            </article>
+          ))}
+        </div>
+        <Link to="/calculators" className="v3-inline-link">View the complete calculator library <span>↗</span></Link>
+      </section>
+
+      <section className="v3-workflow v3-section">
+        <div className="v3-discipline-lead" style={{ maxWidth: '52ch' }}>
+          <div className="v3-section-label">Worksuite · Virtual powertrain</div>
+          <h2>Model the whole powertrain, once.</h2>
+          <p>Define your motor, battery, and inverter as reusable profiles, bundle them into a powertrain, and every calculator pulls the shared numbers automatically—no retyping the same DC voltage, current, and switching frequency across tools.</p>
+        </div>
+        <div className="v3-workflow-line">
+          <article><span>01</span><h3>Define components</h3><p>Save each motor, battery, and controller once—the parameters straight off the datasheet, entered a single time.</p></article>
+          <article><span>02</span><h3>Bundle a powertrain</h3><p>Group one of each into a named system, plus system-level details like the DC cable length.</p></article>
+          <article><span>03</span><h3>Open pre-filled</h3><p>Jump into DC-link, cable, MOSFET-loss, magnetics, and motor calculators with the right values already in place.</p></article>
+          <article><span>04</span><h3>Iterate as one system</h3><p>Edit a component once and the change flows through every linked calculation—no stale copies, no re-entry.</p></article>
+        </div>
+        <Link to="/account" className="v3-inline-link" style={{ marginTop: '2.5rem' }}>Build your first powertrain <span>↗</span></Link>
+      </section>
+
+      <section className="v3-disciplines v3-section">
+        <div className="v3-discipline-lead">
+          <div className="v3-section-label">Coverage</div>
+          <h2>Designed around the system—not the silo.</h2>
+          <p>Explore the linked decisions behind modern EV, energy, and electromechanical products.</p>
+        </div>
+        <div className="v3-discipline-list">
+          {DISCIPLINES.map(([title, description], index) => (
+            <Link to="/calculators" key={title}>
+              <span>0{index + 1}</span><b>{title}</b><p>{description}</p><i>↗</i>
+            </Link>
           ))}
         </div>
       </section>
 
-      <section className="landing-section">
-        <div className="landing-copy">
-          <div className="eyebrow">● Show your work</div>
-          <h2>Every answer comes with its derivation.</h2>
-          <p>
-            No calculator on Volteq just hands you a number. Each one shows the full step-by-step
-            calculation and is checked against a published worked example from the governing standard —
-            IEC, ISO, IPC, VDI, or a recognized reference text — with a "Validated:" note on the result.
-            Export the whole thing to a client-ready PDF.
-          </p>
-        </div>
-        <div className="landing-graphic">
-          <LandingGraphic variant="motor-winding" />
+      <section className="v3-workflow v3-section">
+        <div className="v3-section-label">From question to evidence</div>
+        <div className="v3-workflow-line">
+          <article><span>01</span><h3>Define</h3><p>Set geometry, materials, boundary conditions, and operating cases.</p></article>
+          <article><span>02</span><h3>Solve</h3><p>Run a transparent engineering model with units carried through every step.</p></article>
+          <article><span>03</span><h3>Interrogate</h3><p>Review derivations, sensitivities, diagrams, and validation references.</p></article>
+          <article><span>04</span><h3>Document</h3><p>Save the calculation or export a clear, branded engineering record.</p></article>
         </div>
       </section>
 
-      <section className="landing-section reverse">
-        <div className="landing-copy">
-          <div className="eyebrow">● Built for EV powertrain &amp; power electronics</div>
-          <h2>Every discipline. Every stage.</h2>
-          <p>
-            Volteq is purpose-built for one vertical: EV powertrain and power electronics design — not
-            adapted from a generic mechanical-engineering toolbox. {calculatorCount} calculators across six
-            disciplines, with more shipping regularly.
-          </p>
-          <Link to="/calculators" className="btn">Explore all calculators →</Link>
+      <section className="pricing-section v3-pricing v3-section">
+        <div className="v3-pricing-head">
+          <div><div className="v3-section-label">Pricing</div><h2>Serious tools.<br />Simple access.</h2></div>
+          <p>The engineering calculation stays free. Premium adds continuity, collaboration, and presentation.</p>
         </div>
-        <div className="discipline-grid">
-          {DISCIPLINES.map((d) => (
-            <div className="discipline-item" key={d.label}>
-              <div className="icon">{d.icon}</div>
-              <div>
-                <h3>{d.label}</h3>
-                <p>{d.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="pricing-section">
-        <div className="eyebrow" style={{ textAlign: 'center' }}>● Pricing</div>
-        <h2>The calculation is always free. Premium adds the rest.</h2>
         <PricingCards />
       </section>
 
-      <section className="card home-cta">
-        <div>
-          <h2>Ready to engineer better?</h2>
-          <p>
-            The calculation is always free, with no paywall on the math. Create a free account to save your
-            inputs and pick up where you left off.
-          </p>
-        </div>
-        <Link to="/account" className="btn primary">Get started for free →</Link>
+      <section className="v3-final-cta">
+        <div className="v3-cta-lines" aria-hidden="true" />
+        <div><div className="v3-kicker"><span /> Start building</div><h2>Make the next decision<br />with confidence.</h2></div>
+        <Link to="/calculators" className="btn primary">Open the toolkit <span>↗</span></Link>
       </section>
     </div>
   );

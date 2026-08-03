@@ -16,6 +16,7 @@ import { useEntitlement } from '../lib/useEntitlement';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import PremiumGate from '../components/PremiumGate';
+import ExportPdfButton from '../components/ExportPdfButton';
 import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
 import { MATERIALS, EMISSIVITY_PRESETS, COATING_PRESETS, TIM_PRESETS, COOLANT_PRESETS } from '../lib/materials';
@@ -663,7 +664,7 @@ export default function BusbarCalculator() {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+      <div className="page-header page-header-actions">
         <div>
           <div className="eyebrow">● Busbar Calculator</div>
           <h1>Busbar Temperature &amp; Ampacity Calculator</h1>
@@ -674,9 +675,7 @@ export default function BusbarCalculator() {
           </p>
         </div>
         <CalculatorActions saved={saved} getInputs={getInputs}>
-          <PremiumGate feature="PDF export">
-            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-          </PremiumGate>
+          <ExportPdfButton onClick={handleExportPdf} />
         </CalculatorActions>
       </div>
 

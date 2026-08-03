@@ -8,11 +8,14 @@ import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
-import PremiumGate from '../components/PremiumGate';
+import ExportPdfButton from '../components/ExportPdfButton';
 import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
 import InfoTooltip from '../components/InfoTooltip';
 import DqSpaceVectorDiagram from '../components/DqSpaceVectorDiagram';
+import MotorProfilePicker from '../components/MotorProfilePicker';
+import type { MotorProfileParams } from '../lib/motorProfiles';
+import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
 import {
   rmsToPeak,
   magnitudeAngleFromDq,
@@ -95,6 +98,17 @@ export default function DqCurrentCalculator() {
       setLqMh(p.type === 'spm' ? p.ldMh : p.lqMh);
     }
   };
+
+  const applyMotorProfile = (p: MotorProfileParams) => {
+    if (p.motorType === 'spm' || p.motorType === 'ipm') setMotorType(p.motorType);
+    if (p.polePairs != null) setPolePairs(p.polePairs);
+    if (p.fluxLinkageWb != null) setFluxLinkageWb(p.fluxLinkageWb);
+    if (p.ldMh != null) setLdMh(p.ldMh);
+    if (p.lqMh != null) setLqMh(p.lqMh);
+    setPresetId('custom');
+  };
+
+  usePowertrainPrefill({ onMotor: applyMotorProfile });
 
   // Surface-PM machines have no saliency: Lq is forced equal to Ld.
   const effectiveLqMh = motorType === 'spm' ? ldMh : lqMh;
@@ -258,7 +272,7 @@ export default function DqCurrentCalculator() {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+      <div className="page-header page-header-actions">
         <div>
           <div className="eyebrow">● Id / Iq Current Calculator</div>
           <h1>Id / Iq Current Vector Calculator</h1>
@@ -269,9 +283,7 @@ export default function DqCurrentCalculator() {
           </p>
         </div>
         <CalculatorActions saved={saved} getInputs={getInputs}>
-          <PremiumGate feature="PDF export">
-            <button className="btn primary" style={{ whiteSpace: 'nowrap' }} onClick={handleExportPdf}>Export PDF</button>
-          </PremiumGate>
+          <ExportPdfButton onClick={handleExportPdf} />
         </CalculatorActions>
       </div>
 
@@ -353,6 +365,9 @@ export default function DqCurrentCalculator() {
                 <select value={presetId} onChange={(e) => applyPreset(e.target.value)}>
                   {MOTOR_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                 </select>
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <MotorProfilePicker onApply={applyMotorProfile} hint="Pulls motor type, pole pairs, flux linkage, and Ld/Lq from a saved motor profile. Only fields present on the profile are applied." />
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
                 <label>Motor type</label>

@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useEntitlement, type Plan } from '../lib/useEntitlement';
+import { useTheme } from '../lib/ThemeContext';
+import { DEFAULT_ACCENT, isValidHex } from '../lib/theme';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { useComponentProfiles, type ComponentProfile } from '../lib/useComponentProfiles';
+import { motorProfileSummary, type MotorProfileParams } from '../lib/motorProfiles';
+import { batteryProfileSummary, type BatteryProfileParams } from '../lib/batteryProfiles';
+import { controllerProfileSummary, type ControllerProfileParams } from '../lib/controllerProfiles';
+import type { PowertrainProfileParams } from '../lib/powertrainProfiles';
 
 const PLAN_LABELS: Record<Plan, string> = {
   free: 'Free',
@@ -108,21 +115,169 @@ function AuthForm() {
   );
 }
 
+// One equipment-type's group within the Saved equipment card: a name+summary
+// table with inline Edit (deep-links to that type's page, e.g. ?edit=<id>)
+// and Delete, plus an "+ New" link. Shared by every profile type so adding a
+// new one (Cable, Inverter) later is just another call to this, not a new
+// table implementation.
+function EquipmentGroup<TParams>({ title, singular, profiles, summarize, path, remove, navigate, emptyLabel }: {
+  title: string;
+  singular: string;
+  profiles: ComponentProfile<TParams>[];
+  summarize: (p: TParams) => string;
+  path: string;
+  remove: (id: string) => void;
+  navigate: ReturnType<typeof useNavigate>;
+  emptyLabel: string;
+}) {
+  return (
+    <div style={{ marginBottom: '1rem' }}>
+      <h3 style={{ fontSize: '0.85rem', margin: '0.5rem 0 0.4rem', opacity: 0.7 }}>{title}</h3>
+      {profiles.length === 0 ? (
+        <p className="note">{emptyLabel}</p>
+      ) : (
+        <table className="data-table" style={{ width: '100%', fontSize: '0.8rem' }}>
+          <thead><tr><th>Name</th><th>Summary</th><th></th></tr></thead>
+          <tbody>
+            {profiles.map((p) => (
+              <tr key={p.id}>
+                <td>{p.label}</td>
+                <td style={{ color: 'var(--text-2)' }}>{summarize(p.params)}</td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button className="btn small" onClick={() => navigate(`${path}?edit=${p.id}`)}>Edit</button>
+                  <button className="btn small" style={{ marginLeft: '0.4rem' }} onClick={() => { if (confirm(`Delete "${p.label}"?`)) remove(p.id); }}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <button className="btn small" style={{ marginTop: '0.4rem' }} onClick={() => navigate(path)}>+ New {singular}</button>
+    </div>
+  );
+}
+
+// Premium "saved equipment" — named component profiles (Motor, Battery;
+// Cable/Inverter are the same pattern later) reused across multiple
+// calculators, distinct from a single calculator's saved inputs above. Lives
+// in Account because saving a profile is itself the Premium feature (see
+// MotorProfilePicker's PremiumGate) — the full create/edit form for each type
+// stays on its own page (/motor-profiles, /battery-profiles), this is just an
+// at-a-glance list + quick delete per type.
+function SavedEquipmentSection() {
+  const navigate = useNavigate();
+  const motor = useComponentProfiles<MotorProfileParams>('motor');
+  const battery = useComponentProfiles<BatteryProfileParams>('battery');
+  const controller = useComponentProfiles<ControllerProfileParams>('controller');
+
+  if (motor.loading || battery.loading || controller.loading) return <div className="card"><div className="card-title">Saved equipment</div><p className="note">Loading…</p></div>;
+
+  return (
+    <div className="card">
+      <div className="card-title">Saved equipment</div>
+      <p className="note" style={{ marginBottom: '0.85rem' }}>
+        Named component profiles reused across calculators (Id/Iq, DC-Link, Cable Sizing, Speed/Torque/Power, MOSFET Loss, Choke Sizing).
+      </p>
+      <EquipmentGroup title="Motors" singular="motor" profiles={motor.profiles} summarize={motorProfileSummary} path="/motor-profiles" remove={motor.remove} navigate={navigate} emptyLabel="No motor profiles yet." />
+      <EquipmentGroup title="Batteries" singular="battery" profiles={battery.profiles} summarize={batteryProfileSummary} path="/battery-profiles" remove={battery.remove} navigate={navigate} emptyLabel="No battery profiles yet." />
+      <EquipmentGroup title="Controllers" singular="controller" profiles={controller.profiles} summarize={controllerProfileSummary} path="/controller-profiles" remove={controller.remove} navigate={navigate} emptyLabel="No controller profiles yet." />
+    </div>
+  );
+}
+
+// Powertrains — bundles of the above equipment. Kept as its own card (not an
+// EquipmentGroup) since it's a higher-level object: the full create/edit +
+// concept-phase overview + "open in calculator" links live on /powertrain.
+function PowertrainSection() {
+  const navigate = useNavigate();
+  const { profiles, loading, remove } = useComponentProfiles<PowertrainProfileParams>('powertrain');
+
+  if (loading) return <div className="card"><div className="card-title">Powertrains</div><p className="note">Loading…</p></div>;
+
+  return (
+    <div className="card">
+      <div className="card-title">Powertrains</div>
+      <p className="note" style={{ marginBottom: '0.85rem' }}>
+        Bundle a motor, battery, and controller into one system, then open any calculator pre-filled. <Link to="/powertrain">Open the workspace →</Link>
+      </p>
+      {profiles.length === 0 ? (
+        <p className="note">No powertrains yet.</p>
+      ) : (
+        <table className="data-table" style={{ width: '100%', fontSize: '0.8rem' }}>
+          <thead><tr><th>Name</th><th></th></tr></thead>
+          <tbody>
+            {profiles.map((pt) => (
+              <tr key={pt.id}>
+                <td>{pt.label}</td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button className="btn small" onClick={() => navigate(`/powertrain?edit=${pt.id}`)}>Edit</button>
+                  <button className="btn small" style={{ marginLeft: '0.4rem' }} onClick={() => { if (confirm(`Delete "${pt.label}"?`)) remove(pt.id); }}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <button className="btn small" style={{ marginTop: '0.4rem' }} onClick={() => navigate('/powertrain')}>+ New powertrain</button>
+    </div>
+  );
+}
+
+function AppearanceSection() {
+  const { accentHex, setAccentHex, resetAccent } = useTheme();
+  const [draftHex, setDraftHex] = useState(accentHex);
+
+  useEffect(() => setDraftHex(accentHex), [accentHex]);
+
+  const draftValid = isValidHex(draftHex);
+
+  return (
+    <div className="card">
+      <div className="card-title">Appearance</div>
+      <p className="note" style={{ marginBottom: '0.85rem' }}>Sets the accent colour used throughout the Volteq interface (site-wide, not just PDF reports).</p>
+      <div className="field">
+        <label>Accent colour</label>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <input
+            autoComplete="off"
+            type="color"
+            value={draftValid ? draftHex : accentHex}
+            onChange={(e) => { setDraftHex(e.target.value); setAccentHex(e.target.value); }}
+            style={{ width: 36, height: 36, padding: 2 }}
+          />
+          <input
+            autoComplete="off"
+            type="text"
+            value={draftHex}
+            onChange={(e) => {
+              setDraftHex(e.target.value);
+              if (isValidHex(e.target.value)) setAccentHex(e.target.value);
+            }}
+            placeholder="#5DCAA5"
+            style={{ fontFamily: 'var(--font-mono)', maxWidth: 160 }}
+          />
+        </div>
+        {!draftValid && <span className="hint" style={{ color: 'var(--neg)' }}>Enter a valid hex code, e.g. #5DCAA5</span>}
+        <button className="btn small" style={{ marginTop: '0.6rem' }} onClick={resetAccent} disabled={accentHex === DEFAULT_ACCENT}>
+          Reset to Volteq default
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BrandingSection() {
   const { user } = useAuth();
-  const [companyName, setCompanyName] = useState('');
-  const [accentHex, setAccentHex] = useState('#5DCAA5');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('branding').select('company_name, logo_url, accent_hex').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+    supabase.from('branding').select('logo_url').eq('user_id', user.id).maybeSingle().then(({ data }) => {
       if (data) {
-        setCompanyName(data.company_name ?? '');
-        setAccentHex(data.accent_hex ?? '#5DCAA5');
         setLogoUrl(data.logo_url ?? null);
       }
     });
@@ -131,9 +286,12 @@ function BrandingSection() {
   const handleLogoUpload = async (file: File) => {
     if (!user) return;
     setUploading(true);
+    setError(null);
     const path = `${user.id}/logo-${Date.now()}.${file.name.split('.').pop()}`;
-    const { error } = await supabase.storage.from('branding-logos').upload(path, file, { upsert: true });
-    if (!error) {
+    const { error: uploadError } = await supabase.storage.from('branding-logos').upload(path, file, { upsert: true });
+    if (uploadError) {
+      setError(`Logo upload failed: ${uploadError.message}`);
+    } else {
       const { data } = supabase.storage.from('branding-logos').getPublicUrl(path);
       setLogoUrl(data.publicUrl);
     }
@@ -143,8 +301,13 @@ function BrandingSection() {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    await supabase.from('branding').upsert({ user_id: user.id, company_name: companyName, logo_url: logoUrl, accent_hex: accentHex, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    setError(null);
+    const { error: saveError } = await supabase.from('branding').upsert({ user_id: user.id, logo_url: logoUrl, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     setSaving(false);
+    if (saveError) {
+      setError(`Save failed: ${saveError.message}`);
+      return;
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -152,22 +315,18 @@ function BrandingSection() {
   return (
     <div className="card">
       <div className="card-title">Report branding</div>
-      <p className="note" style={{ marginBottom: '0.85rem' }}>Shown on exported PDF reports in place of the Volteq mark.</p>
-      <div className="grid grid-2">
-        <div className="field">
-          <label>Company name</label>
-          <input autoComplete="off" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-        </div>
-        <div className="field">
-          <label>Accent colour</label>
-          <input autoComplete="off" type="color" value={accentHex} onChange={(e) => setAccentHex(e.target.value)} style={{ height: '2.4rem' }} />
-        </div>
-        <div className="field" style={{ gridColumn: '1 / -1' }}>
-          <label>Company logo</label>
-          <input type="file" accept="image/*" disabled={uploading} onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])} />
-          {logoUrl && <img src={logoUrl} alt="Company logo" style={{ height: '2.5rem', marginTop: '0.5rem', display: 'block' }} />}
-        </div>
+      <p className="note" style={{ marginBottom: '0.85rem' }}>Your logo replaces the Volteq mark on exported PDF reports.</p>
+      <div className="field">
+        <label>Company logo</label>
+        <input type="file" accept="image/*" disabled={uploading} onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])} />
+        {logoUrl && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.5rem' }}>
+            <img src={logoUrl} alt="Company logo" style={{ height: '2.5rem', display: 'block' }} />
+            <button className="btn small" onClick={() => setLogoUrl(null)}>Remove logo</button>
+          </div>
+        )}
       </div>
+      {error && <p className="note" style={{ color: 'var(--neg)', marginTop: '0.5rem' }}>{error}</p>}
       <button className="btn primary" onClick={handleSave} disabled={saving} style={{ marginTop: '0.5rem' }}>
         {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save branding'}
       </button>
@@ -335,6 +494,9 @@ export default function AccountPage() {
 
       <SavedCalculationsOverview />
 
+      {isPremium && <PowertrainSection />}
+      {isPremium && <SavedEquipmentSection />}
+      {isPremium && <AppearanceSection />}
       {isPremium && <BrandingSection />}
     </div>
   );

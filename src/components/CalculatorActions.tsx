@@ -2,18 +2,19 @@ import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { useSavedCalculations } from '../lib/useSavedCalculations';
 import { encodeShareState } from '../lib/shareLink';
-import PremiumGate from './PremiumGate';
+import GatedIconButton from './GatedIconButton';
+import { ShareIcon, SaveIcon } from './icons';
 
-// The top-right action stack on every calculator page: the (premium) Export PDF
+// The icon action row on every calculator page: the (premium) Export PDF
 // button passed in as children, a free "Share" button, and a "Save calculation"
-// button beneath it. Saving opens a small modal to name the calculation, then
-// confirms it was stored and is available in the Account section — replacing
-// the old inline save box at the bottom of the page.
+// button. Saving opens a small modal to name the calculation, then confirms
+// it was stored and is available in the Account section — replacing the old
+// inline save box at the bottom of the page.
 
 interface Props {
   saved: ReturnType<typeof useSavedCalculations>;
   getInputs: () => Record<string, unknown>;
-  children?: ReactNode; // the Export PDF button (wrapped in its PremiumGate)
+  children?: ReactNode; // the Export PDF button (GatedIconButton)
 }
 
 type Phase = 'idle' | 'naming' | 'saving' | 'done' | 'error';
@@ -56,14 +57,10 @@ export default function CalculatorActions({ saved, getInputs, children }: Props)
   return (
     <div className="calc-actions">
       {children}
-      <button className="btn save-btn" onClick={doShare}>
-        <span aria-hidden="true">🔗</span> Share
+      <button type="button" className="calc-action-btn" onClick={doShare} title="Share" aria-label="Share">
+        <ShareIcon />
       </button>
-      <PremiumGate feature="Saving calculations">
-        <button className="btn save-btn" onClick={open}>
-          <span aria-hidden="true">💾</span> Save calculation
-        </button>
-      </PremiumGate>
+      <GatedIconButton label="Save calculation" icon={<SaveIcon />} onClick={open} />
 
       {sharePhase !== 'idle' && (
         <div className="save-modal-backdrop" onClick={() => setSharePhase('idle')} role="presentation">

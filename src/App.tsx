@@ -9,6 +9,10 @@ import BoltedJointCalculator from './pages/BoltedJointCalculator';
 import BoltPatternCalculator from './pages/BoltPatternCalculator';
 import BomCompareCalculator from './pages/BomCompareCalculator';
 import BeamCalculator from './pages/BeamCalculator';
+import BearingCalculator from './pages/BearingCalculator';
+import SplineSizingCalculator from './pages/SplineSizingCalculator';
+import ShaftSizingCalculator from './pages/ShaftSizingCalculator';
+import ShaftBearingCalculator from './pages/ShaftBearingCalculator';
 import CableWireSizingCalculator from './pages/CableWireSizingCalculator';
 import BatteryPackSeriesParallelCalculator from './pages/BatteryPackSeriesParallelCalculator';
 import MotorTorquePowerSpeedCalculator from './pages/MotorTorquePowerSpeedCalculator';
@@ -23,6 +27,10 @@ import ORingCalculator from './pages/ORingCalculator';
 import FitsAndLimitsCalculator from './pages/FitsAndLimitsCalculator';
 import MohrsCircleCalculator from './pages/MohrsCircleCalculator';
 import DqCurrentCalculator from './pages/DqCurrentCalculator';
+import MotorProfilesPage from './pages/MotorProfilesPage';
+import BatteryProfilesPage from './pages/BatteryProfilesPage';
+import ControllerProfilesPage from './pages/ControllerProfilesPage';
+import PowertrainPage from './pages/PowertrainPage';
 import DcLinkCalculator from './pages/DcLinkCalculator';
 import SkinDepthCalculator from './pages/SkinDepthCalculator';
 import ConversionsCalculator from './pages/ConversionsCalculator';
@@ -51,6 +59,8 @@ import TorquePowerSpeedGuide from './pages/guides/TorquePowerSpeedGuide';
 import SeriesParallelCellsGuide from './pages/guides/SeriesParallelCellsGuide';
 import WireBundleDiameterGuide from './pages/guides/WireBundleDiameterGuide';
 import MilDtl38999Guide from './pages/guides/MilDtl38999Guide';
+import Iso281Guide from './pages/guides/Iso281Guide';
+import Iso4156Guide from './pages/guides/Iso4156Guide';
 import { ThemeProvider } from './lib/ThemeContext';
 import { AuthProvider } from './lib/AuthContext';
 import { UnitSystemProvider } from './lib/UnitSystemContext';
@@ -87,6 +97,10 @@ function App() {
               <Route path="/bolt-pattern" element={<BoltPatternCalculator />} />
               <Route path="/bom-compare" element={<BomCompareCalculator />} />
               <Route path="/beam-bending" element={<BeamCalculator />} />
+              <Route path="/bearing-calculator" element={<BearingCalculator />} />
+              <Route path="/spline-sizing" element={<SplineSizingCalculator />} />
+              <Route path="/shaft-sizing" element={<ShaftSizingCalculator />} />
+              <Route path="/shaft-bearing-system" element={<ShaftBearingCalculator />} />
               <Route path="/o-ring" element={<ORingCalculator />} />
               <Route path="/fits-and-limits" element={<FitsAndLimitsCalculator />} />
               <Route path="/mohrs-circle" element={<MohrsCircleCalculator />} />
@@ -94,6 +108,10 @@ function App() {
               <Route path="/battery-pack-series-parallel" element={<BatteryPackSeriesParallelCalculator />} />
               <Route path="/speed-torque-power" element={<MotorTorquePowerSpeedCalculator />} />
               <Route path="/id-iq-current" element={<DqCurrentCalculator />} />
+              <Route path="/motor-profiles" element={<MotorProfilesPage />} />
+              <Route path="/battery-profiles" element={<BatteryProfilesPage />} />
+              <Route path="/controller-profiles" element={<ControllerProfilesPage />} />
+              <Route path="/powertrain" element={<PowertrainPage />} />
               <Route path="/choke-sizing" element={<ChokeSizingCalculator />} />
               <Route path="/mosfet-loss" element={<MosfetLossCalculator />} />
               <Route path="/heatsink-thermal" element={<HeatsinkThermalCalculator />} />
@@ -126,6 +144,8 @@ function App() {
               <Route path="/guides/series-parallel-cells" element={<SeriesParallelCellsGuide />} />
               <Route path="/guides/wire-bundle-diameter" element={<WireBundleDiameterGuide />} />
               <Route path="/guides/mil-dtl-38999" element={<MilDtl38999Guide />} />
+              <Route path="/guides/iso-281" element={<Iso281Guide />} />
+              <Route path="/guides/iso-4156" element={<Iso4156Guide />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               {placeholderLinks.map((link) => (
