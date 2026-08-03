@@ -47,6 +47,8 @@ import {
   type ClampedSectionInput,
   type JointInput,
 } from '../lib/boltedJointPhysics';
+import { PLATING_LIST, getPlating, ROUGHNESS_LIST, FLATNESS_LIST, type PlatingId, type RoughnessPresetId, type FlatnessPresetId } from '../lib/contactResistanceMaterials';
+import { computeContactResistance } from '../lib/contactResistancePhysics';
 import BoltedJointCrossSection from '../components/BoltedJointCrossSection';
 import InfoTooltip from '../components/InfoTooltip';
 
@@ -60,6 +62,15 @@ function fmt(n: number, digits = 2): string {
 // never see anything but SI.
 function fmtU(valueSI: number, unitSystem: UnitSystem, def: UnitDef, digits = 2): string {
   return fmt(toDisplay(valueSI, unitSystem, def), digits);
+}
+
+// Resistance has no metric/imperial distinction, so it's the one result in
+// this file that never goes through toDisplay/unitSystem.
+function fmtResistance(ohms: number): string {
+  if (!isFinite(ohms)) return '—';
+  if (ohms < 1e-3) return `${fmt(ohms * 1e6, 2)} µΩ`;
+  if (ohms < 1) return `${fmt(ohms * 1e3, 3)} mΩ`;
+  return `${fmt(ohms, 4)} Ω`;
 }
 
 interface SectionFormState extends ClampedSectionInput {
@@ -233,13 +244,22 @@ export default function BoltedJointCalculator() {
   const shareLink = useShareableLink(restoreInputs);
 
   const [advancedMode, setAdvancedMode] = useState(false);
+  const [includeContactResistance, setIncludeContactResistance] = useState(false);
+  const [platingId, setPlatingId] = useState<PlatingId>('tin');
+  const [customResistivityOhmM, setCustomResistivityOhmM] = useState(100e-9);
+  const [customHardnessMPa, setCustomHardnessMPa] = useState(100);
+  const [customFilmFactor, setCustomFilmFactor] = useState(2.0);
+  const [roughnessPresetId, setRoughnessPresetId] = useState<RoughnessPresetId>('machined');
+  const [customRaMicrons, setCustomRaMicrons] = useState(2.0);
+  const [flatnessPresetId, setFlatnessPresetId] = useState<FlatnessPresetId>('good');
   // Safety net: force advancedMode off if entitlement lapses (e.g. a subscription
   // expires) while the toggle was already on, regardless of stale local state.
   useEffect(() => {
     if (!isPremium && advancedMode) setAdvancedMode(false);
     if (!isPremium && useSeparateBearingFriction) setUseSeparateBearingFriction(false);
     if (!isPremium && propertyClassId === 'custom') setPropertyClassId('8.8');
-  }, [isPremium, advancedMode, useSeparateBearingFriction, propertyClassId]);
+    if (!isPremium && includeContactResistance) setIncludeContactResistance(false);
+  }, [isPremium, advancedMode, useSeparateBearingFriction, propertyClassId, includeContactResistance]);
   const [headWasherOverride, setHeadWasherOverride] = useState<WasherOverrideState>(EMPTY_WASHER_OVERRIDE);
   const [nutWasherOverride, setNutWasherOverride] = useState<WasherOverrideState>(EMPTY_WASHER_OVERRIDE);
   const [nutTorqueOverride, setNutTorqueOverride] = useState<number | ''>('');
@@ -366,6 +386,34 @@ export default function BoltedJointCalculator() {
   );
 
   const result = useMemo(() => solveBoltedJoint(jointInput), [jointInput]);
+
+  // Plating/contact-resistance concept doesn't apply against a polymer clamped
+  // face (nothing to electroplate, no metal-to-metal asperity contact) — same
+  // two outer faces already checked elsewhere for bearing stress.
+  const outerFacesArePolymer = getClampedMaterial(sections[0].materialId).isPolymer || getClampedMaterial(sections[sections.length - 1].materialId).isPolymer;
+
+  const contactResistanceResult = useMemo(() => {
+    if (!includeContactResistance || outerFacesArePolymer) return null;
+    return computeContactResistance({
+      contactForceN: result.preloadN,
+      platingId,
+      customResistivityOhmM,
+      customHardnessMPa,
+      customFilmFactor,
+      roughnessPresetId,
+      customRaMicrons,
+      flatnessPresetId,
+    });
+  }, [includeContactResistance, outerFacesArePolymer, result.preloadN, platingId, customResistivityOhmM, customHardnessMPa, customFilmFactor, roughnessPresetId, customRaMicrons, flatnessPresetId]);
+
+  const platingComparison = useMemo(() => {
+    if (!includeContactResistance || outerFacesArePolymer) return [];
+    return PLATING_LIST.filter((p) => p.id !== 'custom').map((p) => ({
+      id: p.id,
+      label: p.label,
+      result: computeContactResistance({ contactForceN: result.preloadN, platingId: p.id, roughnessPresetId, customRaMicrons, flatnessPresetId }),
+    }));
+  }, [includeContactResistance, outerFacesArePolymer, result.preloadN, roughnessPresetId, customRaMicrons, flatnessPresetId]);
 
   interface FailureItem {
     issue: string;
@@ -586,8 +634,17 @@ export default function BoltedJointCalculator() {
         result: `ΔF = ${fmt(t.deltaForceN, 0)} N → preload at operating temp = ${fmt(t.preloadN, 0)} N; bolt SF = ${fmt(t.boltStressSafetyFactor, 2)} — ${t.overallPass ? 'pass' : 'fail'}`,
       });
     }
+    if (contactResistanceResult) {
+      const p = getPlating(platingId);
+      steps.push({
+        title: 'Contact resistance across the joint (Holm constriction + film model)',
+        formula: 'R_c = (ρ/2)·√(π·H/F)·k_roughness·k_flatness; R_film = R_c,base·(filmFactor−1); R_total = R_c + R_film',
+        substitution: `ρ=${fmt(contactResistanceResult.effectiveResistivityOhmM * 1e9, 1)} nΩ·m (${p.label}), H=${fmt(contactResistanceResult.effectiveHardnessMPa, 0)} MPa, F=${fmt(result.preloadN, 0)} N, k_roughness=${fmt(contactResistanceResult.roughnessMultiplier, 2)}, k_flatness=${fmt(contactResistanceResult.flatnessMultiplier, 2)}, filmFactor=${fmt(contactResistanceResult.effectiveFilmFactor, 2)}`,
+        result: `R_constriction = ${fmtResistance(contactResistanceResult.constrictionResistanceOhm)}, R_film = ${fmtResistance(contactResistanceResult.filmResistanceOhm)}, R_total = ${fmtResistance(contactResistanceResult.totalResistanceOhm)}`,
+      });
+    }
     return steps;
-  }, [result, mode, size, propertyClass, threadFrictionMu, bearingFrictionMu, preloadEntryMode, percentOfYield, effectiveTargetPreloadN, snugTorqueNm, additionalAngleDeg, tighteningMethod, scatterConvention, externalAxialLoadN, externalShearForceN, sections, safetyFactorTarget, assemblyTempC, operatingTempC, boltCteOverridePerC]);
+  }, [result, mode, size, propertyClass, threadFrictionMu, bearingFrictionMu, preloadEntryMode, percentOfYield, effectiveTargetPreloadN, snugTorqueNm, additionalAngleDeg, tighteningMethod, scatterConvention, externalAxialLoadN, externalShearForceN, sections, safetyFactorTarget, assemblyTempC, operatingTempC, boltCteOverridePerC, contactResistanceResult, platingId]);
 
   const bomRows: ReportRow[] = useMemo(() => {
     const rows: ReportRow[] = [{ label: 'Bolt', value: buildBoltPartNumber(size, headType, propertyClass.label) }];
@@ -622,8 +679,19 @@ export default function BoltedJointCalculator() {
       { heading: 'Fastener & joint setup', rows: fastenerRows },
       { heading: 'Clamped stack-up', rows: stackRows },
       { heading: 'Selected components (representative part designations)', rows: bomRows },
+      ...(contactResistanceResult
+        ? [{
+            heading: 'Contact resistance inputs',
+            rows: [
+              { label: 'Plating / coating', value: getPlating(platingId).label },
+              { label: 'Surface roughness', value: ROUGHNESS_LIST.find((r) => r.id === roughnessPresetId)?.label ?? '' },
+              { label: 'Surface flatness', value: FLATNESS_LIST.find((f) => f.id === flatnessPresetId)?.label ?? '' },
+              { label: 'Contact (clamping) force used', value: `${fmtU(result.preloadN, unitSystem, UNIT_FORCE, 0)} ${unitLabel(unitSystem, UNIT_FORCE)} (from joint preload solve)` },
+            ],
+          }]
+        : []),
     ];
-  }, [size, headType, propertyClass, threadEngagementMode, nut, threadedInsertPreset, threadFrictionMu, bearingFrictionMu, tighteningMethod, safetyFactorTarget, externalAxialLoadN, externalShearForceN, sections, bomRows, unitSystem]);
+  }, [size, headType, propertyClass, threadEngagementMode, nut, threadedInsertPreset, threadFrictionMu, bearingFrictionMu, tighteningMethod, safetyFactorTarget, externalAxialLoadN, externalShearForceN, sections, bomRows, unitSystem, contactResistanceResult, platingId, roughnessPresetId, flatnessPresetId, result.preloadN]);
 
   const outputSections: ReportSection[] = useMemo(
     () => [
@@ -688,9 +756,30 @@ export default function BoltedJointCalculator() {
             },
           ]
         : []),
+      ...(contactResistanceResult
+        ? [{
+            heading: 'Contact resistance',
+            rows: [
+              { label: 'Constriction resistance', value: fmtResistance(contactResistanceResult.constrictionResistanceOhm) },
+              { label: 'Film resistance', value: fmtResistance(contactResistanceResult.filmResistanceOhm) },
+              { label: 'Total contact resistance', value: fmtResistance(contactResistanceResult.totalResistanceOhm) },
+            ],
+          }]
+        : []),
     ],
-    [result, assemblyTempC, operatingTempC, unitSystem]
+    [result, assemblyTempC, operatingTempC, unitSystem, contactResistanceResult]
   );
+
+  const contactResistanceGridTable = useMemo(() => {
+    if (!includeContactResistance || platingComparison.length === 0) return null;
+    return {
+      title: 'Contact resistance by plating (at solved clamping force)',
+      rowLabels: platingComparison.map((p) => p.label),
+      colLabels: ['Total resistance'],
+      cellValues: platingComparison.map((p) => [fmtResistance(p.result.totalResistanceOhm)]),
+      highlightRow: platingComparison.findIndex((p) => p.id === platingId),
+    };
+  }, [includeContactResistance, platingComparison, platingId]);
 
   const handleExportPdf = () => {
     exportReportToPdf({
@@ -701,8 +790,12 @@ export default function BoltedJointCalculator() {
       inputSections,
       outputSections,
       calculationSteps,
+      gridTables: contactResistanceGridTable ? [contactResistanceGridTable] : undefined,
       disclaimer:
-        'Engineering estimation tool. Method: Shigley\'s closed-form realization of the VDI 2230 cone-of-compression (frustum) method and torque-preload relationship, ISO 898-1 / SAE J429 property classes. Simplified two-cone (or single-cone for tapped joints) stiffness model; bearing stress checked at outer faces only. Thread shear, pull-through, and pin-bearing checks use simplified cylindrical shear-area screening formulas (a 0.5 engagement-fraction factor and a 0.577 distortion-energy shear-yield estimate), not full Machinery\'s-Handbook thread-stripping-area derivations. Selected-component part designations are standard nomenclature for cross-referencing against a supplier catalog, not a live vendor SKU. Verify against the current official standards and, where required, physical testing before certification use.',
+        'Engineering estimation tool. Method: Shigley\'s closed-form realization of the VDI 2230 cone-of-compression (frustum) method and torque-preload relationship, ISO 898-1 / SAE J429 property classes. Simplified two-cone (or single-cone for tapped joints) stiffness model; bearing stress checked at outer faces only. Thread shear, pull-through, and pin-bearing checks use simplified cylindrical shear-area screening formulas (a 0.5 engagement-fraction factor and a 0.577 distortion-energy shear-yield estimate), not full Machinery\'s-Handbook thread-stripping-area derivations. Selected-component part designations are standard nomenclature for cross-referencing against a supplier catalog, not a live vendor SKU. Verify against the current official standards and, where required, physical testing before certification use.'
+        + (contactResistanceResult
+          ? ' Contact resistance uses Holm\'s single-spot constriction + film model with empirical roughness/flatness corrections — a trend/order-of-magnitude estimate; real bolted-joint measurements commonly deviate 2-5x from this due to contamination, multi-spot clustering, and aging (per IEC 61238-1 / ASTM B667, which is why those standards require physical qualification testing for critical joints).'
+          : ''),
       ...branding,
     });
   };
@@ -735,6 +828,16 @@ export default function BoltedJointCalculator() {
             <input type="checkbox" checked={advancedMode} onChange={(e) => setAdvancedMode(e.target.checked)} style={{ width: 'auto' }} />
             Advanced: override component data
             <InfoTooltip>Every washer, nut/insert, and clamped material below is normally driven by this tool's presets and tables. Turn this on to type in your own values instead — e.g. a manufacturer's datasheet dimensions, a measured Belleville spring rate, or a certified material property — without losing the preset as your starting point.</InfoTooltip>
+          </label>
+        </PremiumGate>
+      </div>
+
+      <div style={{ marginBottom: '1.25rem' }}>
+        <PremiumGate feature="Electrical contact resistance across the joint">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: 'var(--text-2)', fontWeight: 600 }}>
+            <input type="checkbox" checked={includeContactResistance} onChange={(e) => setIncludeContactResistance(e.target.checked)} style={{ width: 'auto' }} />
+            Electrical contact resistance across the joint
+            <InfoTooltip>Estimates the electrical resistance across the bolted joint's faying interface — driven mostly by the plating/coating and the clamping force already solved above, with surface roughness/flatness as secondary corrections. Useful for busbar, battery-terminal, and motor-controller lug joints where joint heating/voltage drop matters, not just mechanical clamping.</InfoTooltip>
           </label>
         </PremiumGate>
       </div>
@@ -1202,6 +1305,81 @@ export default function BoltedJointCalculator() {
               )}
             </div>
           )}
+
+          {includeContactResistance && (
+            <div className="card">
+              <div className="card-title">
+                <span>
+                  <span className="step-num">7</span>Contact resistance
+                  <InfoTooltip>Estimates the electrical resistance across the bolted joint interface itself (not the bulk conductor) — driven mostly by the plating/coating and the clamping force already solved above, with roughness and flatness as secondary corrections. This is a trend/order-of-magnitude estimate (Holm's contact-resistance model), not a certified value — see the Reference &amp; assumptions note below.</InfoTooltip>
+                </span>
+              </div>
+              {outerFacesArePolymer ? (
+                <p className="note" style={{ color: 'var(--warn)' }}>⚠ One of the outer clamped faces is a polymer (PEEK/nylon) — contact resistance isn't modeled against a polymer face (nothing to electroplate, no metal-to-metal asperity contact).</p>
+              ) : (
+                <div className="grid grid-2">
+                  <div className="field">
+                    <label>
+                      Plating / coating
+                      <InfoTooltip>The outer layer current actually flows through. Soft coatings (tin, silver, gold) lower resistance mainly by deforming to increase real contact area, not just by being more conductive — which is why hard bare metal performs so much worse despite copper/aluminum's own low bulk resistivity.</InfoTooltip>
+                    </label>
+                    <select value={platingId} onChange={(e) => setPlatingId(e.target.value as PlatingId)}>
+                      {PLATING_LIST.map((p) => (
+                        <option key={p.id} value={p.id}>{p.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {platingId === 'custom' && (
+                    <div className="grid grid-2" style={{ gridColumn: '1 / -1' }}>
+                      <div className="field">
+                        <label>Resistivity (nΩ·m)</label>
+                        <input autoComplete="off" type="number" min={0.01} value={customResistivityOhmM * 1e9} onChange={(e) => setCustomResistivityOhmM(Number(e.target.value) * 1e-9)} />
+                      </div>
+                      <div className="field">
+                        <label>Hardness (MPa)</label>
+                        <input autoComplete="off" type="number" min={0.01} value={customHardnessMPa} onChange={(e) => setCustomHardnessMPa(Number(e.target.value))} />
+                      </div>
+                      <div className="field">
+                        <label>Film factor</label>
+                        <input autoComplete="off" type="number" min={1} step={0.1} value={customFilmFactor} onChange={(e) => setCustomFilmFactor(Number(e.target.value))} />
+                      </div>
+                    </div>
+                  )}
+                  {(platingId === 'bareCopper' || platingId === 'bareAluminum' || platingId === 'bareSteel') && (
+                    <p className="note" style={{ gridColumn: '1 / -1', color: 'var(--warn)' }}>⚠ Bare contacts are not recommended for critical joints — resistance typically rises sharply over service life as oxide reforms (see note below).</p>
+                  )}
+                  <span className="hint" style={{ gridColumn: '1 / -1' }}>{getPlating(platingId).agingNote}</span>
+
+                  <div className="field">
+                    <label>
+                      Surface roughness
+                      <InfoTooltip>Micro-scale surface finish. Rougher surfaces have fewer/smaller real asperity contact spots for a given clamping force, raising resistance; smoother/polished surfaces lower it. A secondary effect vs. plating and clamp force, modeled here as an approximate multiplier, not a precise derivation.</InfoTooltip>
+                    </label>
+                    <select value={roughnessPresetId} onChange={(e) => setRoughnessPresetId(e.target.value as RoughnessPresetId)}>
+                      {ROUGHNESS_LIST.map((r) => (
+                        <option key={r.id} value={r.id}>{r.label}</option>
+                      ))}
+                    </select>
+                    {roughnessPresetId === 'custom' && (
+                      <input autoComplete="off" type="number" min={0.01} step={0.1} value={customRaMicrons} onChange={(e) => setCustomRaMicrons(Number(e.target.value))} style={{ marginTop: '0.4rem' }} />
+                    )}
+                  </div>
+                  <div className="field">
+                    <label>
+                      Surface flatness
+                      <InfoTooltip>Macro-scale bow/waviness across the full bolted-down area — separate from roughness. A bowed or warped part can leave gaps away from the bolt even at full torque, effectively engaging less contact area. No numeric standard threshold is available for this, so it's offered as a qualitative preset rather than a false-precision numeric input.</InfoTooltip>
+                    </label>
+                    <select value={flatnessPresetId} onChange={(e) => setFlatnessPresetId(e.target.value as FlatnessPresetId)}>
+                      {FLATNESS_LIST.map((f) => (
+                        <option key={f.id} value={f.id}>{f.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="hint" style={{ gridColumn: '1 / -1' }}>Uses the clamping force already solved above ({fmtU(result.preloadN, unitSystem, UNIT_FORCE, 0)} {unitLabel(unitSystem, UNIT_FORCE)}) as the contact force — no separate entry needed.</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* RIGHT COLUMN — results */}
@@ -1330,6 +1508,50 @@ export default function BoltedJointCalculator() {
                   <div className={`value ${result.thermalResult.jointSeparates ? 'neg' : 'pos'}`}>{result.thermalResult.jointSeparates ? 'Yes' : 'No'}</div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {contactResistanceResult && (
+            <div className="card">
+              <div className="card-title">
+                <span>
+                  Contact resistance
+                  <InfoTooltip>Estimated electrical resistance across the joint interface using Holm's constriction + film contact-resistance model at the joint's actual solved clamping force. Order-of-magnitude estimate only — see Reference &amp; assumptions.</InfoTooltip>
+                </span>
+              </div>
+              <div className="result-grid">
+                <div className="result-tile">
+                  <div className="label">Total contact resistance</div>
+                  <div className="value">{fmtResistance(contactResistanceResult.totalResistanceOhm)}</div>
+                  <div className="hint">{getPlating(platingId).label}</div>
+                </div>
+                <div className="result-tile">
+                  <div className="label">Constriction resistance</div>
+                  <div className="value">{fmtResistance(contactResistanceResult.constrictionResistanceOhm)}</div>
+                </div>
+                <div className="result-tile">
+                  <div className="label">Film resistance</div>
+                  <div className="value">{fmtResistance(contactResistanceResult.filmResistanceOhm)}</div>
+                </div>
+              </div>
+              <table className="data-table" style={{ marginTop: '0.75rem' }}>
+                <thead><tr><th>Plating</th><th>Total resistance</th></tr></thead>
+                <tbody>
+                  {platingComparison.map((p) => (
+                    <tr key={p.id} style={p.id === platingId ? { fontWeight: 700, color: 'var(--accent)' } : undefined}>
+                      <td>{p.label}</td>
+                      <td>{fmtResistance(p.result.totalResistanceOhm)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="note" style={{ marginTop: '0.6rem' }}>
+                Single-spot analytical estimate (Holm's model) — real bolted-joint measurements commonly deviate 2-5x
+                from this due to surface contamination, multi-spot clustering, and aging, which is why standards such
+                as IEC 61238-1 and ASTM B667 require physical contact-resistance testing/qualification for critical
+                joints rather than relying on calculation alone. Treat this as a trend/comparison tool, not a
+                certified value.
+              </p>
             </div>
           )}
 
@@ -1548,6 +1770,15 @@ export default function BoltedJointCalculator() {
           T = K·F·d — squarely in the ~0.2 range Shigley documents for this friction regime. Thread minor
           diameters and minimum engagement length both matched hand calculation from the standard ISO 68-1 and
           proof/yield-ratio formulas exactly.
+        </p>
+        <p className="note">
+          <b>Contact resistance</b> (if enabled) uses Holm's single-spot constriction + film contact-resistance
+          model — the foundational, widely-cited model for bolted electrical joints — with empirical roughness/
+          flatness correction factors standing in for full multi-spot asperity clustering. It's a trend/order-of-
+          magnitude estimate: real bolted-joint measurements commonly deviate 2-5x from a single-spot analytical
+          prediction due to surface contamination, real multi-spot clustering, and aging, which is exactly why
+          standards such as IEC 61238-1 and ASTM B667 require physical contact-resistance qualification testing for
+          critical joints rather than relying on calculation alone.
         </p>
       </div>
 
