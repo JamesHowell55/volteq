@@ -244,6 +244,50 @@ export const GUIDES: GuideMeta[] = [
     calculator: { label: 'Heatsink Thermal Calculator', path: '/heatsink-thermal' },
   },
   {
+    slug: 'shielding-effectiveness',
+    title: 'EMC Shielding Effectiveness: How Schelkunoff\'s SE = A + R + B Works',
+    standard: 'Schelkunoff / Ott Shielding Theory',
+    seoTitle: 'Shielding Effectiveness Explained — Absorption, Reflection & Schelkunoff Theory',
+    seoDescription:
+      'A plain-language guide to EMC shielding effectiveness: how absorption loss and reflection loss combine (SE = A + R + B), why near-field sources behave differently from far-field plane waves, and why real enclosures are usually limited by apertures rather than the solid barrier.',
+    blurb:
+      'How absorption and reflection loss combine into SE = A + R + B, and why near-field sources need a different reflection-loss formula than a far-field plane wave.',
+    calculator: { label: 'Shielding Effectiveness Calculator', path: '/shielding-effectiveness' },
+  },
+  {
+    slug: 'aperture-shielding',
+    title: 'Apertures & Vent Panels: Why Openings Set Your Real EMC Shielding',
+    standard: 'Radiating-Aperture & Waveguide-Below-Cutoff Theory',
+    seoTitle: 'Aperture & Vent Shielding Explained — Slot Antennas & Waveguide-Below-Cutoff',
+    seoDescription:
+      'A plain-language guide to EMC aperture and vent-panel shielding: why a slot behaves like an antenna above half a wavelength, how waveguide-below-cutoff theory lets a vent panel breathe while still blocking RF, and why openings usually set an enclosure\'s real shielding, not the solid metal.',
+    blurb:
+      'Why a slot radiates like an antenna above half a wavelength, and how waveguide-below-cutoff theory lets a vent panel breathe while still blocking RF.',
+    calculator: { label: 'Aperture & Vent Panel Shielding Calculator', path: '/aperture-shielding' },
+  },
+  {
+    slug: 'enclosure-resonance',
+    title: 'Enclosure Cavity Resonance: When a Shield Becomes an Antenna',
+    standard: 'Rectangular Cavity Resonator Theory',
+    seoTitle: 'Enclosure Cavity Resonance Explained — Rectangular Cavity Modes',
+    seoDescription:
+      'A plain-language guide to EMC enclosure cavity resonance: why a shielded box has resonant frequencies of its own, how the rectangular-cavity mode formula works, and why shielding effectiveness can collapse at those specific frequencies.',
+    blurb:
+      'Why a shielded enclosure has resonant frequencies of its own, and why shielding effectiveness can collapse at those specific frequencies regardless of barrier material.',
+    calculator: { label: 'Enclosure Cavity Resonance Calculator', path: '/enclosure-resonance' },
+  },
+  {
+    slug: 'ground-strap-inductance',
+    title: 'Grounding Strap Inductance: Why Impedance, Not Resistance, Rules RF Bonding',
+    standard: 'Grover/Terman Straight-Conductor Self-Inductance',
+    seoTitle: 'Grounding Strap Inductance Explained — Impedance vs. Resistance in RF Bonding',
+    seoDescription:
+      'A plain-language guide to grounding and bonding strap inductance: why impedance rather than DC resistance governs a bond\'s effectiveness at RF, and why a wide flat strap beats a round-wire pigtail of the same length.',
+    blurb:
+      'Why impedance, not DC resistance, governs a grounding or bonding connection at RF — and why a wide flat strap always beats a round-wire pigtail of the same length.',
+    calculator: { label: 'Grounding / Bond Strap Inductance Calculator', path: '/ground-strap-inductance' },
+  },
+  {
     slug: 'mil-dtl-38999',
     title: 'MIL-DTL-38999 Connectors: Contact Sizes, Ratings & Pinouts',
     standard: 'MIL-DTL-38999',

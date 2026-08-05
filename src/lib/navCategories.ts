@@ -63,6 +63,15 @@ export const NAV_CATEGORIES: NavCategory[] = [
     ],
   },
   {
+    label: 'EMC',
+    links: [
+      { label: 'Grounding / Bond Strap Inductance Calculator', path: '/ground-strap-inductance', available: true, seoTitle: 'Grounding Strap Inductance Calculator — Bond Strap Impedance', description: 'Self-inductance and impedance of a flat grounding/bonding strap via the classical Grover/Terman formula, with a round-wire pigtail comparison — impedance, not DC resistance, governs a bond\'s effectiveness at RF.' },
+      { label: 'Enclosure Cavity Resonance Calculator', path: '/enclosure-resonance', available: true, seoTitle: 'EMC Enclosure Cavity Resonance Calculator — Rectangular Cavity Modes', description: 'Resonant mode frequencies of a rectangular metal enclosure — the frequencies at which shielding effectiveness can collapse toward 0dB regardless of barrier material, from the internal cavity dimensions.' },
+      { label: 'Aperture & Vent Panel Shielding Calculator', path: '/aperture-shielding', available: true, seoTitle: 'EMC Aperture & Vent Panel Shielding Calculator — Slot & Waveguide-Below-Cutoff', description: 'Leakage through openings in an EMC shield — a thin slot or gap via radiating-aperture theory, or a vent panel/honeycomb with real depth via waveguide-below-cutoff theory, with a cutoff-frequency margin check and open-area reporting.' },
+      { label: 'Shielding Effectiveness Calculator', path: '/shielding-effectiveness', available: true, seoTitle: 'EMC Shielding Effectiveness Calculator — Schelkunoff (SE = A + R + B)', description: 'Absorption, reflection, and multiple-reflection loss for a solid metal barrier via the classical Schelkunoff decomposition — far-field plane wave, or near-field electric-/magnetic-dipole source at a given distance, with common enclosure material presets.' },
+    ],
+  },
+  {
     label: 'Thermal',
     links: [
       { label: 'Heat Exchanger Sizing', path: '/heat-exchanger-sizing', available: true, seoTitle: 'Heat Exchanger Sizing Calculator — Radiator & Oil Cooler (ε-NTU)', description: 'Liquid-to-air heat exchanger sizing (radiator, oil cooler, chiller core) via the effectiveness-NTU crossflow method — round-tube plate-fin, louvered-fin, or microchannel flat-tube core geometry, coolant flow rate and inlet temperature, air face velocity and temperature, giving heat rejected and both outlet temperatures.' },

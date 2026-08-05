@@ -18,6 +18,10 @@ import BatteryPackSeriesParallelCalculator from './pages/BatteryPackSeriesParall
 import MotorTorquePowerSpeedCalculator from './pages/MotorTorquePowerSpeedCalculator';
 import ChokeSizingCalculator from './pages/ChokeSizingCalculator';
 import MosfetLossCalculator from './pages/MosfetLossCalculator';
+import ShieldingEffectivenessCalculator from './pages/ShieldingEffectivenessCalculator';
+import ApertureShieldingCalculator from './pages/ApertureShieldingCalculator';
+import EnclosureResonanceCalculator from './pages/EnclosureResonanceCalculator';
+import GroundStrapInductanceCalculator from './pages/GroundStrapInductanceCalculator';
 import HeatsinkThermalCalculator from './pages/HeatsinkThermalCalculator';
 import HeatExchangerSizingCalculator from './pages/HeatExchangerSizingCalculator';
 import BundleDiameterCalculator from './pages/BundleDiameterCalculator';
@@ -51,6 +55,10 @@ import SkinEffectGuide from './pages/guides/SkinEffectGuide';
 import CmDmChokesGuide from './pages/guides/CmDmChokesGuide';
 import SicInverterLossGuide from './pages/guides/SicInverterLossGuide';
 import HeatsinkThermalGuide from './pages/guides/HeatsinkThermalGuide';
+import ShieldingEffectivenessGuide from './pages/guides/ShieldingEffectivenessGuide';
+import ApertureShieldingGuide from './pages/guides/ApertureShieldingGuide';
+import EnclosureResonanceGuide from './pages/guides/EnclosureResonanceGuide';
+import GroundStrapInductanceGuide from './pages/guides/GroundStrapInductanceGuide';
 import HeatExchangerNtuGuide from './pages/guides/HeatExchangerNtuGuide';
 import FieldOrientedControlGuide from './pages/guides/FieldOrientedControlGuide';
 import BoltGroupElasticGuide from './pages/guides/BoltGroupElasticGuide';
@@ -114,6 +122,10 @@ function App() {
               <Route path="/powertrain" element={<PowertrainPage />} />
               <Route path="/choke-sizing" element={<ChokeSizingCalculator />} />
               <Route path="/mosfet-loss" element={<MosfetLossCalculator />} />
+              <Route path="/shielding-effectiveness" element={<ShieldingEffectivenessCalculator />} />
+              <Route path="/aperture-shielding" element={<ApertureShieldingCalculator />} />
+              <Route path="/enclosure-resonance" element={<EnclosureResonanceCalculator />} />
+              <Route path="/ground-strap-inductance" element={<GroundStrapInductanceCalculator />} />
               <Route path="/heatsink-thermal" element={<HeatsinkThermalCalculator />} />
               <Route path="/heat-exchanger-sizing" element={<HeatExchangerSizingCalculator />} />
               <Route path="/dc-link" element={<DcLinkCalculator />} />
@@ -136,6 +148,10 @@ function App() {
               <Route path="/guides/cm-dm-chokes" element={<CmDmChokesGuide />} />
               <Route path="/guides/sic-inverter-loss" element={<SicInverterLossGuide />} />
               <Route path="/guides/heatsink-thermal" element={<HeatsinkThermalGuide />} />
+              <Route path="/guides/shielding-effectiveness" element={<ShieldingEffectivenessGuide />} />
+              <Route path="/guides/aperture-shielding" element={<ApertureShieldingGuide />} />
+              <Route path="/guides/enclosure-resonance" element={<EnclosureResonanceGuide />} />
+              <Route path="/guides/ground-strap-inductance" element={<GroundStrapInductanceGuide />} />
               <Route path="/guides/heat-exchanger-ntu" element={<HeatExchangerNtuGuide />} />
               <Route path="/guides/field-oriented-control" element={<FieldOrientedControlGuide />} />
               <Route path="/guides/bolt-group-elastic" element={<BoltGroupElasticGuide />} />

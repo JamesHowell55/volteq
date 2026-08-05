@@ -92,6 +92,26 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://volteq.io/shielding-effectiveness</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/aperture-shielding</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/enclosure-resonance</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/ground-strap-inductance</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://volteq.io/heat-exchanger-sizing</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -218,6 +238,26 @@
   </url>
   <url>
     <loc>https://volteq.io/guides/heatsink-thermal</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/guides/shielding-effectiveness</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/guides/aperture-shielding</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/guides/enclosure-resonance</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/guides/ground-strap-inductance</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

@@ -10,6 +10,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   Battery: '⏻',
   Mechanical: '⚙',
   Thermal: '♨',
+  EMC: '◎',
   'Vehicle & Motion': '▶',
   Material: '⬡',
   'Cost & Project': '◈',
