@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { useSavedCalculations } from '../lib/useSavedCalculations';
 import { encodeShareState } from '../lib/shareLink';
 import GatedIconButton from './GatedIconButton';
+import FeedbackButton from './FeedbackButton';
 import { ShareIcon, SaveIcon } from './icons';
 
 // The icon action row on every calculator page: the (premium) Export PDF
@@ -60,6 +61,7 @@ export default function CalculatorActions({ saved, getInputs, children }: Props)
       <button type="button" className="calc-action-btn" onClick={doShare} title="Share" aria-label="Share">
         <ShareIcon />
       </button>
+      <FeedbackButton getInputs={getInputs} />
       <GatedIconButton label="Save calculation" icon={<SaveIcon />} onClick={open} />
 
       {sharePhase !== 'idle' && (

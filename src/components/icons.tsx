@@ -34,6 +34,16 @@ export function SaveIcon({ size = 20 }: IconProps) {
   );
 }
 
+export function FeedbackIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} {...common}>
+      <path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4.5 3.5A0.5 0.5 0 0 1 3.7 20V17a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
+      <line x1="8" y1="9.5" x2="16" y2="9.5" />
+      <line x1="8" y1="13" x2="13" y2="13" />
+    </svg>
+  );
+}
+
 export function DownloadIcon({ size = 20 }: IconProps) {
   return (
     <svg width={size} height={size} {...common}>
