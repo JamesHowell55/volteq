@@ -13,11 +13,20 @@
 export async function captureScreenshot(): Promise<string | null> {
   try {
     const { toJpeg } = await import('html-to-image');
+    // Without explicit width/height, html-to-image sizes the output to the target node's
+    // current offsetWidth/offsetHeight — for document.body that's only the viewport, not the
+    // full scrolled document. Forcing the full scrollWidth/scrollHeight captures everything on
+    // the page (including content below the fold), which matters for a bug report: a visual
+    // issue further down the page wouldn't show up in a viewport-only capture even though the
+    // reporter saw it, and it's not something the "reopen this calculation" link can substitute
+    // for (that reproduces the inputs, not a rendering bug).
     return await toJpeg(document.body, {
       quality: 0.75,
       backgroundColor: '#ffffff',
       pixelRatio: 1,
       cacheBust: true,
+      width: document.documentElement.scrollWidth,
+      height: document.documentElement.scrollHeight,
     });
   } catch (err) {
     console.warn('Screenshot capture failed:', err);
