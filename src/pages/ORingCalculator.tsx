@@ -388,6 +388,8 @@ export default function ORingCalculator() {
         return 'pass';
     }
   };
+  const worstSev = (a: Sev, b: Sev): Sev => (a === 'fail' || b === 'fail' ? 'fail' : a === 'warn' || b === 'warn' ? 'warn' : 'pass');
+  const sevClass = (sev: Sev): string => (sev === 'fail' ? 'neg' : sev === 'warn' ? 'warn' : 'pos');
 
   const calculationSteps: CalcStepData[] = useMemo(() => {
     const steps: CalcStepData[] = [];
@@ -830,39 +832,39 @@ export default function ORingCalculator() {
             <div className="result-grid">
               <div className="result-tile">
                 <div className="label">
-                  Initial squeeze
-                  <InfoTooltip>Compression of the cross-section between the groove root and the mating surface — what actually creates the seal. Checked against the guide's band for this cross-section and application.</InfoTooltip>
+                  Initial squeeze (min–max)
+                  <InfoTooltip>Compression of the cross-section between the groove root and the mating surface — what actually creates the seal. Shown across the full tolerance stack; checked against the guide's band for this cross-section and application.</InfoTooltip>
                 </div>
-                <div className={`value ${result.checks.find((c) => c.id === 'squeeze')?.severity === 'fail' ? 'neg' : result.checks.find((c) => c.id === 'squeeze')?.severity === 'warn' ? 'warn' : 'pos'}`}>{fmt(result.squeezePct.nom, 1)}<span className="unit">%</span></div>
-                <div className="hint">{fmt(result.squeezePct.min, 1)}–{fmt(result.squeezePct.max, 1)}% tol. · band {fmt(result.squeezeRec.min, 0)}–{fmt(result.squeezeRec.max, 0)}%</div>
+                <div className={`value ${sevClass(worstSev(squeezeSev(result.squeezePct.min), squeezeSev(result.squeezePct.max)))}`} style={{ fontSize: '1.1rem' }}>{fmt(result.squeezePct.min, 1)}–{fmt(result.squeezePct.max, 1)}<span className="unit">%</span></div>
+                <div className="hint">nominal {fmt(result.squeezePct.nom, 1)}% · band {fmt(result.squeezeRec.min, 0)}–{fmt(result.squeezeRec.max, 0)}%</div>
               </div>
               <div className="result-tile">
                 <div className="label">
-                  {result.stretchKind === 'circumferentialCompression' ? 'Circumf. compression' : result.stretchKind === 'idStretch' ? 'Installed stretch' : result.stretchKind === 'centerlineStretch' ? 'Centreline stretch' : 'Wall seating'}
-                  <InfoTooltip>{stretchLabel}. Positive = stretch, negative = compression for radial metrics; for face seals this is the over/undersize against the pressure-side groove wall.</InfoTooltip>
+                  {isCompressionOutside ? 'Compression outside (min–max)' : result.stretchKind === 'idStretch' ? 'Installed stretch (min–max)' : result.stretchKind === 'centerlineStretch' ? 'Centreline stretch (min–max)' : 'Wall seating (min–max)'}
+                  <InfoTooltip>{stretchLabel}. Positive = stretch; for a rod seal this is the OD compression into the groove. Shown across the full tolerance stack.</InfoTooltip>
                 </div>
-                <div className={`value ${result.checks.find((c) => c.id === 'stretch')?.severity === 'fail' ? 'neg' : result.checks.find((c) => c.id === 'stretch')?.severity === 'warn' ? 'warn' : 'pos'}`}>
-                  {fmt(result.stretchKind === 'circumferentialCompression' ? -result.stretchPct.nom : result.stretchPct.nom, 2)}<span className="unit">%</span>
+                <div className={`value ${sevClass(worstSev(stretchSev(stretchRowMin), stretchSev(stretchRowMax)))}`} style={{ fontSize: '1.1rem' }}>
+                  {fmt(stretchRowMin, 2)}–{fmt(stretchRowMax, 2)}<span className="unit">%</span>
                 </div>
-                <div className="hint">{fmt(result.stretchPct.min, 2)} … {fmt(result.stretchPct.max, 2)}% across tolerances</div>
+                <div className="hint">nominal {fmt(isCompressionOutside ? -result.stretchPct.nom : result.stretchPct.nom, 2)}%</div>
               </div>
               <div className="result-tile">
                 <div className="label">
-                  Gland fill
-                  <InfoTooltip>How much of the groove cross-section the ring occupies. Room must remain for thermal expansion and media swell — ≤75% nominal recommended, ≤85% at worst-case tolerances.</InfoTooltip>
+                  Gland fill (min–max)
+                  <InfoTooltip>How much of the groove cross-section the ring occupies. Room must remain for thermal expansion and media swell — ≤75% recommended, ≤85% at worst-case tolerances.</InfoTooltip>
                 </div>
-                <div className={`value ${result.fillPct.max > 85 ? 'neg' : result.fillPct.nom > 75 ? 'warn' : 'pos'}`}>{fmt(result.fillPct.nom, 0)}<span className="unit">%</span></div>
-                <div className="hint">worst-case {fmt(result.fillPct.max, 0)}%</div>
+                <div className={`value ${sevClass(worstSev(fillSev(result.fillPct.min), fillSev(result.fillPct.max)))}`} style={{ fontSize: '1.1rem' }}>{fmt(result.fillPct.min, 0)}–{fmt(result.fillPct.max, 0)}<span className="unit">%</span></div>
+                <div className="hint">nominal {fmt(result.fillPct.nom, 0)}% · ≤75% rec, ≤85% max</div>
               </div>
               <div className="result-tile">
-                <div className="label">Effective cross-section</div>
-                <div className="value">{fmtU(result.effectiveCsMm.nom, unitSystem, UNIT_LENGTH, 3)}<span className="unit">{lenUnit}</span></div>
+                <div className="label">Effective cross-section (min–max)</div>
+                <div className="value" style={{ fontSize: '1.1rem' }}>{fmtU(result.effectiveCsMm.min, unitSystem, UNIT_LENGTH, 3)}–{fmtU(result.effectiveCsMm.max, unitSystem, UNIT_LENGTH, 3)}<span className="unit">{lenUnit}</span></div>
                 <div className="hint">after stretch · nominal d2 {fmtU(cs, unitSystem, UNIT_LENGTH, 3)} {lenUnit}</div>
               </div>
               <div className="result-tile">
-                <div className="label">Gland height</div>
-                <div className="value">{fmtU(result.glandHeightMm.nom, unitSystem, UNIT_LENGTH, 3)}<span className="unit">{lenUnit}</span></div>
-                <div className="hint">{fmtU(result.glandHeightMm.min, unitSystem, UNIT_LENGTH, 3)} … {fmtU(result.glandHeightMm.max, unitSystem, UNIT_LENGTH, 3)} {lenUnit}</div>
+                <div className="label">Gland height (min–max)</div>
+                <div className="value" style={{ fontSize: '1.1rem' }}>{fmtU(result.glandHeightMm.min, unitSystem, UNIT_LENGTH, 3)}–{fmtU(result.glandHeightMm.max, unitSystem, UNIT_LENGTH, 3)}<span className="unit">{lenUnit}</span></div>
+                <div className="hint">groove-root to sealing surface · nominal {fmtU(result.glandHeightMm.nom, unitSystem, UNIT_LENGTH, 3)} {lenUnit}</div>
               </div>
               {result.extrusionGap && pressureMPa > 0 && (
                 <div className="result-tile">
