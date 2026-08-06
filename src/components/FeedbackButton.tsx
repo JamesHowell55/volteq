@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { encodeShareState } from '../lib/shareLink';
 import { captureScreenshot } from '../lib/feedbackScreenshot';
@@ -24,32 +24,28 @@ export default function FeedbackButton({ getInputs }: Props) {
 
   const [includeScreenshot, setIncludeScreenshot] = useState(true);
   const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [screenshotState, setScreenshotState] = useState<'capturing' | 'ready' | 'failed'>('capturing');
+  const [screenshotState, setScreenshotState] = useState<'ready' | 'failed'>('failed');
+  const [isOpening, setIsOpening] = useState(false);
 
-  const open = () => {
+  // Capture happens BEFORE the modal is opened (not after, then hidden/excluded) — the modal
+  // must not exist in the DOM yet when html-to-image walks document.body, otherwise the
+  // screenshot shows the feedback dialog itself instead of the page underneath it.
+  const open = async () => {
     setEmail(user?.email ?? '');
     setSummary('');
     setErrorMsg('');
     setWebsite('');
     setIncludeScreenshot(true);
     setScreenshot(null);
-    setScreenshotState('capturing');
+
+    setIsOpening(true);
+    const dataUrl = await captureScreenshot();
+    setIsOpening(false);
+    setScreenshot(dataUrl);
+    setScreenshotState(dataUrl ? 'ready' : 'failed');
     setPhase('open');
   };
   const close = () => setPhase('idle');
-
-  useEffect(() => {
-    if (phase !== 'open') return;
-    let cancelled = false;
-    // Small delay so the modal itself isn't in the captured frame.
-    const timer = window.setTimeout(async () => {
-      const dataUrl = await captureScreenshot();
-      if (cancelled) return;
-      setScreenshot(dataUrl);
-      setScreenshotState(dataUrl ? 'ready' : 'failed');
-    }, 120);
-    return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [phase]);
 
   const doSubmit = async () => {
     if (website) { setPhase('done'); return; } // honeypot tripped — pretend success, send nothing
@@ -86,7 +82,7 @@ export default function FeedbackButton({ getInputs }: Props) {
 
   return (
     <>
-      <button type="button" className="calc-action-btn" onClick={open} title="Send feedback" aria-label="Send feedback">
+      <button type="button" className="calc-action-btn" onClick={open} disabled={isOpening} title="Send feedback" aria-label="Send feedback">
         <FeedbackIcon />
       </button>
 
@@ -138,7 +134,6 @@ export default function FeedbackButton({ getInputs }: Props) {
                 </div>
                 {includeScreenshot && (
                   <div className="feedback-screenshot-preview" style={{ marginTop: '0.5rem' }}>
-                    {screenshotState === 'capturing' && <span className="status">Capturing screenshot…</span>}
                     {screenshotState === 'failed' && <span className="status">Couldn't capture a screenshot — feedback will be sent without one.</span>}
                     {screenshotState === 'ready' && screenshot && (
                       <>
