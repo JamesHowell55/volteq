@@ -380,6 +380,12 @@ export default function ORingCalculator() {
       substitution: `b = ${fmt(result.grooveWidthMm.nom, 2)} mm, h = ${fmt(result.glandHeightMm.nom, 3)} mm`,
       result: `Fill = ${fmt(result.fillPct.nom, 1)}% nominal, ${fmt(result.fillPct.max, 1)}% worst-case`,
     });
+    steps.push({
+      title: 'Total compression (seating) force — parametric estimate',
+      formula: 'f(N/mm) = f70(squeeze)·(d2/1.778mm)·k_hardness, f70 ∝ squeeze^1.5 (band anchored to Parker 0.070"/70-Shore/10% = 2–5 lb/in); force = f × π·(d1+d2)',
+      substitution: `squeeze ${fmt(result.squeezePct.min, 1)}–${fmt(result.squeezePct.max, 1)}%, d2 = ${fmt(cs, 2)} mm, ${shoreA} Shore A, seal length ${fmt(result.compressionForce.sealLengthMm, 0)} mm`,
+      result: `${fmt(result.compressionForce.minN, 0)} … ${fmt(result.compressionForce.maxN, 0)} N (estimate — verify against the actual chart for load-critical use)`,
+    });
     if (result.extrusionGap && pressureMPa > 0) {
       steps.push({
         title: 'Extrusion gap vs guide Table XII',
@@ -433,6 +439,7 @@ export default function ORingCalculator() {
         { label: 'Gland fill', value: `${fmt(result.fillPct.nom, 1)}% nominal / ${fmt(result.fillPct.max, 1)}% worst-case` },
         { label: 'Effective cross-section', value: `${fmt(result.effectiveCsMm.nom, 3)} mm` },
         { label: 'Gland height', value: `${fmt(result.glandHeightMm.nom, 3)} mm` },
+        { label: 'Total compression force (parametric estimate)', value: `${fmt(result.compressionForce.minN, 0)} … ${fmt(result.compressionForce.maxN, 0)} N (over ${fmt(result.compressionForce.sealLengthMm, 0)} mm seal length)` },
         ...(result.extrusionGap && pressureMPa > 0 ? [{ label: 'Extrusion gap (worst)', value: `${fmt(result.extrusionGap.actualMaxMm, 3)} mm vs permissible ${result.extrusionGap.allowableMm !== null ? fmt(result.extrusionGap.allowableMm, 2) + ' mm' : '— (beyond table)'}` }] : []),
         ...(result.equivalentDiameterMm !== null ? [{ label: 'Equivalent groove Ø (L/π)', value: `${fmt(result.equivalentDiameterMm, 2)} mm` }] : []),
       ],
@@ -453,7 +460,7 @@ export default function ORingCalculator() {
       outputSections,
       calculationSteps,
       disclaimer:
-        'Engineering estimation tool implementing the Trelleborg Sealing Solutions O-Rings design guide method (squeeze bands per cross-section, installed stretch/circumferential-compression limits, cross-section reduction with stretch, Table XII extrusion clearances, Table XV groove dimensions). O-Ring sizes and Class A inside-diameter tolerances are the AS568/ISO 3601-1 values transcribed from published manufacturer tables; Class B tolerances interpolate a published DIN ISO 3601-1:2013 Class B table. ISO 286 fits are computed from the standard\'s formulas, not table-transcribed. Gland fill limits (75%/85%) are standard industry guidance. Material temperature ranges are typical compound values — actual limits depend on the specific compound and medium. Verify against the current standards, the compound datasheet, and seal-supplier review before production use.',
+        'Engineering estimation tool implementing the Trelleborg Sealing Solutions O-Rings design guide method (squeeze bands per cross-section, installed stretch/circumferential-compression limits, cross-section reduction with stretch, Table XII extrusion clearances, Table XV groove dimensions). O-Ring sizes and Class A inside-diameter tolerances are the AS568/ISO 3601-1 values transcribed from published manufacturer tables; Class B tolerances interpolate a published DIN ISO 3601-1:2013 Class B table. ISO 286 fits are computed from the standard\'s formulas, not table-transcribed. Gland fill limits (75%/85%) are standard industry guidance. Total compression force is a PARAMETRIC ESTIMATE (not a chart lookup): the published Parker/Apple/Trelleborg force-vs-squeeze data exists only as image bar-charts, so it is modelled as force-per-length rising as squeeze^1.5, scaled linearly by cross-section and by a durometer modulus factor, calibrated to the confirmed Parker 0.070"/70-Shore/10%-squeeze band (2–5 lb/in) and returned as a wide min–max band — treat it as an order-of-magnitude seating/closing-force figure and verify against the actual chart for load-critical designs. Material temperature ranges are typical compound values — actual limits depend on the specific compound and medium. Verify against the current standards, the compound datasheet, and seal-supplier review before production use.',
       ...branding,
     });
   };
@@ -879,8 +886,22 @@ export default function ORingCalculator() {
                       <td style={{ textAlign: 'right' }}>{fmtU(result.grooveWidthMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
                       <td style={{ textAlign: 'right' }}>{fmtU(result.grooveWidthMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
                     </tr>
+                    <tr>
+                      <td>Total compression force (N) <span style={{ color: 'var(--warn)' }}>*</span></td>
+                      <td style={{ textAlign: 'right' }}>{fmt(result.compressionForce.minN, 0)}</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(result.compressionForce.maxN, 0)}</td>
+                    </tr>
                   </tbody>
                 </table>
+                <span className="hint" style={{ display: 'block', marginTop: '0.6rem' }}>
+                  <span style={{ color: 'var(--warn)' }}>*</span> Total compression force is a <b>parametric
+                  estimate</b>, not a chart lookup — the published Parker/Apple/Trelleborg force-vs-squeeze data
+                  exists only as image bar-charts. It's modelled as force-per-length rising as squeeze^1.5,
+                  scaled linearly by cross-section and by a durometer modulus factor (calibrated to the confirmed
+                  Parker 0.070"/70-Shore/10%-squeeze band of 2–5 lb/in), × the seal centreline length
+                  ({fmt(result.compressionForce.sealLengthMm, 0)} mm here). Treat it as an order-of-magnitude
+                  seating/closing-force figure and verify against the actual chart for load-critical designs.
+                </span>
               </>
             </PremiumGate>
           </div>
@@ -935,6 +956,19 @@ export default function ORingCalculator() {
           medium compatibility (including swell, which eats gland-fill margin) govern. Non-circular grooves use
           the neutral-axis length method with common-practice corner-radius guidance (r ≥ 3×d2 recommended,
           ≥ 2×d2 minimum). This is an estimation tool — have the final gland reviewed by your seal supplier.
+        </p>
+        <p className="note">
+          <b>Total compression force is a parametric estimate, not a chart lookup.</b> The published
+          compression-force data (Parker O-Ring Handbook Figures A4-12–16, Apple Rubber design guide, the
+          Trelleborg calculator) exists only as image bar-charts giving a range of force per unit length of seal
+          vs squeeze %, per cross-section and durometer — it isn't available as digitised values. This tool
+          models that data with a transparent functional form: force per length rises as squeeze^1.5, scales
+          linearly with cross-section (a per-unit-length compression) and by a durometer modulus factor
+          (≈1.0 at 70 Shore A, ≈1.4 at 80, ≈2.0 at 90), with the amplitude calibrated to the one Parker band that
+          could be independently confirmed (0.070″ cord, 70 Shore A, 10% squeeze → 2–5 lb/in). Total force =
+          force-per-length × the seal's centreline length. It is deliberately a wide min–max band — use it as an
+          order-of-magnitude seating/closing-force figure (e.g. sizing a bolted cover), and read the value off the
+          actual chart or the Trelleborg calculator for anything load-critical.
         </p>
         <p className="note">
           <b>Validated:</b> a hand-worked static outer-radial (piston) seal — 20 mm d1, 3 mm cross-section,

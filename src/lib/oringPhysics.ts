@@ -102,6 +102,7 @@ export interface ORingSealResult {
   extrusionGap: { actualMaxMm: number; allowableMm: number | null; backupRingsRecommended: boolean } | null;
   equivalentDiameterMm: number | null; // non-circular: L/π
   idealD1Mm: number;
+  compressionForce: CompressionForceResult; // parametric seating-force estimate (see notes)
   checks: SealCheck[];
   overallPass: boolean;
 }
@@ -398,6 +399,13 @@ export function solveORingSeal(input: ORingSealInput): ORingSealResult {
 
   const overallPass = !checks.some((c) => c.severity === 'fail');
 
+  // Seating-force estimate. Seal centreline length = π·(d1+d2) for a circular ring,
+  // or the neutral-axis groove path length for a non-circular one.
+  const sealLengthMm = sealType === 'nonCircularFace'
+    ? (input.neutralPerimeter?.nom ?? Math.PI * (d1 + cs))
+    : Math.PI * (d1 + cs);
+  const compressionForce = compressionForceRangeN(squeezePct, cs, input.shoreA, sealLengthMm);
+
   return {
     stretchPct,
     stretchKind,
@@ -413,6 +421,7 @@ export function solveORingSeal(input: ORingSealInput): ORingSealResult {
     extrusionGap,
     equivalentDiameterMm,
     idealD1Mm: idealD1,
+    compressionForce,
     checks,
     overallPass,
   };
@@ -423,4 +432,81 @@ export function solveORingSeal(input: ORingSealInput): ORingSealResult {
 export function roundedRectPerimeterMm(widthMm: number, heightMm: number, cornerRadiusMm: number): number {
   const r = Math.min(cornerRadiusMm, widthMm / 2, heightMm / 2);
   return 2 * (widthMm - 2 * r) + 2 * (heightMm - 2 * r) + 2 * Math.PI * r;
+}
+
+// ---- O-Ring compression (seating) force — PARAMETRIC ESTIMATE ----
+// The published compression-force data (Parker O-Ring Handbook Figs A4-12–16 /
+// Table A4-4; Apple Rubber design guide; the Trelleborg calculator) exists only
+// as image bar-charts giving a RANGE of force per unit length of seal vs squeeze
+// %, per cross-section and durometer — it is not available as digitised values.
+// This is therefore a transparent parametric MODEL of that data, not a chart
+// lookup, anchored to the two published data points that could be confirmed:
+//   • 0.070" cord (W = 1.778 mm), ~70 Shore A, 10% squeeze → 2–5 lb/in
+//   • 0.070" cord, 50 Shore A, 20% squeeze → 4.5–14 lb/in   (1 lb/in = 0.17513 N/mm)
+// Form:  f(N/mm) = f70(s) · (W / W_ref) · k_hardness
+//   f70(s): the 70-durometer band [min,max] at the reference cord, rising as s^1.5
+//     through the 10–30% working range (the power-law shape of the published
+//     curves), amplitude calibrated to the confirmed 10% / 70-Shore point;
+//   (W / W_ref): linear scaling with cross-section — a per-unit-length 2-D
+//     compression, so a proportionally larger cord presents proportionally more
+//     rubber at the same % squeeze (why the charts are cross-section-specific);
+//   k_hardness: compression-modulus ratio vs 70 Shore A (≈0.55 @50, 1.0 @70,
+//     1.4 @80, 2.0 @90 — the ~2× 70→90 rise seen across the Parker 70/90 curves).
+// Total force = f × seal centreline length (π·(d1+d2) circular, or the neutral
+// perimeter L for non-circular). Returned as a deliberately WIDE min–max band —
+// treat it as an order-of-magnitude installation/seating-load estimate (e.g. for
+// a bolted-cover closing force) and verify against the actual chart or the
+// Trelleborg calculator for load-critical designs.
+
+export const LBF_PER_IN_TO_N_PER_MM = 0.17513;
+const CF_W_REF_MM = 1.778; // 0.070" reference cross-section
+const CF_REF_MIN_N_PER_MM = 2.0 * LBF_PER_IN_TO_N_PER_MM;  // 70 Shore A, 10% squeeze, band low
+const CF_REF_MAX_N_PER_MM = 5.0 * LBF_PER_IN_TO_N_PER_MM;  // 70 Shore A, 10% squeeze, band high
+const CF_SQUEEZE_EXPONENT = 1.5;
+
+const CF_HARDNESS_ANCHORS: { sh: number; k: number }[] = [
+  { sh: 50, k: 0.55 }, { sh: 70, k: 1.0 }, { sh: 80, k: 1.4 }, { sh: 90, k: 2.0 },
+];
+
+function compressionHardnessFactor(shoreA: number): number {
+  const a = CF_HARDNESS_ANCHORS;
+  if (shoreA <= a[0].sh) return a[0].k;
+  if (shoreA >= a[a.length - 1].sh) return a[a.length - 1].k;
+  for (let i = 0; i < a.length - 1; i++) {
+    if (shoreA >= a[i].sh && shoreA <= a[i + 1].sh) {
+      const t = (shoreA - a[i].sh) / (a[i + 1].sh - a[i].sh);
+      return a[i].k + t * (a[i + 1].k - a[i].k);
+    }
+  }
+  return 1.0;
+}
+
+/** Force per unit length band (N/mm) at a given squeeze fraction, cross-section and hardness. */
+export function compressionForcePerLengthNPerMm(squeezeFrac: number, csMm: number, shoreA: number): { min: number; max: number } {
+  const s = Math.max(squeezeFrac, 0);
+  const shape = Math.pow(s / 0.10, CF_SQUEEZE_EXPONENT);
+  const scale = (csMm / CF_W_REF_MM) * compressionHardnessFactor(shoreA);
+  return { min: CF_REF_MIN_N_PER_MM * shape * scale, max: CF_REF_MAX_N_PER_MM * shape * scale };
+}
+
+export interface CompressionForceResult {
+  minN: number;
+  maxN: number;
+  perLengthMinNPerMm: number;
+  perLengthMaxNPerMm: number;
+  sealLengthMm: number;
+}
+
+/** Total seating force band (N). Min = lowest squeeze × band low; max = highest squeeze × band
+ *  high — the full spread across both the tolerance stack and the data's inherent scatter. */
+export function compressionForceRangeN(squeezePct: TriValue, csMm: number, shoreA: number, sealLengthMm: number): CompressionForceResult {
+  const bandAtMin = compressionForcePerLengthNPerMm(Math.max(squeezePct.min, 0) / 100, csMm, shoreA);
+  const bandAtMax = compressionForcePerLengthNPerMm(Math.max(squeezePct.max, 0) / 100, csMm, shoreA);
+  return {
+    minN: bandAtMin.min * sealLengthMm,
+    maxN: bandAtMax.max * sealLengthMm,
+    perLengthMinNPerMm: bandAtMin.min,
+    perLengthMaxNPerMm: bandAtMax.max,
+    sealLengthMm,
+  };
 }
