@@ -213,9 +213,23 @@ export default function ORingGlandDiagram(props: Props) {
     <path key="base" d={`M${xAxis} ${yFace} L${gX} ${yFace} L${gX} ${yFace + t} L${gX + gW} ${yFace + t} L${gX + gW} ${yFace} L440 ${yFace} L440 ${yFace + 78} L${xAxis} ${yFace + 78} Z`}
       fill="var(--card-bg-2, rgba(255,255,255,0.03))" stroke="var(--border-hover)" strokeWidth={1.2} />
   );
-  els.push(squeezedEllipse(gX + gW / 2, yFace + t / 2 - 2, csPxF, t + 4, 'orf'));
+  // The O-Ring is pushed against the pressure-side groove wall — the same
+  // seatInternal/seatExternal behaviour the physics engine models. In this
+  // section the groove's INNER wall (toward the axis, smaller diameter, d8) is
+  // on the LEFT at gX; the OUTER wall (larger diameter, d7) is on the RIGHT at
+  // gX+gW. Internal pressure comes from the bore side and drives the ring
+  // outward onto the outer wall; external pressure (or internal vacuum) drives
+  // it inward onto the inner wall. The ellipse is shifted so it just touches
+  // that wall rather than sitting centred in the groove.
+  const orRy = Math.max((t + 4) / 2, 2);
+  const orRx = Math.max((csPxF * csPxF) / (4 * orRy), orRy * 0.6);
+  const seatsOuter = pressureDirection === 'internal';
+  const orCx = seatsOuter ? gX + gW - orRx : gX + orRx;
+  els.push(squeezedEllipse(orCx, yFace + t / 2 - 2, csPxF, t + 4, 'orf'));
   els.push(dimLabel(xAxis + 6, sectionTop + 48, 'cover / mating face', 'var(--text-faint)'));
   els.push(dimLabel(xAxis + 6, yFace + 70, 'grooved housing', 'var(--text-faint)'));
+  // Which wall the ring seats against, called out under the groove.
+  els.push(dimLabel(gX + gW / 2, sectionTop + 30 - 6, `seats on ${seatsOuter ? 'outer (d7)' : 'inner (d8)'} wall`, 'var(--accent)', 'middle'));
 
   if (!isNonCircular) {
     // d8 / d7 horizontal dimensions from the groove axis

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTheme } from '../lib/ThemeContext';
 import { useUnitSystem } from '../lib/UnitSystemContext';
-import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH, UNIT_TEMP, UNIT_PRESSURE } from '../lib/globalUnits';
+import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH, UNIT_TEMP, UNIT_PRESSURE, type UnitSystem } from '../lib/globalUnits';
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
@@ -65,6 +65,77 @@ function resolveDim(d: DimState): Dim {
     if (dev) return { nom: d.nom, upper: dev.upperMm, lower: dev.lowerMm };
   }
   return { nom: d.nom, upper: Math.abs(d.plus), lower: -Math.abs(d.minus) };
+}
+
+// Reusable toleranced-dimension input. DEFINED AT MODULE SCOPE, NOT inside the
+// calculator component — a component function created inside another component's
+// render is a brand-new type on every render, so React unmounts and remounts its
+// whole subtree each keystroke, which blows away the <input> and its focus/cursor
+// (the "cursor disappears after each character" bug). Keeping it at module scope
+// gives it a stable identity so the input stays mounted and focused while typing.
+function DimInput({ label, dim, onChange, isoKind, hint, unitSystem, lenUnit }: {
+  label: string;
+  dim: DimState;
+  onChange: (d: DimState) => void;
+  isoKind: 'hole' | 'shaft' | null;
+  hint?: string;
+  unitSystem: UnitSystem;
+  lenUnit: string;
+}) {
+  const resolved = resolveDim(dim);
+  const fits = isoKind === 'hole' ? HOLE_FITS : SHAFT_FITS;
+  return (
+    <div className="field">
+      <label>{label} ({lenUnit})</label>
+      <input autoComplete="off" type="number" min={0} step={0.1}
+        value={toDisplay(dim.nom, unitSystem, UNIT_LENGTH)}
+        onChange={(e) => onChange({ ...dim, nom: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+      {isoKind !== null && (
+        <div className="segmented" style={{ marginTop: '0.35rem' }}>
+          <button className={dim.mode === 'iso' ? 'active' : ''} onClick={() => onChange({ ...dim, mode: 'iso' })}>ISO fit</button>
+          <button className={dim.mode === 'custom' ? 'active' : ''} onClick={() => onChange({ ...dim, mode: 'custom' })}>Custom ±</button>
+        </div>
+      )}
+      {dim.mode === 'iso' && isoKind !== null ? (
+        <>
+          <select style={{ marginTop: '0.35rem' }} value={dim.fit} onChange={(e) => onChange({ ...dim, fit: e.target.value })}>
+            {fits.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+          <span className="hint">
+            {dim.fit}: {resolved.upper >= 0 ? '+' : ''}{fmtU(resolved.upper, unitSystem, UNIT_LENGTH, 4)} / {resolved.lower >= 0 ? '+' : ''}{fmtU(resolved.lower, unitSystem, UNIT_LENGTH, 4)} {lenUnit}
+          </span>
+        </>
+      ) : isoKind !== null ? (
+        // A custom-± override of a dimension that also has an ISO-fit preset — the
+        // premium path. (When isoKind is null there's no ISO alternative at all, so
+        // that case — below — stays free; it's the only way to enter that dimension.)
+        <PremiumGate feature="Custom ± tolerance">
+          <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', alignItems: 'center' }}>
+            <span className="hint">+</span>
+            <input autoComplete="off" type="number" min={0} step={0.01}
+              value={toDisplay(dim.plus, unitSystem, UNIT_LENGTH)}
+              onChange={(e) => onChange({ ...dim, mode: 'custom', plus: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+            <span className="hint">−</span>
+            <input autoComplete="off" type="number" min={0} step={0.01}
+              value={toDisplay(dim.minus, unitSystem, UNIT_LENGTH)}
+              onChange={(e) => onChange({ ...dim, mode: 'custom', minus: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+          </div>
+        </PremiumGate>
+      ) : (
+        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', alignItems: 'center' }}>
+          <span className="hint">+</span>
+          <input autoComplete="off" type="number" min={0} step={0.01}
+            value={toDisplay(dim.plus, unitSystem, UNIT_LENGTH)}
+            onChange={(e) => onChange({ ...dim, mode: 'custom', plus: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+          <span className="hint">−</span>
+          <input autoComplete="off" type="number" min={0} step={0.01}
+            value={toDisplay(dim.minus, unitSystem, UNIT_LENGTH)}
+            onChange={(e) => onChange({ ...dim, mode: 'custom', minus: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+        </div>
+      )}
+      {hint && <span className="hint">{hint}</span>}
+    </div>
+  );
 }
 
 const SEAL_TYPE_LABELS: Record<SealType, string> = {
@@ -255,70 +326,6 @@ export default function ORingCalculator() {
   const saved = useSavedCalculations('o-ring');
   const shareLink = useShareableLink(restoreInputs);
 
-  // ---- Reusable toleranced-dimension input ----
-  function DimInput({ label, dim, onChange, isoKind, hint }: {
-    label: string;
-    dim: DimState;
-    onChange: (d: DimState) => void;
-    isoKind: 'hole' | 'shaft' | null;
-    hint?: string;
-  }) {
-    const resolved = resolveDim(dim);
-    const fits = isoKind === 'hole' ? HOLE_FITS : SHAFT_FITS;
-    return (
-      <div className="field">
-        <label>{label} ({lenUnit})</label>
-        <input autoComplete="off" type="number" min={0} step={0.1}
-          value={toDisplay(dim.nom, unitSystem, UNIT_LENGTH)}
-          onChange={(e) => onChange({ ...dim, nom: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
-        {isoKind !== null && (
-          <div className="segmented" style={{ marginTop: '0.35rem' }}>
-            <button className={dim.mode === 'iso' ? 'active' : ''} onClick={() => onChange({ ...dim, mode: 'iso' })}>ISO fit</button>
-            <button className={dim.mode === 'custom' ? 'active' : ''} onClick={() => onChange({ ...dim, mode: 'custom' })}>Custom ±</button>
-          </div>
-        )}
-        {dim.mode === 'iso' && isoKind !== null ? (
-          <>
-            <select style={{ marginTop: '0.35rem' }} value={dim.fit} onChange={(e) => onChange({ ...dim, fit: e.target.value })}>
-              {fits.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
-            <span className="hint">
-              {dim.fit}: {resolved.upper >= 0 ? '+' : ''}{fmtU(resolved.upper, unitSystem, UNIT_LENGTH, 4)} / {resolved.lower >= 0 ? '+' : ''}{fmtU(resolved.lower, unitSystem, UNIT_LENGTH, 4)} {lenUnit}
-            </span>
-          </>
-        ) : isoKind !== null ? (
-          // A custom-± override of a dimension that also has an ISO-fit preset — the
-          // premium path. (When isoKind is null there's no ISO alternative at all, so
-          // that case — below — stays free; it's the only way to enter that dimension.)
-          <PremiumGate feature="Custom ± tolerance">
-            <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', alignItems: 'center' }}>
-              <span className="hint">+</span>
-              <input autoComplete="off" type="number" min={0} step={0.01}
-                value={toDisplay(dim.plus, unitSystem, UNIT_LENGTH)}
-                onChange={(e) => onChange({ ...dim, mode: 'custom', plus: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
-              <span className="hint">−</span>
-              <input autoComplete="off" type="number" min={0} step={0.01}
-                value={toDisplay(dim.minus, unitSystem, UNIT_LENGTH)}
-                onChange={(e) => onChange({ ...dim, mode: 'custom', minus: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
-            </div>
-          </PremiumGate>
-        ) : (
-          <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', alignItems: 'center' }}>
-            <span className="hint">+</span>
-            <input autoComplete="off" type="number" min={0} step={0.01}
-              value={toDisplay(dim.plus, unitSystem, UNIT_LENGTH)}
-              onChange={(e) => onChange({ ...dim, mode: 'custom', plus: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
-            <span className="hint">−</span>
-            <input autoComplete="off" type="number" min={0} step={0.01}
-              value={toDisplay(dim.minus, unitSystem, UNIT_LENGTH)}
-              onChange={(e) => onChange({ ...dim, mode: 'custom', minus: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
-          </div>
-        )}
-        {hint && <span className="hint">{hint}</span>}
-      </div>
-    );
-  }
-
   const stretchLabel =
     result.stretchKind === 'idStretch' ? 'Installed stretch (d1 → groove root)'
       : result.stretchKind === 'circumferentialCompression' ? 'Circumferential compression (OD → groove Ø)'
@@ -361,7 +368,7 @@ export default function ORingCalculator() {
       title: 'Gland fill',
       formula: 'fill = (π/4 · d2_eff²) / (b · h) — rectangular groove idealisation, ≤75% recommended nominal / ≤85% worst-case',
       substitution: `b = ${fmt(result.grooveWidthMm.nom, 2)} mm, h = ${fmt(result.glandHeightMm.nom, 3)} mm`,
-      result: `Fill = ${fmt(result.fillPct.nom, 1)}% nominal, ${fmt(result.fillPct.worst, 1)}% worst-case`,
+      result: `Fill = ${fmt(result.fillPct.nom, 1)}% nominal, ${fmt(result.fillPct.max, 1)}% worst-case`,
     });
     if (result.extrusionGap && pressureMPa > 0) {
       steps.push({
@@ -413,7 +420,7 @@ export default function ORingCalculator() {
       rows: [
         { label: stretchLabel, value: `${fmt(result.stretchPct.nom, 2)}% (${fmt(result.stretchPct.min, 2)} … ${fmt(result.stretchPct.max, 2)}%)` },
         { label: 'Initial squeeze', value: `${fmt(result.squeezePct.nom, 1)}% (${fmt(result.squeezePct.min, 1)} … ${fmt(result.squeezePct.max, 1)}%) vs band ${fmt(result.squeezeRec.min, 0)}–${fmt(result.squeezeRec.max, 0)}%` },
-        { label: 'Gland fill', value: `${fmt(result.fillPct.nom, 1)}% nominal / ${fmt(result.fillPct.worst, 1)}% worst-case` },
+        { label: 'Gland fill', value: `${fmt(result.fillPct.nom, 1)}% nominal / ${fmt(result.fillPct.max, 1)}% worst-case` },
         { label: 'Effective cross-section', value: `${fmt(result.effectiveCsMm.nom, 3)} mm` },
         { label: 'Gland height', value: `${fmt(result.glandHeightMm.nom, 3)} mm` },
         ...(result.extrusionGap && pressureMPa > 0 ? [{ label: 'Extrusion gap (worst)', value: `${fmt(result.extrusionGap.actualMaxMm, 3)} mm vs permissible ${result.extrusionGap.allowableMm !== null ? fmt(result.extrusionGap.allowableMm, 2) + ' mm' : '— (beyond table)'}` }] : []),
@@ -537,37 +544,37 @@ export default function ORingCalculator() {
             <div className="grid grid-2">
               {sealType === 'outerRadial' && (
                 <>
-                  <DimInput label="Bore Ø (cylinder)" dim={boreDia} onChange={setBoreDia} isoKind="hole" />
-                  <DimInput label="Groove root Ø d3" dim={grooveRootDia} onChange={setGrooveRootDia} isoKind="shaft" hint="The O-Ring is stretched over this diameter." />
-                  <DimInput label="Groove width b" dim={radialGrooveWidth} onChange={setRadialGrooveWidth} isoKind={null} />
+                  <DimInput label="Bore Ø (cylinder)" dim={boreDia} onChange={setBoreDia} isoKind="hole" unitSystem={unitSystem} lenUnit={lenUnit} />
+                  <DimInput label="Groove root Ø d3" dim={grooveRootDia} onChange={setGrooveRootDia} isoKind="shaft" hint="The O-Ring is stretched over this diameter." unitSystem={unitSystem} lenUnit={lenUnit} />
+                  <DimInput label="Groove width b" dim={radialGrooveWidth} onChange={setRadialGrooveWidth} isoKind={null} unitSystem={unitSystem} lenUnit={lenUnit} />
                   <div className="field">
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <input type="checkbox" checked={useCounterDia} onChange={(e) => setUseCounterDia(e.target.checked)} style={{ width: 'auto' }} />
                       Check extrusion gap (piston Ø)
                     </label>
-                    {useCounterDia && <DimInput label="Piston land Ø" dim={pistonLandDia} onChange={setPistonLandDia} isoKind="shaft" />}
+                    {useCounterDia && <DimInput label="Piston land Ø" dim={pistonLandDia} onChange={setPistonLandDia} isoKind="shaft" unitSystem={unitSystem} lenUnit={lenUnit} />}
                   </div>
                 </>
               )}
               {sealType === 'innerRadial' && (
                 <>
-                  <DimInput label="Rod Ø d5" dim={rodDia} onChange={setRodDia} isoKind="shaft" hint="Sealing surface — the ring seats by its OD in the housing groove." />
-                  <DimInput label="Housing groove Ø d6" dim={housingGrooveDia} onChange={setHousingGrooveDia} isoKind="hole" />
-                  <DimInput label="Groove width b" dim={radialGrooveWidth} onChange={setRadialGrooveWidth} isoKind={null} />
+                  <DimInput label="Rod Ø d5" dim={rodDia} onChange={setRodDia} isoKind="shaft" hint="Sealing surface — the ring seats by its OD in the housing groove." unitSystem={unitSystem} lenUnit={lenUnit} />
+                  <DimInput label="Housing groove Ø d6" dim={housingGrooveDia} onChange={setHousingGrooveDia} isoKind="hole" unitSystem={unitSystem} lenUnit={lenUnit} />
+                  <DimInput label="Groove width b" dim={radialGrooveWidth} onChange={setRadialGrooveWidth} isoKind={null} unitSystem={unitSystem} lenUnit={lenUnit} />
                   <div className="field">
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <input type="checkbox" checked={useCounterDia} onChange={(e) => setUseCounterDia(e.target.checked)} style={{ width: 'auto' }} />
                       Check extrusion gap (housing bore Ø)
                     </label>
-                    {useCounterDia && <DimInput label="Housing bore Ø" dim={rodBoreDia} onChange={setRodBoreDia} isoKind="hole" />}
+                    {useCounterDia && <DimInput label="Housing bore Ø" dim={rodBoreDia} onChange={setRodBoreDia} isoKind="hole" unitSystem={unitSystem} lenUnit={lenUnit} />}
                   </div>
                 </>
               )}
               {sealType === 'axialFace' && (
                 <>
-                  <DimInput label="Groove OD d7" dim={grooveOuterDia} onChange={setGrooveOuterDia} isoKind="hole" />
-                  <DimInput label="Groove ID d8" dim={grooveInnerDia} onChange={setGrooveInnerDia} isoKind="hole" />
-                  <DimInput label="Groove depth t" dim={grooveDepth} onChange={setGrooveDepth} isoKind={null} />
+                  <DimInput label="Groove OD d7" dim={grooveOuterDia} onChange={setGrooveOuterDia} isoKind="hole" unitSystem={unitSystem} lenUnit={lenUnit} />
+                  <DimInput label="Groove ID d8" dim={grooveInnerDia} onChange={setGrooveInnerDia} isoKind="hole" unitSystem={unitSystem} lenUnit={lenUnit} />
+                  <DimInput label="Groove depth t" dim={grooveDepth} onChange={setGrooveDepth} isoKind={null} unitSystem={unitSystem} lenUnit={lenUnit} />
                   <div className="field">
                     <label>Groove width b (derived)</label>
                     <input value={`${fmtU(result.grooveWidthMm.nom, unitSystem, UNIT_LENGTH, 3)} ${lenUnit}`} readOnly />
@@ -621,8 +628,8 @@ export default function ORingCalculator() {
                       </div>
                     </>
                   )}
-                  <DimInput label="Groove width b" dim={ncGrooveWidth} onChange={setNcGrooveWidth} isoKind={null} />
-                  <DimInput label="Groove depth t" dim={ncGrooveDepth} onChange={setNcGrooveDepth} isoKind={null} />
+                  <DimInput label="Groove width b" dim={ncGrooveWidth} onChange={setNcGrooveWidth} isoKind={null} unitSystem={unitSystem} lenUnit={lenUnit} />
+                  <DimInput label="Groove depth t" dim={ncGrooveDepth} onChange={setNcGrooveDepth} isoKind={null} unitSystem={unitSystem} lenUnit={lenUnit} />
                 </>
               )}
             </div>
@@ -781,8 +788,8 @@ export default function ORingCalculator() {
                   Gland fill
                   <InfoTooltip>How much of the groove cross-section the ring occupies. Room must remain for thermal expansion and media swell — ≤75% nominal recommended, ≤85% at worst-case tolerances.</InfoTooltip>
                 </div>
-                <div className={`value ${result.fillPct.worst > 85 ? 'neg' : result.fillPct.nom > 75 ? 'warn' : 'pos'}`}>{fmt(result.fillPct.nom, 0)}<span className="unit">%</span></div>
-                <div className="hint">worst-case {fmt(result.fillPct.worst, 0)}%</div>
+                <div className={`value ${result.fillPct.max > 85 ? 'neg' : result.fillPct.nom > 75 ? 'warn' : 'pos'}`}>{fmt(result.fillPct.nom, 0)}<span className="unit">%</span></div>
+                <div className="hint">worst-case {fmt(result.fillPct.max, 0)}%</div>
               </div>
               <div className="result-tile">
                 <div className="label">Effective cross-section</div>
@@ -809,6 +816,63 @@ export default function ORingCalculator() {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="card">
+            <div className="card-title">
+              <span>Tolerance min / max</span>
+            </div>
+            <PremiumGate feature="Min/max tolerance table">
+              <>
+                <p className="note" style={{ marginBottom: '0.75rem' }}>
+                  Each seal metric across the full tolerance stack — the min and max columns take every
+                  contributing dimension to its most and least favourable limit simultaneously (worst-case by
+                  construction), the same way a Trelleborg-style gland report presents its results.
+                </p>
+                <table className="data-table" style={{ width: '100%' }}>
+                  <thead>
+                    <tr><th>Metric</th><th style={{ textAlign: 'right' }}>Min</th><th style={{ textAlign: 'right' }}>Max</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Compression (squeeze) %</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(result.squeezePct.min, 1)}</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(result.squeezePct.max, 1)}</td>
+                    </tr>
+                    <tr>
+                      <td>Compression (squeeze) {lenUnit}</td>
+                      <td style={{ textAlign: 'right' }}>{fmtU(result.squeezeAbsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={{ textAlign: 'right' }}>{fmtU(result.squeezeAbsMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                    </tr>
+                    <tr>
+                      <td>Housing fill %</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(result.fillPct.min, 1)}</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(result.fillPct.max, 1)}</td>
+                    </tr>
+                    <tr>
+                      <td>{stretchLabel} %</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(result.stretchPct.min, 2)}</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(result.stretchPct.max, 2)}</td>
+                    </tr>
+                    <tr>
+                      <td>Effective cross-section {lenUnit}</td>
+                      <td style={{ textAlign: 'right' }}>{fmtU(result.effectiveCsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={{ textAlign: 'right' }}>{fmtU(result.effectiveCsMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                    </tr>
+                    <tr>
+                      <td>Gland height {lenUnit}</td>
+                      <td style={{ textAlign: 'right' }}>{fmtU(result.glandHeightMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={{ textAlign: 'right' }}>{fmtU(result.glandHeightMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                    </tr>
+                    <tr>
+                      <td>Groove width {lenUnit}</td>
+                      <td style={{ textAlign: 'right' }}>{fmtU(result.grooveWidthMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={{ textAlign: 'right' }}>{fmtU(result.grooveWidthMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </>
+            </PremiumGate>
           </div>
 
           <div className="card">

@@ -95,7 +95,7 @@ export interface ORingSealResult {
   grooveWidthMm: TriValue;
   squeezePct: TriValue;
   squeezeAbsMm: TriValue;
-  fillPct: { nom: number; worst: number };
+  fillPct: { nom: number; min: number; max: number };
   widthRatio: number; // groove width / effective cs, nominal
   squeezeRec: { min: number; max: number };
   squeezeApplication: SqueezeApplication;
@@ -262,11 +262,16 @@ export function solveORingSeal(input: ORingSealInput): ORingSealResult {
     max: effectiveCsMm.max - glandHeight.min,
   };
 
-  // Gland fill (rectangular groove idealisation)
+  // Gland fill (rectangular groove idealisation). Max (worst) fill = biggest
+  // ring in the smallest groove; min (best) fill = smallest ring in the biggest
+  // groove — both from independent tolerance extremes, matching how the other
+  // metrics stack their worst/best cases.
   const ringArea = (Math.PI / 4) * effectiveCsMm.nom * effectiveCsMm.nom;
   const ringAreaMax = (Math.PI / 4) * effectiveCsMm.max * effectiveCsMm.max;
+  const ringAreaMin = (Math.PI / 4) * effectiveCsMm.min * effectiveCsMm.min;
   const fillNom = (ringArea / (grooveWidth.nom * glandHeight.nom)) * 100;
   const fillWorst = (ringAreaMax / (grooveWidth.min * glandHeight.min)) * 100;
+  const fillMin = (ringAreaMin / (grooveWidth.max * glandHeight.max)) * 100;
 
   const widthRatio = grooveWidth.nom / effectiveCsMm.nom;
 
@@ -401,7 +406,7 @@ export function solveORingSeal(input: ORingSealInput): ORingSealResult {
     grooveWidthMm: grooveWidth,
     squeezePct,
     squeezeAbsMm,
-    fillPct: { nom: fillNom, worst: fillWorst },
+    fillPct: { nom: fillNom, min: fillMin, max: fillWorst },
     widthRatio,
     squeezeRec,
     squeezeApplication,
