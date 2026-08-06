@@ -333,6 +333,16 @@ export default function ORingCalculator() {
           : result.stretchKind === 'seatExternal' ? 'd1 undersize vs inner groove wall'
             : 'Centreline stretch (ring → groove path)';
 
+  // "Compression outside" = the OD circumferentially compressed into the housing groove (rod /
+  // inner-radial seals). The engine stores this as a NEGATIVE stretch (negative = compression),
+  // so for the tolerance table it's shown as a positive compression %, with the min/max columns
+  // swapped accordingly (most-negative stretch = most compression). Every other seal type shows
+  // its own stretch/seating metric as-is (positive = stretch), i.e. the "stretch inside" case.
+  const isCompressionOutside = result.stretchKind === 'circumferentialCompression';
+  const stretchRowLabel = isCompressionOutside ? 'Compression outside (OD → groove) %' : `${stretchLabel} %`;
+  const stretchRowMin = isCompressionOutside ? -result.stretchPct.max : result.stretchPct.min;
+  const stretchRowMax = isCompressionOutside ? -result.stretchPct.min : result.stretchPct.max;
+
   const calculationSteps: CalcStepData[] = useMemo(() => {
     const steps: CalcStepData[] = [];
     if (isNonCircular) {
@@ -850,9 +860,9 @@ export default function ORingCalculator() {
                       <td style={{ textAlign: 'right' }}>{fmt(result.fillPct.max, 1)}</td>
                     </tr>
                     <tr>
-                      <td>{stretchLabel} %</td>
-                      <td style={{ textAlign: 'right' }}>{fmt(result.stretchPct.min, 2)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmt(result.stretchPct.max, 2)}</td>
+                      <td>{stretchRowLabel}</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(stretchRowMin, 2)}</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(stretchRowMax, 2)}</td>
                     </tr>
                     <tr>
                       <td>Effective cross-section {lenUnit}</td>
