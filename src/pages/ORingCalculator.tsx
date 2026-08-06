@@ -23,6 +23,10 @@ import {
   crossSectionToleranceMm,
   insideDiameterToleranceMm,
   grooveRecommendationForCs,
+  maxInstalledStretchPercent,
+  MAX_CIRCUMFERENTIAL_COMPRESSION_PERCENT,
+  MAX_GLAND_FILL_PERCENT,
+  RECOMMENDED_GLAND_FILL_PERCENT,
   type ToleranceClass,
   type ORingSize,
 } from '../lib/oringData';
@@ -343,6 +347,48 @@ export default function ORingCalculator() {
   const stretchRowMin = isCompressionOutside ? -result.stretchPct.max : result.stretchPct.min;
   const stretchRowMax = isCompressionOutside ? -result.stretchPct.min : result.stretchPct.max;
 
+  // Per-cell acceptability for the min/max table: green = within guide limits,
+  // orange = outside the target but not a hard failure, red = out of spec. Each
+  // cell is judged on its own value against the same limits the engine's checks
+  // use, so the min and max columns can differ (e.g. min squeeze too low while
+  // max squeeze is fine). Rows with no clean pass/fail threshold (raw dimensions,
+  // the force estimate) are left uncoloured.
+  type Sev = 'pass' | 'warn' | 'fail';
+  const SEV_COLOR: Record<Sev, string> = { pass: 'var(--pos)', warn: 'var(--warn)', fail: 'var(--neg)' };
+  const cellStyle = (sev: Sev) => ({ textAlign: 'right' as const, color: SEV_COLOR[sev], fontWeight: 600 });
+  const plainCell = { textAlign: 'right' as const };
+
+  const squeezeSev = (pct: number): Sev => {
+    if (pct <= 0) return 'fail';
+    const { min, max } = result.squeezeRec;
+    if (pct < min * 0.6 || pct > max * 1.2) return 'fail';
+    if (pct < min || pct > max) return 'warn';
+    return 'pass';
+  };
+  const squeezeMmSev = (mm: number): Sev => (mm <= 0 ? 'fail' : mm < 0.1 ? 'warn' : 'pass');
+  const fillSev = (pct: number): Sev => (pct > MAX_GLAND_FILL_PERCENT ? 'fail' : pct > RECOMMENDED_GLAND_FILL_PERCENT ? 'warn' : 'pass');
+  const stretchSev = (v: number): Sev => {
+    switch (result.stretchKind) {
+      case 'idStretch':
+      case 'centerlineStretch': {
+        const maxAllowed = maxInstalledStretchPercent(selectedSize.d1);
+        if (v > maxAllowed) return 'fail';
+        if (v < 0 || v > 5) return 'warn';
+        return 'pass';
+      }
+      case 'circumferentialCompression':
+        if (v > MAX_CIRCUMFERENTIAL_COMPRESSION_PERCENT) return 'fail';
+        if (v < 0) return 'warn';
+        return 'pass';
+      case 'seatInternal':
+        return v < 0 || v > 3 ? 'warn' : 'pass';
+      case 'seatExternal':
+        return v < 0 || v > 5 ? 'warn' : 'pass';
+      default:
+        return 'pass';
+    }
+  };
+
   const calculationSteps: CalcStepData[] = useMemo(() => {
     const steps: CalcStepData[] = [];
     if (isNonCircular) {
@@ -589,8 +635,8 @@ export default function ORingCalculator() {
               )}
               {sealType === 'axialFace' && (
                 <>
-                  <DimInput label="Groove OD d7" dim={grooveOuterDia} onChange={setGrooveOuterDia} isoKind="hole" unitSystem={unitSystem} lenUnit={lenUnit} />
-                  <DimInput label="Groove ID d8" dim={grooveInnerDia} onChange={setGrooveInnerDia} isoKind="hole" unitSystem={unitSystem} lenUnit={lenUnit} />
+                  <DimInput label="Groove OD d7" dim={grooveOuterDia} onChange={setGrooveOuterDia} isoKind="hole" unitSystem={unitSystem} lenUnit={lenUnit} hint="Outer groove wall — an internal (bore-like) surface, so hole fits (H/G/F)." />
+                  <DimInput label="Groove ID d8" dim={grooveInnerDia} onChange={setGrooveInnerDia} isoKind="shaft" unitSystem={unitSystem} lenUnit={lenUnit} hint="Inner groove wall — an external (shaft-like) surface, so shaft fits (h/g/f)." />
                   <DimInput label="Groove depth t" dim={grooveDepth} onChange={setGrooveDepth} isoKind={null} unitSystem={unitSystem} lenUnit={lenUnit} />
                   <div className="field">
                     <label>Groove width b (derived)</label>
@@ -853,46 +899,52 @@ export default function ORingCalculator() {
                   <tbody>
                     <tr>
                       <td>Compression (squeeze) %</td>
-                      <td style={{ textAlign: 'right' }}>{fmt(result.squeezePct.min, 1)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmt(result.squeezePct.max, 1)}</td>
+                      <td style={cellStyle(squeezeSev(result.squeezePct.min))}>{fmt(result.squeezePct.min, 1)}</td>
+                      <td style={cellStyle(squeezeSev(result.squeezePct.max))}>{fmt(result.squeezePct.max, 1)}</td>
                     </tr>
                     <tr>
                       <td>Compression (squeeze) {lenUnit}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtU(result.squeezeAbsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtU(result.squeezeAbsMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={cellStyle(squeezeMmSev(result.squeezeAbsMm.min))}>{fmtU(result.squeezeAbsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={cellStyle(squeezeMmSev(result.squeezeAbsMm.max))}>{fmtU(result.squeezeAbsMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
                     </tr>
                     <tr>
                       <td>Housing fill %</td>
-                      <td style={{ textAlign: 'right' }}>{fmt(result.fillPct.min, 1)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmt(result.fillPct.max, 1)}</td>
+                      <td style={cellStyle(fillSev(result.fillPct.min))}>{fmt(result.fillPct.min, 1)}</td>
+                      <td style={cellStyle(fillSev(result.fillPct.max))}>{fmt(result.fillPct.max, 1)}</td>
                     </tr>
                     <tr>
                       <td>{stretchRowLabel}</td>
-                      <td style={{ textAlign: 'right' }}>{fmt(stretchRowMin, 2)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmt(stretchRowMax, 2)}</td>
+                      <td style={cellStyle(stretchSev(stretchRowMin))}>{fmt(stretchRowMin, 2)}</td>
+                      <td style={cellStyle(stretchSev(stretchRowMax))}>{fmt(stretchRowMax, 2)}</td>
                     </tr>
                     <tr>
                       <td>Effective cross-section {lenUnit}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtU(result.effectiveCsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtU(result.effectiveCsMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={plainCell}>{fmtU(result.effectiveCsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={plainCell}>{fmtU(result.effectiveCsMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
                     </tr>
                     <tr>
                       <td>Gland height {lenUnit}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtU(result.glandHeightMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtU(result.glandHeightMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={plainCell}>{fmtU(result.glandHeightMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={plainCell}>{fmtU(result.glandHeightMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
                     </tr>
                     <tr>
                       <td>Groove width {lenUnit}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtU(result.grooveWidthMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtU(result.grooveWidthMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={plainCell}>{fmtU(result.grooveWidthMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                      <td style={plainCell}>{fmtU(result.grooveWidthMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
                     </tr>
                     <tr>
                       <td>Total compression force (N) <span style={{ color: 'var(--warn)' }}>*</span></td>
-                      <td style={{ textAlign: 'right' }}>{fmt(result.compressionForce.minN, 0)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmt(result.compressionForce.maxN, 0)}</td>
+                      <td style={plainCell}>{fmt(result.compressionForce.minN, 0)}</td>
+                      <td style={plainCell}>{fmt(result.compressionForce.maxN, 0)}</td>
                     </tr>
                   </tbody>
                 </table>
+                <span className="hint" style={{ display: 'block', marginTop: '0.5rem' }}>
+                  Colour key: <span style={{ color: 'var(--pos)', fontWeight: 600 }}>green</span> within guide
+                  limits · <span style={{ color: 'var(--warn)', fontWeight: 600 }}>orange</span> outside the
+                  target but not a hard failure · <span style={{ color: 'var(--neg)', fontWeight: 600 }}>red</span>{' '}
+                  out of spec. Dimensional rows and the force estimate are not pass/fail-scored.
+                </span>
                 <span className="hint" style={{ display: 'block', marginTop: '0.6rem' }}>
                   <span style={{ color: 'var(--warn)' }}>*</span> Total compression force is a <b>parametric
                   estimate</b>, not a chart lookup — the published Parker/Apple/Trelleborg force-vs-squeeze data

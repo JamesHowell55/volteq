@@ -224,8 +224,17 @@ export default function ORingGlandDiagram(props: Props) {
   const orRy = Math.max((t + 4) / 2, 2);
   const orRx = Math.max((csPxF * csPxF) / (4 * orRy), orRy * 0.6);
   const seatsOuter = pressureDirection === 'internal';
-  const orCx = seatsOuter ? gX + gW - orRx : gX + orRx;
+  // Exaggerate the ring being driven hard against the pressure-side wall: push it
+  // a few px past the wall (schematic contact/deformation) so there's an obvious
+  // open gap on the low-pressure side and it's unmistakable which face it seals on.
+  const wallOverlap = 5;
+  const orCx = seatsOuter ? gX + gW - orRx + wallOverlap : gX + orRx - wallOverlap;
   els.push(squeezedEllipse(orCx, yFace + t / 2 - 2, csPxF, t + 4, 'orf'));
+  // Mark the sealed contact face and the open (low-pressure) gap.
+  const sealX = seatsOuter ? gX + gW : gX;
+  els.push(<line key="contact" x1={sealX} y1={yFace + 1} x2={sealX} y2={yFace + t - 1} stroke="var(--accent)" strokeWidth={2.5} />);
+  const gapX = seatsOuter ? gX : gX + gW;
+  els.push(dimLabel(gapX + (seatsOuter ? 3 : -3), yFace + t / 2 + 3, 'gap', 'var(--text-faint)', seatsOuter ? 'start' : 'end'));
   els.push(dimLabel(xAxis + 6, sectionTop + 48, 'cover / mating face', 'var(--text-faint)'));
   els.push(dimLabel(xAxis + 6, yFace + 70, 'grooved housing', 'var(--text-faint)'));
   // Which wall the ring seats against, called out under the groove.
