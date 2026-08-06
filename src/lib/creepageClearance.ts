@@ -283,3 +283,48 @@ export function getCreepage(workingVoltageV: number, pollutionDegree: 1 | 2 | 3,
   const { y, extrapolated } = powerLawInterpolate(creepageColumn(CREEPAGE_TABLE_BASIC, pollutionDegree, materialGroup), workingVoltageV);
   return { mm: y, extrapolated };
 }
+
+/** IEC 60664-1's rule for a groove or rib cut/molded into an insulation surface to increase the
+ *  effective creepage distance within a smaller flat footprint (clause on "increasing the
+ *  creepage" via a slot/groove, cited as clause 6.2 in some published treatments of the
+ *  standard — e.g. Texas Instruments' "Demystifying Clearance and Creepage Distance for
+ *  High-Voltage End Equipment" application note, which reproduces the standard's own minimum-
+ *  width table): a groove/rib narrower than a pollution-degree-dependent minimum width X is
+ *  "bridged" in the standard's measurement rule — the creepage path is measured straight across
+ *  as if the feature weren't there, because contamination can span a gap that narrow. Verified
+ *  numeric values below (0.25/1.0/1.5mm for PD1/PD2/PD3) reproduce the TI application note's own
+ *  published table exactly.
+ *
+ *  Once the width requirement is met, the credited additional path length is standard
+ *  engineering practice for a simple rectangular barrier/channel: the creepage path must trace
+ *  up one face and down the other (rib) or down one face and up the other (groove), adding
+ *  2x the feature's height to the path versus a flat surface — this 2x-height rule is widely
+ *  corroborated across secondary engineering sources discussing this exact standard, though it
+ *  is a simplified geometric model (a straight rectangular profile) rather than the standard's
+ *  full set of measurement figures for angled or rounded contours, which this tool does not
+ *  attempt to model — disclosed in the calculator's reference notes. PD4 has no creepage table
+ *  value in IEC 60664-1 (enclosure/coating design required instead), so this doesn't apply there. */
+export const MIN_GROOVE_WIDTH_MM: Record<1 | 2 | 3, number> = { 1: 0.25, 2: 1.0, 3: 1.5 };
+
+export function getMinGrooveWidthMm(pollutionDegree: 1 | 2 | 3): number {
+  return MIN_GROOVE_WIDTH_MM[pollutionDegree];
+}
+
+export interface RibCreditResult {
+  creditMm: number; // additional creepage path length the rib/groove contributes; 0 if bridged
+  widthOk: boolean; // false => narrower than the standard's minimum, credit is bridged to zero
+  minWidthMm: number;
+}
+
+export function ribCreepageCredit(heightMm: number, widthMm: number, pollutionDegree: 1 | 2 | 3): RibCreditResult {
+  const minWidthMm = getMinGrooveWidthMm(pollutionDegree);
+  const widthOk = widthMm >= minWidthMm;
+  const creditMm = widthOk ? 2 * Math.max(heightMm, 0) : 0;
+  return { creditMm, widthOk, minWidthMm };
+}
+
+/** The flat-surface (straight-line) footprint still required once a rib/groove's credited path
+ *  length is subtracted from the standard's required creepage distance — never below zero. */
+export function requiredFootprintWithRibMm(requiredCreepageMm: number, creditMm: number): number {
+  return Math.max(0, requiredCreepageMm - creditMm);
+}

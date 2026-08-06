@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import PaschenChart from '../components/PaschenChart';
 import ComparisonGrid from '../components/ComparisonGrid';
+import RibCrossSectionDiagram from '../components/RibCrossSectionDiagram';
 import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import InfoTooltip from '../components/InfoTooltip';
 import { useTheme } from '../lib/ThemeContext';
 import { useUnitSystem } from '../lib/UnitSystemContext';
-import { toDisplay, unitLabel, UNIT_LENGTH } from '../lib/globalUnits';
+import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH } from '../lib/globalUnits';
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData, type ReportGridTable } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
@@ -25,6 +26,8 @@ import {
   getClearance,
   getCreepage,
   materialGroupFromCti,
+  ribCreepageCredit,
+  requiredFootprintWithRibMm,
   type MaterialGroup,
   type FieldCondition,
   type PollutionDegree,
@@ -80,6 +83,16 @@ export default function CreepageClearanceCalculator() {
 
   const [workingVoltage, setWorkingVoltage] = useState(300);
   const [hvToChassisOverride, setHvToChassisOverride] = useState<number | null>(null);
+  // Voltage is always stored internally as V rms (matching Table F.4's own basis) — this only
+  // toggles how the input fields are interpreted/displayed, same pattern as toDisplay/fromDisplay
+  // for SI/imperial length elsewhere. Peak assumes a sinusoidal waveform (Vrms = Vpeak/sqrt(2));
+  // for a DC or non-sinusoidal withstand rating, entering RMS directly is more accurate.
+  const [voltageInputMode, setVoltageInputMode] = useState<'rms' | 'peak'>('rms');
+  const toVoltageDisplay = (vRms: number) => (voltageInputMode === 'peak' ? vRms * Math.SQRT2 : vRms);
+  const fromVoltageDisplay = (entered: number) => (voltageInputMode === 'peak' ? entered / Math.SQRT2 : entered);
+
+  const [ribHeightMm, setRibHeightMm] = useState(2);
+  const [ribWidthMm, setRibWidthMm] = useState(1.5);
 
   const [ed332Advanced, setEd332Advanced] = useState(false);
   const [ed332NetworkType, setEd332NetworkType] = useState<Ed332NetworkType>('R');
@@ -106,19 +119,20 @@ export default function CreepageClearanceCalculator() {
   const [fieldCondition, setFieldCondition] = useState<FieldCondition>('A');
 
   const getInputs = useCallback((): Record<string, unknown> => ({
-    workingVoltage, hvToChassisOverride, ed332Advanced, ed332NetworkType,
+    workingVoltage, hvToChassisOverride, voltageInputMode, ed332Advanced, ed332NetworkType,
     ed332UseTransientForClearance, ed332UseAbnormalCmForChassis,
     pollutionDegree, materialGroup, ctiValue, altitudeUnit, altitude,
-    safetyFactorPercent, fieldCondition,
-  }), [workingVoltage, hvToChassisOverride, ed332Advanced, ed332NetworkType,
+    safetyFactorPercent, fieldCondition, ribHeightMm, ribWidthMm,
+  }), [workingVoltage, hvToChassisOverride, voltageInputMode, ed332Advanced, ed332NetworkType,
     ed332UseTransientForClearance, ed332UseAbnormalCmForChassis,
     pollutionDegree, materialGroup, ctiValue, altitudeUnit, altitude,
-    safetyFactorPercent, fieldCondition]);
+    safetyFactorPercent, fieldCondition, ribHeightMm, ribWidthMm]);
 
   const restoreInputs = useCallback((inp: Record<string, unknown>) => {
     const v = inp as Record<string, any>;
     if (v.workingVoltage != null) setWorkingVoltage(v.workingVoltage);
     if (v.hvToChassisOverride !== undefined) setHvToChassisOverride(v.hvToChassisOverride);
+    if (v.voltageInputMode) setVoltageInputMode(v.voltageInputMode);
     if (v.ed332Advanced != null) setEd332Advanced(v.ed332Advanced);
     if (v.ed332NetworkType) setEd332NetworkType(v.ed332NetworkType);
     if (v.ed332UseTransientForClearance != null) setEd332UseTransientForClearance(v.ed332UseTransientForClearance);
@@ -130,6 +144,8 @@ export default function CreepageClearanceCalculator() {
     if (v.altitude != null) setAltitude(v.altitude);
     if (v.safetyFactorPercent != null) setSafetyFactorPercent(v.safetyFactorPercent);
     if (v.fieldCondition) setFieldCondition(v.fieldCondition);
+    if (v.ribHeightMm != null) setRibHeightMm(v.ribHeightMm);
+    if (v.ribWidthMm != null) setRibWidthMm(v.ribWidthMm);
   }, []);
 
   const saved = useSavedCalculations('creepage-clearance');
@@ -167,6 +183,13 @@ export default function CreepageClearanceCalculator() {
   const creepageHvResult = useMemo(() => (pollutionDegree === 4 ? null : getCreepage(hvToChassis, pollutionDegree, materialGroup)), [hvToChassis, pollutionDegree, materialGroup]);
   const creepageWithMargin = creepageResult ? creepageResult.mm * (1 + safetyFactorPercent / 100) : null;
   const creepageHvWithMargin = creepageHvResult ? creepageHvResult.mm * (1 + safetyFactorPercent / 100) : null;
+
+  // Rib/groove creepage-reduction (premium): a rib or groove of adequate width lets the same
+  // required creepage distance be achieved within a smaller flat-surface footprint, per
+  // IEC 60664-1's own measurement rule — see creepageClearance.ts for sourcing.
+  const ribResult = pollutionDegree === 4 ? null : ribCreepageCredit(ribHeightMm, ribWidthMm, pollutionDegree);
+  const footprintWorkingWithRib = ribResult && creepageWithMargin !== null ? requiredFootprintWithRibMm(creepageWithMargin, ribResult.creditMm) : null;
+  const footprintHvWithRib = ribResult && creepageHvWithMargin !== null ? requiredFootprintWithRibMm(creepageHvWithMargin, ribResult.creditMm) : null;
 
   // Paschen's Law cross-check, using the derived (with-margin) clearance.
   // The comparison voltage is now the working voltage directly (matching the simplified clearance methodology above).
@@ -249,8 +272,19 @@ export default function CreepageClearanceCalculator() {
       result: `V_b = ${fmt(paschenV, 0)} V vs working voltage ${fmt(workingVoltage, 0)} V — ${paschenPass ? 'consistent with the design' : 'below the working voltage, check the design'}`,
     });
 
+    if (ribResult) {
+      stepsOut.push({
+        title: 'Rib / groove creepage reduction (IEC 60664-1)',
+        formula: 'Credit = widthOk ? 2·H : 0 (widthOk = W ≥ minimum-width(PD)); footprint = max(0, required creepage − credit)',
+        substitution: `H = ${fmt(ribHeightMm, 2)} mm, W = ${fmt(ribWidthMm, 2)} mm, minimum width at PD${pollutionDegree} = ${fmt(ribResult.minWidthMm, 2)} mm`,
+        result: ribResult.widthOk
+          ? `Credit = ${fmt(ribResult.creditMm, 2)} mm. Footprint (working voltage) = ${fmt(footprintWorkingWithRib ?? 0, 3)} mm, (HV to chassis) = ${fmt(footprintHvWithRib ?? 0, 3)} mm`
+          : `Below minimum width — bridged, credit = 0 mm`,
+      });
+    }
+
     return stepsOut;
-  }, [altitude, altitudeUnit, altitudeM, altCorrection, workingVoltage, hvToChassis, workingVoltageForClearanceKV, hvToChassisForClearanceKV, fieldCondition, pollutionDegree, clearanceResult, clearanceHvResult, safetyFactorPercent, clearanceWithMargin, clearanceHvWithMargin, creepageResult, creepageHvResult, materialGroup, creepageWithMargin, creepageHvWithMargin, pressureKPa, paschenGapMm, paschenPd, paschenV, paschenPass, ed332ClearanceVoltageKV, clearanceEd332Result, clearanceEd332WithMargin, ed332NetworkType, ed332TransientV]);
+  }, [altitude, altitudeUnit, altitudeM, altCorrection, workingVoltage, hvToChassis, workingVoltageForClearanceKV, hvToChassisForClearanceKV, fieldCondition, pollutionDegree, clearanceResult, clearanceHvResult, safetyFactorPercent, clearanceWithMargin, clearanceHvWithMargin, creepageResult, creepageHvResult, materialGroup, creepageWithMargin, creepageHvWithMargin, pressureKPa, paschenGapMm, paschenPd, paschenV, paschenPass, ed332ClearanceVoltageKV, clearanceEd332Result, clearanceEd332WithMargin, ed332NetworkType, ed332TransientV, ribResult, ribHeightMm, ribWidthMm, footprintWorkingWithRib, footprintHvWithRib]);
 
   const inputSections: ReportSection[] = useMemo(() => {
     const elecRows: ReportRow[] = [
@@ -314,7 +348,7 @@ export default function CreepageClearanceCalculator() {
       outputSections,
       calculationSteps,
       gridTables,
-      disclaimer: 'Engineering estimation tool. Standard: IEC 60664-1 (clearance from Table F.2/altitude from Table F.10, creepage from Table F.4). Clearance is driven directly by the working voltage (no overvoltage-category / Table F.1 Un->Uimp step-up) — this is a deliberate tool-scope simplification and will understate the required clearance for circuits exposed to significant transient overvoltages (e.g. direct mains connection); reintroduce an impulse-withstand-voltage margin manually for such designs. Assumes functional insulation throughout.'
+      disclaimer: 'Engineering estimation tool. Standard: IEC 60664-1 (clearance from Table F.2/altitude from Table F.10, creepage from Table F.4). Clearance is driven directly by the working voltage (no overvoltage-category / Table F.1 Un->Uimp step-up) — this is a deliberate tool-scope simplification and will understate the required clearance for circuits exposed to significant transient overvoltages (e.g. direct mains connection); reintroduce an impulse-withstand-voltage margin manually for such designs. Assumes functional insulation throughout. Peak-voltage input assumes a sinusoidal waveform (Vrms = Vpeak/sqrt(2)); enter RMS directly for a DC or non-sinusoidal rating. Rib/groove creepage reduction: a feature narrower than IEC 60664-1\'s pollution-degree-dependent minimum width (0.25/1.0/1.5mm at PD1/PD2/PD3) is bridged (zero credit) in the standard\'s measurement rule; a feature meeting the minimum credits 2x its height as additional creepage path length, the standard engineering approximation for a simple rectangular rib/groove profile (not the standard\'s full set of angled/rounded-contour measurement figures).'
         + (ed332Advanced ? ` ED-332 advanced mode (${ED332_NETWORK_LABELS[ed332NetworkType]}): the abnormal-transient clearance scenario uses ED-332's ${fmt(ed332TransientV, 0)} VDC worst-case abnormal voltage transient (1 s duration, Table 2-2) as a conservative proxy for the clearance-driving voltage — this is a sustained-transient value, not a true IEC 60664-1 rated impulse withstand voltage (1.2/50 microsecond waveform), so treat it as a standards-informed engineering judgement rather than a literal substitution. The HV-to-chassis default (when enabled) reflects ED-332 REQ[009]'s abnormal common-mode condition, where a terminal may reach the full working voltage to ground. ED-332 REQ[0030] additionally requires a Dielectric Withstanding Voltage of ${ED332_DIELECTRIC_WITHSTAND_V} VDC at sea level (HVDC terminals to casing / to non-HVDC circuits) and REQ[0031] requires insulation resistance of at least ${ED332_INSULATION_MIN_MOHM.A} MOhm (Category A) or ${ED332_INSULATION_MIN_MOHM.B} MOhm (Category B, default) tested at ${ED332_INSULATION_TEST_V} VDC — both shown as reference values only; this tool does not compute insulation resistance.` : '')
         + ' Verify exact values against the current official IEC 60664-1 text, and any applicable product standard, before certification use.',
       ...branding,
@@ -356,15 +390,25 @@ export default function CreepageClearanceCalculator() {
         <div>
           <div className="card">
             <div className="card-title"><span><span className="step-num">1</span>Electrical parameters</span></div>
+            <div className="field" style={{ marginBottom: '0.6rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center' }}>
+                Voltage entered as
+                <InfoTooltip>Both voltage fields below are interpreted the same way. Peak assumes a sinusoidal waveform (Vrms = Vpeak/√2) — for a DC or non-sinusoidal withstand voltage rating, enter RMS directly if you know it rather than relying on this conversion.</InfoTooltip>
+              </label>
+              <div className="segmented">
+                <button className={voltageInputMode === 'rms' ? 'active' : ''} onClick={() => setVoltageInputMode('rms')}>RMS</button>
+                <button className={voltageInputMode === 'peak' ? 'active' : ''} onClick={() => setVoltageInputMode('peak')}>Peak (withstand)</button>
+              </div>
+            </div>
             <div className="grid grid-2">
               <div className="field">
-                <label>Working voltage (V rms)</label>
-                <input autoComplete="off" type="number" min={0} value={workingVoltage} onChange={e => setWorkingVoltage(Number(e.target.value))} />
-                <span className="hint">Drives both creepage and clearance directly — the highest RMS voltage actually across the insulation.</span>
+                <label>Working voltage (V {voltageInputMode})</label>
+                <input autoComplete="off" type="number" min={0} value={Math.round(toVoltageDisplay(workingVoltage) * 10) / 10} onChange={e => setWorkingVoltage(fromVoltageDisplay(Number(e.target.value)))} />
+                <span className="hint">Drives both creepage and clearance directly — the highest voltage actually across the insulation{voltageInputMode === 'peak' ? ` (≈${fmt(workingVoltage, 1)} V rms, used internally)` : ''}.</span>
               </div>
               <div className="field">
-                <label>Working voltage to chassis (V rms)</label>
-                <input autoComplete="off" type="number" min={0} value={Math.round(hvToChassis)} onChange={e => setHvToChassisOverride(Number(e.target.value))} />
+                <label>Working voltage to chassis (V {voltageInputMode})</label>
+                <input autoComplete="off" type="number" min={0} value={Math.round(toVoltageDisplay(hvToChassis) * 10) / 10} onChange={e => setHvToChassisOverride(fromVoltageDisplay(Number(e.target.value)))} />
                 <span className="hint">Defaults to {fmt(hvToChassisDefaultFraction * 100, 0)}% of working voltage{ed332Advanced && ed332UseAbnormalCmForChassis ? ' (ED-332 abnormal common-mode)' : ''} — edit to override.{hvToChassisOverride !== null && (
                   <> {' '}<button className="btn small" style={{ marginLeft: '0.4rem' }} onClick={() => setHvToChassisOverride(null)}>Reset to {fmt(hvToChassisDefaultFraction * 100, 0)}%</button></>
                 )}</span>
@@ -596,6 +640,58 @@ export default function CreepageClearanceCalculator() {
             </PremiumGate>
           </div>
 
+          <div className="card">
+            <div className="card-title">Rib / groove creepage reduction</div>
+            <PremiumGate feature="Rib/groove creepage reduction">
+              {pollutionDegree === 4 || !ribResult ? (
+                <p className="note">Not applicable at PD4 — creepage has no table value at this pollution degree (enclosure/coating design required instead).</p>
+              ) : (
+                <>
+                  <p className="note" style={{ marginBottom: '0.9rem' }}>
+                    A rib (raised barrier) or groove (recessed channel) of adequate width lets the standard's
+                    required creepage distance be achieved within a smaller flat-surface footprint — the
+                    creepage path is measured up-and-over (or down-and-across) the feature rather than straight
+                    across it, adding roughly twice its height to the path.
+                  </p>
+                  <div className="grid grid-2" style={{ marginBottom: '0.5rem' }}>
+                    <div className="field">
+                      <label>Rib / groove height, H ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
+                      <input autoComplete="off" type="number" min={0} step={0.1} value={toDisplay(ribHeightMm, unitSystem, UNIT_LENGTH)} onChange={e => setRibHeightMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
+                    </div>
+                    <div className="field">
+                      <label style={{ display: 'flex', alignItems: 'center' }}>
+                        Rib / groove width, W ({unitLabel(unitSystem, UNIT_LENGTH)})
+                        <InfoTooltip>Must be at least {fmt(ribResult.minWidthMm, 2)} mm at PD{pollutionDegree} (IEC 60664-1's minimum width for a groove/rib not to be "bridged" in the standard's measurement rule — narrower features are ignored, as if contamination could span the gap). The minimum rises with pollution degree: 0.25mm at PD1, 1.0mm at PD2, 1.5mm at PD3.</InfoTooltip>
+                      </label>
+                      <input autoComplete="off" type="number" min={0} step={0.05} value={toDisplay(ribWidthMm, unitSystem, UNIT_LENGTH)} onChange={e => setRibWidthMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
+                    </div>
+                  </div>
+                  <span className="hint" style={{ display: 'block', marginBottom: '0.9rem' }}>
+                    Minimum width at PD{pollutionDegree}: {fmtU(ribResult.minWidthMm, unitSystem, UNIT_LENGTH, 3)} {unitLabel(unitSystem, UNIT_LENGTH)}.
+                    {!ribResult.widthOk && <span style={{ color: 'var(--neg)' }}> ⚠ Below minimum — this feature would be bridged (ignored) in the standard's measurement, giving zero credit.</span>}
+                    {ribResult.widthOk && <span> ✓ Meets the minimum — credits {fmtU(ribResult.creditMm, unitSystem, UNIT_LENGTH, 3)} {unitLabel(unitSystem, UNIT_LENGTH)} of additional creepage path (2×H).</span>}
+                  </span>
+                  <ComparisonGrid
+                    title="Required flat-surface footprint"
+                    rowLabels={['Working voltage', 'HV to chassis']}
+                    colLabels={['Without rib/groove', 'With rib/groove']}
+                    getValue={(ri, ci) => {
+                      const without = ri === 0 ? (creepageWithMargin ?? 0) : (creepageHvWithMargin ?? 0);
+                      const withRib = ri === 0 ? (footprintWorkingWithRib ?? 0) : (footprintHvWithRib ?? 0);
+                      return toDisplay(ci === 0 ? without : withRib, unitSystem, UNIT_LENGTH);
+                    }}
+                    highlightRow={-1}
+                    highlightCol={1}
+                    unit={unitLabel(unitSystem, UNIT_LENGTH)}
+                  />
+                  <div style={{ marginTop: '1rem' }}>
+                    <RibCrossSectionDiagram heightMm={ribHeightMm} widthMm={ribWidthMm} widthOk={ribResult.widthOk} />
+                  </div>
+                </>
+              )}
+            </PremiumGate>
+          </div>
+
         </div>
       </div>
 
@@ -641,12 +737,37 @@ export default function CreepageClearanceCalculator() {
           )}
         </p>
         <p className="note">
+          <b>Voltage input mode:</b> both voltage fields can be entered as RMS or as a peak/withstand value —
+          switching modes only changes how the numbers you type are interpreted (Vrms = Vpeak/√2, assuming a
+          sinusoidal waveform); every downstream calculation still uses RMS internally, matching Table F.4's own
+          basis. For a DC or non-sinusoidal withstand rating, enter RMS directly if you know it.
+        </p>
+        <p className="note">
+          <b>Rib / groove creepage reduction</b> (Premium): a rib (raised barrier) or groove (recessed channel)
+          molded or cut into the insulation surface lets the required creepage distance be met within a smaller
+          flat footprint, since the standard's measurement rule traces the creepage path up-and-over (or
+          down-and-across) the feature rather than straight across it. A feature narrower than IEC 60664-1's
+          pollution-degree-dependent minimum width — 0.25mm at PD1, 1.0mm at PD2, 1.5mm at PD3 (reproduced from
+          the standard's own table, cross-checked against Texas Instruments' "Demystifying Clearance and
+          Creepage Distance for High-Voltage End Equipment" application note, which cites and quotes the same
+          IEC 60664-1 table) — is "bridged" in the standard's measurement: the path is measured straight across
+          as if the feature weren't there, since contamination can span a gap that narrow, giving zero credit.
+          A feature meeting the minimum width credits <strong>twice its height</strong> as additional creepage
+          path length — the standard engineering approximation for a simple rectangular rib/groove profile (the
+          path travels up one face and down the other, or vice versa), not a literal reproduction of the
+          standard's full set of measurement figures for angled or rounded contours, uncemented joints, or
+          multiple ribs in series, which this tool does not attempt to model.
+        </p>
+        <p className="note">
           <b>Validated:</b> checked that the calculator reproduces the standard's own tabulated points exactly
           at several spot checks (e.g. 1.0 kV Case A → 0.15 mm clearance; 400 V/PD2/Group I → 2.0 mm creepage;
           250 V/PD2/Group IIIb → 2.5 mm creepage — all widely-cited reference figures), and that the power-law
           interpolation between tabulated points was independently re-derived from the documented formula and
           matches the calculator's output to 5+ significant figures at a non-tabulated voltage (0.7 kV → 0.07889
-          mm both ways).
+          mm both ways). The rib/groove minimum-width table (0.25/1.0/1.5mm) exactly reproduces the TI
+          application note's own published table; the bridging rule (below minimum → zero credit) and the 2×
+          height credit rule were checked against hand-worked cases including the exact minimum-width boundary
+          (width equal to, not just above, the minimum still counts).
         </p>
       </div>
 
