@@ -145,7 +145,6 @@ export default function DcLinkCalculator() {
   const [didtDirectAPerUs, setDidtDirectAPerUs] = useState(6000);
 
   const seriesList = useMemo(() => seriesForSupplier(supplier), [supplier]);
-  const voltageList = useMemo(() => voltagesForSeries(supplier, series), [supplier, series]);
   const leadsList = useMemo(() => leadsFor(supplier, series, voltageSel), [supplier, series, voltageSel]);
   const partList = useMemo(() => partsFor(supplier, series, voltageSel, leadsSel), [supplier, series, voltageSel, leadsSel]);
 
@@ -202,6 +201,35 @@ export default function DcLinkCalculator() {
   // Peak capacitor voltage = DC bus + half the pk-pk ripple. Datasheets state the
   // peak voltage (DC + superimposed ripple) must not exceed the rated voltage.
   const peakVoltageV = busVoltageV + rippleVoltagePkPkV / 2;
+
+  // The one voltage floor that governs BOTH the catalog voltage options and the
+  // optimiser: caps must be rated at or above the peak (hard physical floor) and
+  // at or above any extra margin the user sets (optMinRatedVoltageV).
+  const capVoltageFloor = Math.max(peakVoltageV, optMinRatedVoltageV);
+
+  // Catalog voltage classes offered are constrained to those at/above the floor,
+  // so the manual capacitor selection can only pick from the correct voltage
+  // range (falls back to all classes if the floor excludes every one, so the
+  // dropdown never empties — the per-part rating check then flags the shortfall).
+  const voltageList = useMemo(() => {
+    const all = voltagesForSeries(supplier, series);
+    const ok = all.filter((v) => v >= capVoltageFloor);
+    return ok.length > 0 ? ok : all;
+  }, [supplier, series, capVoltageFloor]);
+
+  // Keep the catalog voltage selection valid when the floor rises above it: bump
+  // up to the lowest allowed class and re-resolve the leads/part beneath it.
+  useEffect(() => {
+    if (voltageList.length === 0 || voltageList.includes(voltageSel)) return;
+    const v = voltageList[0];
+    const lds = leadsFor(supplier, series, v);
+    const ld = lds.includes(leadsSel) ? leadsSel : (lds[0] ?? 4);
+    const parts = partsFor(supplier, series, v, ld);
+    setVoltageSel(v);
+    setLeadsSel(ld);
+    if (parts[0]) setPartNumber(parts[0].partNumber);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voltageList]);
 
   const sizingInput: DcLinkInput = useMemo(() => ({
     busVoltageV, rippleVoltagePkPkV, outputFreqHz,
@@ -548,6 +576,11 @@ export default function DcLinkCalculator() {
                 <button className={sizingMode === 'known' ? 'active' : ''} onClick={() => setSizingMode('known')}>Known capacitance</button>
               </div>
             </div>
+            <div className="field" style={{ marginTop: '0.6rem' }}>
+              <label>Min capacitor rated voltage (VDC)<InfoTooltip>Constrains BOTH the manual capacitor selection and the optimiser to parts rated at or above this voltage — set it to bake voltage margin into the design (e.g. 1.3–1.5× the bus voltage). The peak voltage (bus + ½ ripple) is always enforced as a hard floor on top; 0 means "use the peak only".</InfoTooltip></label>
+              {seriesNum(optMinRatedVoltageV, setOptMinRatedVoltageV, { step: 10, min: 0 })}
+              <span className="hint">Effective floor: {fmt(capVoltageFloor, 0)} V (peak {fmt(peakVoltageV, 0)} V{optMinRatedVoltageV > peakVoltageV ? `, margin ${fmt(optMinRatedVoltageV, 0)} V` : ''}). Catalog voltage options and the optimiser are restricted to this range.</span>
+            </div>
             {sizingMode === 'known' ? (
               <>
                 <div className="grid grid-2" style={{ marginTop: '0.6rem' }}>
@@ -720,11 +753,6 @@ export default function DcLinkCalculator() {
                 <div className="field">
                   <label>Max hot-spot ({tempUnit})</label>
                   <input autoComplete="off" type="number" value={toDisplay(optMaxHotSpotC, unitSystem, UNIT_TEMP)} onChange={(e) => setOptMaxHotSpotC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                </div>
-                <div className="field">
-                  <label>Min rated voltage (VDC)<InfoTooltip>Only consider capacitors rated at or above this voltage — use it to bake voltage margin into the selection (e.g. 1.3–1.5× the bus voltage). The peak voltage (bus + ½ ripple) is always enforced as a hard floor regardless; 0 means "use the peak only".</InfoTooltip></label>
-                  <input autoComplete="off" type="number" min={0} step={10} value={optMinRatedVoltageV} onChange={(e) => setOptMinRatedVoltageV(Number(e.target.value))} />
-                  <span className="hint">Effective floor: {fmt(Math.max(peakVoltageV, optMinRatedVoltageV), 0)} V (peak {fmt(peakVoltageV, 0)} V{optMinRatedVoltageV > peakVoltageV ? `, margin ${fmt(optMinRatedVoltageV, 0)} V` : ''}).</span>
                 </div>
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
                   <label>Optimise for</label>
