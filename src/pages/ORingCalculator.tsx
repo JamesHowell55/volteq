@@ -33,6 +33,8 @@ import {
 import {
   solveORingSeal,
   roundedRectPerimeterMm,
+  dimMin,
+  dimMax,
   type SealType,
   type DutyType,
   type PressureDirection,
@@ -387,6 +389,29 @@ export default function ORingCalculator() {
       default:
         return 'pass';
     }
+  };
+
+  // Axial face seals: the O-Ring inside diameter stretches over (or clears) the inner groove
+  // wall d8. This is shown for BOTH pressure directions. Positive = ID stretched over the inner
+  // land — the seating + retention mechanism under EXTERNAL pressure; negative = the ID clears
+  // the inner land and the ring rests toward the outer wall d7, as it should under INTERNAL
+  // pressure. Stretch is taken relative to the free ID d1: (d8 − d1)/d1.
+  const faceIdStretch = (() => {
+    const d8 = resolveDim(grooveInnerDia);
+    const d1 = selectedSize.d1;
+    const d1Lo = d1 - d1Tol;
+    const d1Hi = d1 + d1Tol;
+    return {
+      nom: ((d8.nom - d1) / d1) * 100,
+      min: ((dimMin(d8) - d1Hi) / d1Hi) * 100, // smallest d8, largest d1
+      max: ((dimMax(d8) - d1Lo) / d1Lo) * 100, // largest d8, smallest d1
+    };
+  })();
+  const faceStretchSev = (v: number): Sev => {
+    const maxAllowed = maxInstalledStretchPercent(selectedSize.d1);
+    if (v > maxAllowed) return 'fail'; // over-stretched — thins the section
+    if (pressureDirection === 'external' && v < 0) return 'warn'; // won't seat on the inner wall under external pressure
+    return 'pass'; // under internal pressure a negative (clearance) ID is expected and fine
   };
 
   const calculationSteps: CalcStepData[] = useMemo(() => {
@@ -852,11 +877,19 @@ export default function ORingCalculator() {
                   <td style={cellStyle(fillSev(result.fillPct.min))}>{fmt(result.fillPct.min, 1)}</td>
                   <td style={cellStyle(fillSev(result.fillPct.max))}>{fmt(result.fillPct.max, 1)}</td>
                 </tr>
-                <tr>
-                  <td>{stretchRowLabel}</td>
-                  <td style={cellStyle(stretchSev(stretchRowMin))}>{fmt(stretchRowMin, 2)}</td>
-                  <td style={cellStyle(stretchSev(stretchRowMax))}>{fmt(stretchRowMax, 2)}</td>
-                </tr>
+                {isFace ? (
+                  <tr>
+                    <td>O-ring ID stretch vs inner land (d8) %</td>
+                    <td style={cellStyle(faceStretchSev(faceIdStretch.min))}>{fmt(faceIdStretch.min, 2)}</td>
+                    <td style={cellStyle(faceStretchSev(faceIdStretch.max))}>{fmt(faceIdStretch.max, 2)}</td>
+                  </tr>
+                ) : (
+                  <tr>
+                    <td>{stretchRowLabel}</td>
+                    <td style={cellStyle(stretchSev(stretchRowMin))}>{fmt(stretchRowMin, 2)}</td>
+                    <td style={cellStyle(stretchSev(stretchRowMax))}>{fmt(stretchRowMax, 2)}</td>
+                  </tr>
+                )}
                 <tr>
                   <td>Effective cross-section {lenUnit}</td>
                   <td style={plainCell}>{fmtU(result.effectiveCsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
@@ -881,6 +914,15 @@ export default function ORingCalculator() {
               spec. Dimensional rows aren't pass/fail-scored. Squeeze guide band for this cross-section &amp;
               application: {fmt(result.squeezeRec.min, 0)}–{fmt(result.squeezeRec.max, 0)}%.
             </span>
+            {isFace && (
+              <span className="hint" style={{ display: 'block', marginTop: '0.4rem' }}>
+                O-ring ID stretch: <b>positive</b> = the inside diameter is stretched over the inner land (d8) —
+                the seating &amp; retention mechanism under <b>external</b> pressure; <b>negative</b> = the ID clears
+                the inner land and the ring rests toward the outer wall (d7), as it should under <b>internal</b>{' '}
+                pressure. The wall the ring actually seals against under the selected pressure is shown in the
+                gland diagram below.
+              </span>
+            )}
             {result.extrusionGap && pressureMPa > 0 && (
               <span className="hint" style={{ display: 'block', marginTop: '0.4rem' }}>
                 Extrusion gap (worst-case): <span style={{ color: result.checks.find((c) => c.id === 'extrusion')?.severity === 'fail' ? 'var(--neg)' : 'var(--pos)', fontWeight: 600 }}>{fmtU(result.extrusionGap.actualMaxMm, unitSystem, UNIT_LENGTH, 3)} {lenUnit}</span>
