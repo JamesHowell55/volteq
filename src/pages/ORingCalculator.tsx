@@ -388,8 +388,6 @@ export default function ORingCalculator() {
         return 'pass';
     }
   };
-  const worstSev = (a: Sev, b: Sev): Sev => (a === 'fail' || b === 'fail' ? 'fail' : a === 'warn' || b === 'warn' ? 'warn' : 'pass');
-  const sevClass = (sev: Sev): string => (sev === 'fail' ? 'neg' : sev === 'warn' ? 'warn' : 'pos');
 
   const calculationSteps: CalcStepData[] = useMemo(() => {
     const steps: CalcStepData[] = [];
@@ -829,130 +827,94 @@ export default function ORingCalculator() {
                 ))}
               </div>
             )}
-            <div className="result-grid">
-              <div className="result-tile">
-                <div className="label">
-                  Initial squeeze (min–max)
-                  <InfoTooltip>Compression of the cross-section between the groove root and the mating surface — what actually creates the seal. Shown across the full tolerance stack; checked against the guide's band for this cross-section and application.</InfoTooltip>
-                </div>
-                <div className={`value ${sevClass(worstSev(squeezeSev(result.squeezePct.min), squeezeSev(result.squeezePct.max)))}`} style={{ fontSize: '1.1rem' }}>{fmt(result.squeezePct.min, 1)}–{fmt(result.squeezePct.max, 1)}<span className="unit">%</span></div>
-                <div className="hint">nominal {fmt(result.squeezePct.nom, 1)}% · band {fmt(result.squeezeRec.min, 0)}–{fmt(result.squeezeRec.max, 0)}%</div>
-              </div>
-              <div className="result-tile">
-                <div className="label">
-                  {isCompressionOutside ? 'Compression outside (min–max)' : result.stretchKind === 'idStretch' ? 'Installed stretch (min–max)' : result.stretchKind === 'centerlineStretch' ? 'Centreline stretch (min–max)' : 'Wall seating (min–max)'}
-                  <InfoTooltip>{stretchLabel}. Positive = stretch; for a rod seal this is the OD compression into the groove. Shown across the full tolerance stack.</InfoTooltip>
-                </div>
-                <div className={`value ${sevClass(worstSev(stretchSev(stretchRowMin), stretchSev(stretchRowMax)))}`} style={{ fontSize: '1.1rem' }}>
-                  {fmt(stretchRowMin, 2)}–{fmt(stretchRowMax, 2)}<span className="unit">%</span>
-                </div>
-                <div className="hint">nominal {fmt(isCompressionOutside ? -result.stretchPct.nom : result.stretchPct.nom, 2)}%</div>
-              </div>
-              <div className="result-tile">
-                <div className="label">
-                  Gland fill (min–max)
-                  <InfoTooltip>How much of the groove cross-section the ring occupies. Room must remain for thermal expansion and media swell — ≤75% recommended, ≤85% at worst-case tolerances.</InfoTooltip>
-                </div>
-                <div className={`value ${sevClass(worstSev(fillSev(result.fillPct.min), fillSev(result.fillPct.max)))}`} style={{ fontSize: '1.1rem' }}>{fmt(result.fillPct.min, 0)}–{fmt(result.fillPct.max, 0)}<span className="unit">%</span></div>
-                <div className="hint">nominal {fmt(result.fillPct.nom, 0)}% · ≤75% rec, ≤85% max</div>
-              </div>
-              <div className="result-tile">
-                <div className="label">Effective cross-section (min–max)</div>
-                <div className="value" style={{ fontSize: '1.1rem' }}>{fmtU(result.effectiveCsMm.min, unitSystem, UNIT_LENGTH, 3)}–{fmtU(result.effectiveCsMm.max, unitSystem, UNIT_LENGTH, 3)}<span className="unit">{lenUnit}</span></div>
-                <div className="hint">after stretch · nominal d2 {fmtU(cs, unitSystem, UNIT_LENGTH, 3)} {lenUnit}</div>
-              </div>
-              <div className="result-tile">
-                <div className="label">Gland height (min–max)</div>
-                <div className="value" style={{ fontSize: '1.1rem' }}>{fmtU(result.glandHeightMm.min, unitSystem, UNIT_LENGTH, 3)}–{fmtU(result.glandHeightMm.max, unitSystem, UNIT_LENGTH, 3)}<span className="unit">{lenUnit}</span></div>
-                <div className="hint">groove-root to sealing surface · nominal {fmtU(result.glandHeightMm.nom, unitSystem, UNIT_LENGTH, 3)} {lenUnit}</div>
-              </div>
-              {result.extrusionGap && pressureMPa > 0 && (
-                <div className="result-tile">
-                  <div className="label">Extrusion gap (worst)</div>
-                  <div className={`value ${result.checks.find((c) => c.id === 'extrusion')?.severity === 'fail' ? 'neg' : 'pos'}`}>{fmtU(result.extrusionGap.actualMaxMm, unitSystem, UNIT_LENGTH, 3)}<span className="unit">{lenUnit}</span></div>
-                  <div className="hint">permissible {result.extrusionGap.allowableMm !== null ? `${fmtU(result.extrusionGap.allowableMm, unitSystem, UNIT_LENGTH, 3)} ${lenUnit}` : '— beyond table'}</div>
-                </div>
-              )}
-              {result.equivalentDiameterMm !== null && (
-                <div className="result-tile">
-                  <div className="label">Equivalent groove Ø</div>
-                  <div className="value">{fmtU(result.equivalentDiameterMm, unitSystem, UNIT_LENGTH, 2)}<span className="unit">{lenUnit}</span></div>
-                  <div className="hint">L/π from the neutral-axis path</div>
-                </div>
-              )}
-            </div>
+            <p className="note" style={{ margin: '0 0 0.75rem' }}>
+              Every seal metric across the full tolerance stack — the min and max columns take every contributing
+              dimension to its most and least favourable limit simultaneously (worst-case by construction). These
+              worst-case bounds, not the nominal, are what govern the design.
+            </p>
+            <table className="data-table" style={{ width: '100%' }}>
+              <thead>
+                <tr><th>Result</th><th style={{ textAlign: 'right' }}>Min</th><th style={{ textAlign: 'right' }}>Max</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Compression (squeeze) %</td>
+                  <td style={cellStyle(squeezeSev(result.squeezePct.min))}>{fmt(result.squeezePct.min, 1)}</td>
+                  <td style={cellStyle(squeezeSev(result.squeezePct.max))}>{fmt(result.squeezePct.max, 1)}</td>
+                </tr>
+                <tr>
+                  <td>Compression (squeeze) {lenUnit}</td>
+                  <td style={cellStyle(squeezeMmSev(result.squeezeAbsMm.min))}>{fmtU(result.squeezeAbsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                  <td style={cellStyle(squeezeMmSev(result.squeezeAbsMm.max))}>{fmtU(result.squeezeAbsMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                </tr>
+                <tr>
+                  <td>Housing fill %</td>
+                  <td style={cellStyle(fillSev(result.fillPct.min))}>{fmt(result.fillPct.min, 1)}</td>
+                  <td style={cellStyle(fillSev(result.fillPct.max))}>{fmt(result.fillPct.max, 1)}</td>
+                </tr>
+                <tr>
+                  <td>{stretchRowLabel}</td>
+                  <td style={cellStyle(stretchSev(stretchRowMin))}>{fmt(stretchRowMin, 2)}</td>
+                  <td style={cellStyle(stretchSev(stretchRowMax))}>{fmt(stretchRowMax, 2)}</td>
+                </tr>
+                <tr>
+                  <td>Effective cross-section {lenUnit}</td>
+                  <td style={plainCell}>{fmtU(result.effectiveCsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                  <td style={plainCell}>{fmtU(result.effectiveCsMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                </tr>
+                <tr>
+                  <td>Gland height {lenUnit}</td>
+                  <td style={plainCell}>{fmtU(result.glandHeightMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                  <td style={plainCell}>{fmtU(result.glandHeightMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                </tr>
+                <tr>
+                  <td>Groove width {lenUnit}</td>
+                  <td style={plainCell}>{fmtU(result.grooveWidthMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
+                  <td style={plainCell}>{fmtU(result.grooveWidthMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
+                </tr>
+              </tbody>
+            </table>
+            <span className="hint" style={{ display: 'block', marginTop: '0.5rem' }}>
+              Colour key: <span style={{ color: 'var(--pos)', fontWeight: 600 }}>green</span> within guide
+              limits · <span style={{ color: 'var(--warn)', fontWeight: 600 }}>orange</span> outside the target
+              but not a hard failure · <span style={{ color: 'var(--neg)', fontWeight: 600 }}>red</span> out of
+              spec. Dimensional rows aren't pass/fail-scored. Squeeze guide band for this cross-section &amp;
+              application: {fmt(result.squeezeRec.min, 0)}–{fmt(result.squeezeRec.max, 0)}%.
+            </span>
+            {result.extrusionGap && pressureMPa > 0 && (
+              <span className="hint" style={{ display: 'block', marginTop: '0.4rem' }}>
+                Extrusion gap (worst-case): <span style={{ color: result.checks.find((c) => c.id === 'extrusion')?.severity === 'fail' ? 'var(--neg)' : 'var(--pos)', fontWeight: 600 }}>{fmtU(result.extrusionGap.actualMaxMm, unitSystem, UNIT_LENGTH, 3)} {lenUnit}</span>
+                {' '}· permissible {result.extrusionGap.allowableMm !== null ? `${fmtU(result.extrusionGap.allowableMm, unitSystem, UNIT_LENGTH, 3)} ${lenUnit}` : '— beyond guide table'}.
+              </span>
+            )}
+            {result.equivalentDiameterMm !== null && (
+              <span className="hint" style={{ display: 'block', marginTop: '0.4rem' }}>
+                Equivalent groove Ø (L/π from the neutral-axis path): {fmtU(result.equivalentDiameterMm, unitSystem, UNIT_LENGTH, 2)} {lenUnit}.
+              </span>
+            )}
           </div>
 
           <div className="card">
-            <div className="card-title">
-              <span>Tolerance min / max</span>
-            </div>
-            <PremiumGate feature="Min/max tolerance table">
+            <div className="card-title">Total compression force</div>
+            <PremiumGate feature="Compression force estimate">
               <>
-                <p className="note" style={{ marginBottom: '0.75rem' }}>
-                  Each seal metric across the full tolerance stack — the min and max columns take every
-                  contributing dimension to its most and least favourable limit simultaneously (worst-case by
-                  construction), the same way a Trelleborg-style gland report presents its results.
-                </p>
                 <table className="data-table" style={{ width: '100%' }}>
                   <thead>
-                    <tr><th>Metric</th><th style={{ textAlign: 'right' }}>Min</th><th style={{ textAlign: 'right' }}>Max</th></tr>
+                    <tr><th>Result</th><th style={{ textAlign: 'right' }}>Min</th><th style={{ textAlign: 'right' }}>Max</th></tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td>Compression (squeeze) %</td>
-                      <td style={cellStyle(squeezeSev(result.squeezePct.min))}>{fmt(result.squeezePct.min, 1)}</td>
-                      <td style={cellStyle(squeezeSev(result.squeezePct.max))}>{fmt(result.squeezePct.max, 1)}</td>
-                    </tr>
-                    <tr>
-                      <td>Compression (squeeze) {lenUnit}</td>
-                      <td style={cellStyle(squeezeMmSev(result.squeezeAbsMm.min))}>{fmtU(result.squeezeAbsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
-                      <td style={cellStyle(squeezeMmSev(result.squeezeAbsMm.max))}>{fmtU(result.squeezeAbsMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
-                    </tr>
-                    <tr>
-                      <td>Housing fill %</td>
-                      <td style={cellStyle(fillSev(result.fillPct.min))}>{fmt(result.fillPct.min, 1)}</td>
-                      <td style={cellStyle(fillSev(result.fillPct.max))}>{fmt(result.fillPct.max, 1)}</td>
-                    </tr>
-                    <tr>
-                      <td>{stretchRowLabel}</td>
-                      <td style={cellStyle(stretchSev(stretchRowMin))}>{fmt(stretchRowMin, 2)}</td>
-                      <td style={cellStyle(stretchSev(stretchRowMax))}>{fmt(stretchRowMax, 2)}</td>
-                    </tr>
-                    <tr>
-                      <td>Effective cross-section {lenUnit}</td>
-                      <td style={plainCell}>{fmtU(result.effectiveCsMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
-                      <td style={plainCell}>{fmtU(result.effectiveCsMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
-                    </tr>
-                    <tr>
-                      <td>Gland height {lenUnit}</td>
-                      <td style={plainCell}>{fmtU(result.glandHeightMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
-                      <td style={plainCell}>{fmtU(result.glandHeightMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
-                    </tr>
-                    <tr>
-                      <td>Groove width {lenUnit}</td>
-                      <td style={plainCell}>{fmtU(result.grooveWidthMm.min, unitSystem, UNIT_LENGTH, 3)}</td>
-                      <td style={plainCell}>{fmtU(result.grooveWidthMm.max, unitSystem, UNIT_LENGTH, 3)}</td>
-                    </tr>
-                    <tr>
-                      <td>Total compression force (N) <span style={{ color: 'var(--warn)' }}>*</span></td>
+                      <td>Total compression force (N)</td>
                       <td style={plainCell}>{fmt(result.compressionForce.minN, 0)}</td>
                       <td style={plainCell}>{fmt(result.compressionForce.maxN, 0)}</td>
                     </tr>
                   </tbody>
                 </table>
-                <span className="hint" style={{ display: 'block', marginTop: '0.5rem' }}>
-                  Colour key: <span style={{ color: 'var(--pos)', fontWeight: 600 }}>green</span> within guide
-                  limits · <span style={{ color: 'var(--warn)', fontWeight: 600 }}>orange</span> outside the
-                  target but not a hard failure · <span style={{ color: 'var(--neg)', fontWeight: 600 }}>red</span>{' '}
-                  out of spec. Dimensional rows and the force estimate are not pass/fail-scored.
-                </span>
                 <span className="hint" style={{ display: 'block', marginTop: '0.6rem' }}>
-                  <span style={{ color: 'var(--warn)' }}>*</span> Total compression force is a <b>parametric
-                  estimate</b>, not a chart lookup — the published Parker/Apple/Trelleborg force-vs-squeeze data
-                  exists only as image bar-charts. It's modelled as force-per-length rising as squeeze^1.5,
-                  scaled linearly by cross-section and by a durometer modulus factor (calibrated to the confirmed
-                  Parker 0.070"/70-Shore/10%-squeeze band of 2–5 lb/in), × the seal centreline length
+                  <b>Parametric estimate</b>, not a chart lookup — the published Parker/Apple/Trelleborg
+                  force-vs-squeeze data exists only as image bar-charts. It's modelled as force-per-length rising
+                  as squeeze^1.5, scaled linearly by cross-section and by a durometer modulus factor (calibrated to
+                  the confirmed Parker 0.070"/70-Shore/10%-squeeze band of 2–5 lb/in), × the seal centreline length
                   ({fmt(result.compressionForce.sealLengthMm, 0)} mm here). Treat it as an order-of-magnitude
                   seating/closing-force figure and verify against the actual chart for load-critical designs.
                 </span>
