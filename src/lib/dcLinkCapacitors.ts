@@ -185,6 +185,31 @@ export function partsFor(supplier: string, series: string, voltageVdc: number, l
     .sort((a, b) => a.capacitanceUf - b.capacitanceUf);
 }
 
+// ── Indicative unit cost (PARAMETRIC ESTIMATE) ──────────────────────────────
+// Actual capacitor prices depend on distributor, order quantity, region and the
+// day — real per-part costs are not published in a form that can be baked into a
+// tool. This is therefore a transparent PARAMETRIC MODEL for INDICATIVE cost only,
+// meant for RELATIVE comparison and cost-ranking in the optimiser, NOT for
+// quoting. Film-capacitor unit cost is dominated by the film area, which scales
+// with the capacitance-voltage (CV) product, plus a fixed box/assembly/terminal
+// cost; automotive-grade "miniaturised" series (AEC-Q200) carry a premium. So:
+//   cost(USD) ≈ (BASE + RATE · C[µF] · V[VDC] / 1000) · gradeTier
+// calibrated to give a sensible spread (~$5 for a small 10 µF/500 V part up to
+// ~$45 for a large one) against typical low-quantity distributor pricing. Treat
+// the absolute figures as order-of-magnitude; the relative ordering is the useful
+// output. Verify against a live distributor quote before relying on it.
+const COST_BASE_USD = 2.5;
+const COST_RATE_USD_PER_KVUF = 0.42; // per (µF·V/1000)
+
+function costGradeTier(series: string): number {
+  return series === 'C4AQ-M' ? 1.25 : 1.0; // automotive miniaturised premium
+}
+
+export function indicativeCapCostUsd(cap: DcLinkCapacitor): number {
+  const cvKVuF = (cap.capacitanceUf * cap.ratedVoltageVdc) / 1000;
+  return (COST_BASE_USD + COST_RATE_USD_PER_KVUF * cvKVuF) * costGradeTier(cap.series);
+}
+
 // KEMET C4AQ-M operating-voltage-vs-hot-spot-temperature derating (datasheet):
 // VOP70 (70 °C) = 1.2·VNDC, VNDC = rated (85 °C), VOP105 (105 °C) = 0.7·VNDC.
 // Linear between the anchor points. Returns the max permissible DC voltage at a

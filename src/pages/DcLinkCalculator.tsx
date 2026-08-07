@@ -64,6 +64,13 @@ export default function DcLinkCalculator() {
   const tempUnit = unitLabel(unitSystem, UNIT_TEMP);
 
   // ── System / operating point ──
+  // Sizing mode: 'derive' works out the required capacitance and ripple current
+  // from the full operating point; 'known' lets the user enter both directly
+  // (plus bus voltage) and hides every input that only feeds that derivation.
+  const [sizingMode, setSizingMode] = useState<'derive' | 'known'>('derive');
+  const [knownCapacitanceUf, setKnownCapacitanceUf] = useState(500);
+  const [knownRippleCurrentA, setKnownRippleCurrentA] = useState(120);
+
   const [busVoltageV, setBusVoltageV] = useState(400);
   const [rippleVoltagePkPkV, setRippleVoltagePkPkV] = useState(8);
   const [outputFreqHz, setOutputFreqHz] = useState(200);
@@ -122,6 +129,7 @@ export default function DcLinkCalculator() {
   const [maxDepthMm, setMaxDepthMm] = useState(150);
   const [maxHeightMm, setMaxHeightMm] = useState(60);
   const [optMaxHotSpotC, setOptMaxHotSpotC] = useState(85);
+  const [optMinRatedVoltageV, setOptMinRatedVoltageV] = useState(0); // 0 = use peak (Vdc + ½ ripple); >0 bakes in voltage margin
   const [optObjective, setOptObjective] = useState<OptimizeObjective>('volume');
 
   // ── Switching overshoot ──
@@ -204,11 +212,26 @@ export default function DcLinkCalculator() {
 
   const sizing = useMemo(() => solveDcLinkSizing(sizingInput), [sizingInput]);
 
+  // In 'known' mode the user supplies the required capacitance and ripple current
+  // directly, so everything downstream (bank sizing, optimiser, results) reads
+  // from this effective sizing rather than the derived one.
+  const effSizing = useMemo(() => {
+    if (sizingMode === 'derive') return sizing;
+    const reqUf = Math.max(knownCapacitanceUf, 0);
+    return {
+      ...sizing,
+      requiredCapacitanceUf: reqUf,
+      rippleCurrentRmsA: Math.max(knownRippleCurrentA, 0),
+      rippleCurrentRatio: 0,
+      storedEnergyJ: 0.5 * (reqUf * 1e-6) * busVoltageV * busVoltageV,
+    };
+  }, [sizingMode, sizing, knownCapacitanceUf, knownRippleCurrentA, busVoltageV]);
+
   const bankInput: CapBankInput | null = useMemo(() => {
     if (!cap) return null;
     return {
-      requiredCapacitanceUf: sizing.requiredCapacitanceUf,
-      rippleCurrentRmsA: sizing.rippleCurrentRmsA,
+      requiredCapacitanceUf: effSizing.requiredCapacitanceUf,
+      rippleCurrentRmsA: effSizing.rippleCurrentRmsA,
       busVoltageV,
       ambientTempC,
       capUf: cap.capacitanceUf, ratedVoltageVdc: cap.ratedVoltageVdc, esrMohm: cap.esrMohm, eslNh: cap.eslNh,
@@ -216,7 +239,7 @@ export default function DcLinkCalculator() {
       boxLengthMm: cap.boxLengthMm, boxThicknessMm: cap.boxThicknessMm, boxHeightMm: cap.boxHeightMm,
       columns, spacingMm, coolingMethod, conductionRthCW,
     };
-  }, [cap, sizing, busVoltageV, ambientTempC, columns, spacingMm, coolingMethod, conductionRthCW]);
+  }, [cap, effSizing, busVoltageV, ambientTempC, columns, spacingMm, coolingMethod, conductionRthCW]);
 
   const bank = useMemo(() => (bankInput ? solveCapBank(bankInput) : null), [bankInput]);
 
@@ -227,14 +250,14 @@ export default function DcLinkCalculator() {
   }, [bank, cap, busVoltageV]);
 
   const optResults = useMemo(() => {
-    if (!optimizeEnabled || sizing.requiredCapacitanceUf <= 0) return [];
+    if (!optimizeEnabled || effSizing.requiredCapacitanceUf <= 0) return [];
     return optimizeDcLinkBank(DC_LINK_CAPACITORS, {
-      requiredCapacitanceUf: sizing.requiredCapacitanceUf,
-      rippleCurrentRmsA: sizing.rippleCurrentRmsA,
-      peakVoltageV, ambientTempC, coolingMethod, conductionRthCW, spacingMm,
+      requiredCapacitanceUf: effSizing.requiredCapacitanceUf,
+      rippleCurrentRmsA: effSizing.rippleCurrentRmsA,
+      peakVoltageV, minRatedVoltageV: optMinRatedVoltageV, ambientTempC, coolingMethod, conductionRthCW, spacingMm,
       maxWidthMm, maxDepthMm, maxHeightMm, maxHotSpotTempC: optMaxHotSpotC, objective: optObjective,
     });
-  }, [optimizeEnabled, sizing, peakVoltageV, ambientTempC, coolingMethod, conductionRthCW, spacingMm, maxWidthMm, maxDepthMm, maxHeightMm, optMaxHotSpotC, optObjective]);
+  }, [optimizeEnabled, effSizing, peakVoltageV, optMinRatedVoltageV, ambientTempC, coolingMethod, conductionRthCW, spacingMm, maxWidthMm, maxDepthMm, maxHeightMm, optMaxHotSpotC, optObjective]);
 
   const applyCandidate = (c: OptimizeCandidate) => {
     setCapMode('catalog');
@@ -290,9 +313,10 @@ export default function DcLinkCalculator() {
     if (bank.currentPerCapA > cap.irmsRatedA) {
       out.push({ severity: 'warn', label: 'Per-cap current', detail: `Each cap carries ${fmt(bank.currentPerCapA, 1)} A vs its ${fmt(cap.irmsRatedA, 1)} A (30°C-rise) rating — the count was raised to compensate, but check the resulting hot spot.` });
     }
-    // Resonance margin
+    // Resonance margin — only meaningful in 'derive' mode, where the cable
+    // inductance and switching frequency are part of the input set.
     const fsw = switchingFreqKhz * 1000;
-    if (cableInductanceUh > 0) {
+    if (sizingMode === 'derive' && cableInductanceUh > 0) {
       if (actualResonanceHz > fsw) {
         out.push({ severity: 'fail', label: 'Cable resonance', detail: `LC resonance ${fmt(actualResonanceHz, 0)} Hz is above the ${fmt(fsw, 0)} Hz switching frequency — the source cable, not the cap, would carry the ripple. Increase capacitance.` });
       } else if (actualResonanceHz > fsw / 3) {
@@ -309,7 +333,7 @@ export default function DcLinkCalculator() {
       out.push({ severity: 'warn', label: 'Switching overshoot (cap)', detail: `The repetitive cap-terminal peak ${fmt(overshoot.capPeakTransientV, 0)} V is within 10% of the ${fmt(cap.ratedVoltageVdc, 0)} V rating once the switching overshoot is added.` });
     }
     return out;
-  }, [cap, bank, busVoltageV, peakVoltageV, maxOpV, switchingFreqKhz, cableInductanceUh, actualResonanceHz, overshoot]);
+  }, [cap, bank, busVoltageV, peakVoltageV, maxOpV, switchingFreqKhz, cableInductanceUh, actualResonanceHz, overshoot, sizingMode]);
 
   const overallPass = checks.every((c) => c.severity !== 'fail');
   const failing = checks.filter((c) => c.severity === 'fail');
@@ -317,21 +341,23 @@ export default function DcLinkCalculator() {
 
   // ── save/load ──
   const getInputs = useCallback((): Record<string, unknown> => ({
+    sizingMode, knownCapacitanceUf, knownRippleCurrentA,
     busVoltageV, rippleVoltagePkPkV, outputFreqHz, switchingFreqKhz, phaseCurrentRmsA, powerFactor, modulationIndex, cableInductanceUh,
     capMode, supplier, series, voltageSel, leadsSel, partNumber,
     customCapUf, customRatedV, customEsrMohm, customEslNh, customIrmsA, customRthCW, customLmm, customTmm, customHmm, customPartRef,
     ambientTempC, coolingMethod, conductionRthCW, columns, spacingMm,
-    optimizeEnabled, maxWidthMm, maxDepthMm, maxHeightMm, optMaxHotSpotC, optObjective,
+    optimizeEnabled, maxWidthMm, maxDepthMm, maxHeightMm, optMaxHotSpotC, optMinRatedVoltageV, optObjective,
     loopMode, loopInductanceNh, busbarLenMm, busbarWidthMm, busbarSepMm, moduleEslNh, didtMode, switchedCurrentA, fallTimeNs, didtDirectAPerUs,
-  }), [busVoltageV, rippleVoltagePkPkV, outputFreqHz, switchingFreqKhz, phaseCurrentRmsA, powerFactor, modulationIndex, cableInductanceUh,
+  }), [sizingMode, knownCapacitanceUf, knownRippleCurrentA, busVoltageV, rippleVoltagePkPkV, outputFreqHz, switchingFreqKhz, phaseCurrentRmsA, powerFactor, modulationIndex, cableInductanceUh,
     capMode, supplier, series, voltageSel, leadsSel, partNumber, customCapUf, customRatedV, customEsrMohm, customEslNh, customIrmsA, customRthCW, customLmm, customTmm, customHmm, customPartRef,
     ambientTempC, coolingMethod, conductionRthCW, columns, spacingMm,
-    optimizeEnabled, maxWidthMm, maxDepthMm, maxHeightMm, optMaxHotSpotC, optObjective,
+    optimizeEnabled, maxWidthMm, maxDepthMm, maxHeightMm, optMaxHotSpotC, optMinRatedVoltageV, optObjective,
     loopMode, loopInductanceNh, busbarLenMm, busbarWidthMm, busbarSepMm, moduleEslNh, didtMode, switchedCurrentA, fallTimeNs, didtDirectAPerUs]);
 
   const restoreInputs = useCallback((inp: Record<string, unknown>) => {
     const v = inp as Record<string, any>;
     const set = <T,>(x: T | undefined | null, f: (val: T) => void) => { if (x != null) f(x); };
+    set(v.sizingMode, setSizingMode); set(v.knownCapacitanceUf, setKnownCapacitanceUf); set(v.knownRippleCurrentA, setKnownRippleCurrentA);
     set(v.busVoltageV, setBusVoltageV); set(v.rippleVoltagePkPkV, setRippleVoltagePkPkV); set(v.outputFreqHz, setOutputFreqHz);
     set(v.switchingFreqKhz, setSwitchingFreqKhz); set(v.phaseCurrentRmsA, setPhaseCurrentRmsA); set(v.powerFactor, setPowerFactor);
     set(v.modulationIndex, setModulationIndex); set(v.cableInductanceUh, setCableInductanceUh);
@@ -341,7 +367,7 @@ export default function DcLinkCalculator() {
     set(v.ambientTempC, setAmbientTempC); set(v.coolingMethod, setCoolingMethod); set(v.conductionRthCW, setConductionRthCW);
     set(v.columns, setColumns); set(v.spacingMm, setSpacingMm);
     set(v.optimizeEnabled, setOptimizeEnabled); set(v.maxWidthMm, setMaxWidthMm); set(v.maxDepthMm, setMaxDepthMm);
-    set(v.maxHeightMm, setMaxHeightMm); set(v.optMaxHotSpotC, setOptMaxHotSpotC); set(v.optObjective, setOptObjective);
+    set(v.maxHeightMm, setMaxHeightMm); set(v.optMaxHotSpotC, setOptMaxHotSpotC); set(v.optMinRatedVoltageV, setOptMinRatedVoltageV); set(v.optObjective, setOptObjective);
     set(v.loopMode, setLoopMode); set(v.loopInductanceNh, setLoopInductanceNh); set(v.busbarLenMm, setBusbarLenMm);
     set(v.busbarWidthMm, setBusbarWidthMm); set(v.busbarSepMm, setBusbarSepMm); set(v.moduleEslNh, setModuleEslNh);
     set(v.didtMode, setDidtMode); set(v.switchedCurrentA, setSwitchedCurrentA); set(v.fallTimeNs, setFallTimeNs); set(v.didtDirectAPerUs, setDidtDirectAPerUs);
@@ -360,26 +386,35 @@ export default function DcLinkCalculator() {
   }, [isPremium, entitlementLoading]);
 
   const calculationSteps: CalcStepData[] = useMemo(() => {
-    const steps: CalcStepData[] = [
-      {
-        title: 'DC-link RMS ripple current (Kolar & Round, Eq. 28)',
-        formula: 'I_C,rms = I_ph,rms·√{ 2M·[ √3/(4π) + cos²φ·(√3/π − 9M/16) ] }',
-        substitution: `I_ph = ${fmt(phaseCurrentRmsA, 0)} A rms, M = ${fmt(modulationIndex, 2)}, cos φ = ${fmt(powerFactor, 2)}`,
-        result: `I_C,rms = ${fmt(sizing.rippleCurrentRmsA, 1)} A (${fmt(sizing.rippleCurrentRatio, 2)} × phase current)`,
-      },
-      {
-        title: 'Capacitance for switching-ripple voltage',
-        formula: 'C = I_C,rms / (2π·f_sw·V_rip,rms),  V_rip,rms = ΔV_pp/(2√2)',
-        substitution: `f_sw = ${fmt(switchingFreqKhz, 1)} kHz, ΔV_pp = ${fmt(rippleVoltagePkPkV, 1)} V`,
-        result: `C(ripple) = ${fmt(sizing.capForVoltageRippleUf, 0)} µF`,
-      },
-      {
-        title: 'Source-decoupling minimum (cable inductance)',
-        formula: 'C ≥ 1/(L_cable·(2π·f_sw)²)  keeps the LC resonance below f_sw',
-        substitution: `L_cable = ${fmt(cableInductanceUh, 2)} µH`,
-        result: `C(decoupling) = ${fmt(sizing.capForDecouplingUf, 0)} µF → required = ${fmt(sizing.requiredCapacitanceUf, 0)} µF (governed by ${sizing.governedBy})`,
-      },
-    ];
+    const steps: CalcStepData[] = sizingMode === 'known'
+      ? [
+        {
+          title: 'Required capacitance and ripple current (entered directly)',
+          formula: 'Supplied by the user — the sizing derivation is skipped in this mode.',
+          substitution: `Bus voltage = ${fmt(busVoltageV, 0)} V`,
+          result: `Required C = ${fmt(effSizing.requiredCapacitanceUf, 0)} µF, I_C,rms = ${fmt(effSizing.rippleCurrentRmsA, 1)} A`,
+        },
+      ]
+      : [
+        {
+          title: 'DC-link RMS ripple current (Kolar & Round, Eq. 28)',
+          formula: 'I_C,rms = I_ph,rms·√{ 2M·[ √3/(4π) + cos²φ·(√3/π − 9M/16) ] }',
+          substitution: `I_ph = ${fmt(phaseCurrentRmsA, 0)} A rms, M = ${fmt(modulationIndex, 2)}, cos φ = ${fmt(powerFactor, 2)}`,
+          result: `I_C,rms = ${fmt(sizing.rippleCurrentRmsA, 1)} A (${fmt(sizing.rippleCurrentRatio, 2)} × phase current)`,
+        },
+        {
+          title: 'Capacitance for switching-ripple voltage',
+          formula: 'C = I_C,rms / (2π·f_sw·V_rip,rms),  V_rip,rms = ΔV_pp/(2√2)',
+          substitution: `f_sw = ${fmt(switchingFreqKhz, 1)} kHz, ΔV_pp = ${fmt(rippleVoltagePkPkV, 1)} V`,
+          result: `C(ripple) = ${fmt(sizing.capForVoltageRippleUf, 0)} µF`,
+        },
+        {
+          title: 'Source-decoupling minimum (cable inductance)',
+          formula: 'C ≥ 1/(L_cable·(2π·f_sw)²)  keeps the LC resonance below f_sw',
+          substitution: `L_cable = ${fmt(cableInductanceUh, 2)} µH`,
+          result: `C(decoupling) = ${fmt(sizing.capForDecouplingUf, 0)} µF → required = ${fmt(sizing.requiredCapacitanceUf, 0)} µF (governed by ${sizing.governedBy})`,
+        },
+      ];
     if (bank && cap) {
       steps.push({
         title: 'Capacitor count and loss',
@@ -409,17 +444,24 @@ export default function DcLinkCalculator() {
       result: `Device peak ${fmt(overshoot.devicePeakV, 0)} V (bus + ${fmt(overshoot.overshootDeviceV, 0)} V); cap-terminal peak ${fmt(overshoot.capPeakTransientV, 0)} V`,
     });
     return steps;
-  }, [phaseCurrentRmsA, modulationIndex, powerFactor, sizing, switchingFreqKhz, rippleVoltagePkPkV, cableInductanceUh, bank, cap, coolingMethod, ambientTempC, life, busVoltageV, loopInductanceTotalNh, bankEslNh, diDtAPerUs, overshoot]);
+  }, [sizingMode, effSizing, phaseCurrentRmsA, modulationIndex, powerFactor, sizing, switchingFreqKhz, rippleVoltagePkPkV, cableInductanceUh, bank, cap, coolingMethod, ambientTempC, life, busVoltageV, loopInductanceTotalNh, bankEslNh, diDtAPerUs, overshoot]);
 
   const inputSections: ReportSection[] = useMemo(() => {
-    const sys: ReportRow[] = [
-      { label: 'Bus voltage', value: `${fmt(busVoltageV, 0)} V` },
-      { label: 'Allowed ripple (pk-pk)', value: `${fmt(rippleVoltagePkPkV, 2)} V` },
-      { label: 'Output / switching freq', value: `${fmt(outputFreqHz, 0)} Hz / ${fmt(switchingFreqKhz, 1)} kHz` },
-      { label: 'Phase current', value: `${fmt(phaseCurrentRmsA, 0)} A rms` },
-      { label: 'Power factor / modulation', value: `${fmt(powerFactor, 2)} / M ${fmt(modulationIndex, 2)}` },
-      { label: 'Cable inductance', value: `${fmt(cableInductanceUh, 2)} µH` },
-    ];
+    const sys: ReportRow[] = sizingMode === 'known'
+      ? [
+        { label: 'Sizing mode', value: 'Required capacitance & ripple current entered directly' },
+        { label: 'Bus voltage', value: `${fmt(busVoltageV, 0)} V` },
+        { label: 'Required capacitance (entered)', value: `${fmt(effSizing.requiredCapacitanceUf, 0)} µF` },
+        { label: 'Ripple current (entered)', value: `${fmt(effSizing.rippleCurrentRmsA, 1)} A rms` },
+      ]
+      : [
+        { label: 'Bus voltage', value: `${fmt(busVoltageV, 0)} V` },
+        { label: 'Allowed ripple (pk-pk)', value: `${fmt(rippleVoltagePkPkV, 2)} V` },
+        { label: 'Output / switching freq', value: `${fmt(outputFreqHz, 0)} Hz / ${fmt(switchingFreqKhz, 1)} kHz` },
+        { label: 'Phase current', value: `${fmt(phaseCurrentRmsA, 0)} A rms` },
+        { label: 'Power factor / modulation', value: `${fmt(powerFactor, 2)} / M ${fmt(modulationIndex, 2)}` },
+        { label: 'Cable inductance', value: `${fmt(cableInductanceUh, 2)} µH` },
+      ];
     const capRows: ReportRow[] = cap ? [
       { label: 'Capacitor', value: `${capMode === 'custom' ? 'Custom' : `${supplier} ${series}`} ${cap.partNumber}` },
       { label: 'Per-cap C / V', value: `${fmt(cap.capacitanceUf, 0)} µF / ${fmt(cap.ratedVoltageVdc, 0)} V` },
@@ -431,12 +473,12 @@ export default function DcLinkCalculator() {
       { heading: 'System operating point', rows: sys },
       { heading: 'Capacitor & cooling', rows: capRows },
     ];
-  }, [busVoltageV, rippleVoltagePkPkV, outputFreqHz, switchingFreqKhz, phaseCurrentRmsA, powerFactor, modulationIndex, cableInductanceUh, cap, capMode, supplier, series, coolingMethod, ambientTempC]);
+  }, [sizingMode, effSizing, busVoltageV, rippleVoltagePkPkV, outputFreqHz, switchingFreqKhz, phaseCurrentRmsA, powerFactor, modulationIndex, cableInductanceUh, cap, capMode, supplier, series, coolingMethod, ambientTempC]);
 
   const outputSections: ReportSection[] = useMemo(() => {
     const rows: ReportRow[] = [
-      { label: 'DC-link ripple current', value: `${fmt(sizing.rippleCurrentRmsA, 1)} A rms` },
-      { label: 'Required capacitance', value: `${fmt(sizing.requiredCapacitanceUf, 0)} µF (${sizing.governedBy})` },
+      { label: 'DC-link ripple current', value: `${fmt(effSizing.rippleCurrentRmsA, 1)} A rms${sizingMode === 'known' ? ' (entered)' : ''}` },
+      { label: 'Required capacitance', value: `${fmt(effSizing.requiredCapacitanceUf, 0)} µF${sizingMode === 'known' ? ' (entered)' : ` (${sizing.governedBy})`}` },
     ];
     if (bank && cap) {
       rows.push({ label: 'Peak capacitor voltage', value: `${fmt(peakVoltageV, 0)} V (bus ${fmt(busVoltageV, 0)} + ½ ripple) vs ${fmt(cap.ratedVoltageVdc, 0)} V rated` });
@@ -452,7 +494,7 @@ export default function DcLinkCalculator() {
       { heading: 'Sizing & bank', rows },
       { heading: 'Checks', rows: checks.map((c) => ({ label: `${c.severity === 'pass' ? '✓' : c.severity === 'warn' ? '⚠' : '✗'} ${c.label}`, value: c.detail })) },
     ];
-  }, [sizing, bank, cap, life, checks, peakVoltageV, busVoltageV]);
+  }, [sizingMode, effSizing, sizing, bank, cap, life, checks, peakVoltageV, busVoltageV]);
 
   const handleExportPdf = () => {
     exportReportToPdf({
@@ -497,28 +539,53 @@ export default function DcLinkCalculator() {
           <div className="card">
             <div className="card-title">
               <span><span className="step-num">1</span>System operating point
-                <InfoTooltip>The inverter's DC-side operating point. Modulation index M is the space-vector depth (≈ V_phase,pk/(V_dc/2), up to ~1.15); the ripple current peaks near M ≈ 0.6. Cable inductance is the DC-side stray/loop inductance between the source and the capacitor.</InfoTooltip>
+                <InfoTooltip>The inverter's DC-side operating point. Modulation index M is the space-vector depth (≈ V_phase,pk/(V_dc/2), up to ~1.15); the ripple current peaks near M ≈ 0.6. Cable inductance is the DC-side stray/loop inductance between the source and the capacitor. Switch to "Known capacitance" if you already have the required capacitance and ripple current and just want the bank/thermal/optimiser sizing.</InfoTooltip>
               </span>
             </div>
-            <div className="grid grid-2">
-              <div className="field"><label>Bus voltage (V)</label>{seriesNum(busVoltageV, setBusVoltageV, { step: 10, min: 0 })}</div>
-              <div className="field"><label>Allowed ripple, pk-pk (V)</label>{seriesNum(rippleVoltagePkPkV, setRippleVoltagePkPkV, { step: 0.5, min: 0 })}</div>
-              <div className="field"><label>Output frequency (Hz)</label>{seriesNum(outputFreqHz, setOutputFreqHz, { step: 10, min: 0 })}</div>
-              <div className="field"><label>Switching frequency (kHz)</label>{seriesNum(switchingFreqKhz, setSwitchingFreqKhz, { step: 1, min: 0.1 })}</div>
-              <div className="field"><label>Phase current (A rms)</label>{seriesNum(phaseCurrentRmsA, setPhaseCurrentRmsA, { step: 10, min: 0 })}</div>
-              <div className="field"><label>Power factor cos φ</label>{seriesNum(powerFactor, setPowerFactor, { step: 0.05, min: 0, max: 1 })}</div>
-              <div className="field"><label>Modulation index M</label>{seriesNum(modulationIndex, setModulationIndex, { step: 0.05, min: 0, max: 1.15 })}</div>
-              <div className="field"><label>Cable inductance (µH)</label>{seriesNum(cableInductanceUh, setCableInductanceUh, { step: 0.1, min: 0 })}</div>
-              <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <MotorProfilePicker onApply={applyMotorProfile} hint="Sets the phase current from a saved motor profile's peak (preferred) or continuous current rating." />
-              </div>
-              <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <BatteryProfilePicker onApply={applyBatteryProfile} hint="Sets the bus voltage from a saved battery profile's max voltage, and cable inductance from its pack inductance if set." />
-              </div>
-              <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <ControllerProfilePicker onApply={applyControllerProfile} hint="Sets the bus voltage from a saved controller profile's max DC voltage, and switching frequency if set." />
+            <div className="field">
+              <div className="segmented">
+                <button className={sizingMode === 'derive' ? 'active' : ''} onClick={() => setSizingMode('derive')}>Derive from operating point</button>
+                <button className={sizingMode === 'known' ? 'active' : ''} onClick={() => setSizingMode('known')}>Known capacitance</button>
               </div>
             </div>
+            {sizingMode === 'known' ? (
+              <>
+                <div className="grid grid-2" style={{ marginTop: '0.6rem' }}>
+                  <div className="field"><label>Bus voltage (V)</label>{seriesNum(busVoltageV, setBusVoltageV, { step: 10, min: 0 })}</div>
+                  <div className="field"><label>Required capacitance (µF)</label>{seriesNum(knownCapacitanceUf, setKnownCapacitanceUf, { step: 10, min: 0 })}</div>
+                  <div className="field">
+                    <label>Ripple current (A rms)<InfoTooltip>The RMS ripple current the bank must carry. Together with the capacitance and bus voltage, this is all that's needed to size the parallel count, thermal behaviour and optimum bank — every operating-point input that only feeds the capacitance derivation is hidden in this mode.</InfoTooltip></label>
+                    {seriesNum(knownRippleCurrentA, setKnownRippleCurrentA, { step: 5, min: 0 })}
+                  </div>
+                </div>
+                <div className="field" style={{ marginTop: '0.6rem' }}>
+                  <BatteryProfilePicker onApply={applyBatteryProfile} hint="Sets the bus voltage from a saved battery profile's max voltage." />
+                </div>
+                <div className="field">
+                  <ControllerProfilePicker onApply={applyControllerProfile} hint="Sets the bus voltage from a saved controller profile's max DC voltage." />
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-2" style={{ marginTop: '0.6rem' }}>
+                <div className="field"><label>Bus voltage (V)</label>{seriesNum(busVoltageV, setBusVoltageV, { step: 10, min: 0 })}</div>
+                <div className="field"><label>Allowed ripple, pk-pk (V)</label>{seriesNum(rippleVoltagePkPkV, setRippleVoltagePkPkV, { step: 0.5, min: 0 })}</div>
+                <div className="field"><label>Output frequency (Hz)</label>{seriesNum(outputFreqHz, setOutputFreqHz, { step: 10, min: 0 })}</div>
+                <div className="field"><label>Switching frequency (kHz)</label>{seriesNum(switchingFreqKhz, setSwitchingFreqKhz, { step: 1, min: 0.1 })}</div>
+                <div className="field"><label>Phase current (A rms)</label>{seriesNum(phaseCurrentRmsA, setPhaseCurrentRmsA, { step: 10, min: 0 })}</div>
+                <div className="field"><label>Power factor cos φ</label>{seriesNum(powerFactor, setPowerFactor, { step: 0.05, min: 0, max: 1 })}</div>
+                <div className="field"><label>Modulation index M</label>{seriesNum(modulationIndex, setModulationIndex, { step: 0.05, min: 0, max: 1.15 })}</div>
+                <div className="field"><label>Cable inductance (µH)</label>{seriesNum(cableInductanceUh, setCableInductanceUh, { step: 0.1, min: 0 })}</div>
+                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                  <MotorProfilePicker onApply={applyMotorProfile} hint="Sets the phase current from a saved motor profile's peak (preferred) or continuous current rating." />
+                </div>
+                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                  <BatteryProfilePicker onApply={applyBatteryProfile} hint="Sets the bus voltage from a saved battery profile's max voltage, and cable inductance from its pack inductance if set." />
+                </div>
+                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                  <ControllerProfilePicker onApply={applyControllerProfile} hint="Sets the bus voltage from a saved controller profile's max DC voltage, and switching frequency if set." />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="card">
@@ -654,6 +721,11 @@ export default function DcLinkCalculator() {
                   <label>Max hot-spot ({tempUnit})</label>
                   <input autoComplete="off" type="number" value={toDisplay(optMaxHotSpotC, unitSystem, UNIT_TEMP)} onChange={(e) => setOptMaxHotSpotC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
                 </div>
+                <div className="field">
+                  <label>Min rated voltage (VDC)<InfoTooltip>Only consider capacitors rated at or above this voltage — use it to bake voltage margin into the selection (e.g. 1.3–1.5× the bus voltage). The peak voltage (bus + ½ ripple) is always enforced as a hard floor regardless; 0 means "use the peak only".</InfoTooltip></label>
+                  <input autoComplete="off" type="number" min={0} step={10} value={optMinRatedVoltageV} onChange={(e) => setOptMinRatedVoltageV(Number(e.target.value))} />
+                  <span className="hint">Effective floor: {fmt(Math.max(peakVoltageV, optMinRatedVoltageV), 0)} V (peak {fmt(peakVoltageV, 0)} V{optMinRatedVoltageV > peakVoltageV ? `, margin ${fmt(optMinRatedVoltageV, 0)} V` : ''}).</span>
+                </div>
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
                   <label>Optimise for</label>
                   <select value={optObjective} onChange={(e) => setOptObjective(e.target.value as OptimizeObjective)}>
@@ -662,6 +734,7 @@ export default function DcLinkCalculator() {
                     <option value="count">Fewest capacitors</option>
                     <option value="mass">Lowest mass</option>
                     <option value="coolest">Lowest hot-spot temp</option>
+                    <option value="cost">Lowest cost (indicative)</option>
                   </select>
                 </div>
               </div>
@@ -749,13 +822,13 @@ export default function DcLinkCalculator() {
             <div className="result-grid">
               <div className="result-tile">
                 <div className="label">DC-link ripple current<InfoTooltip>RMS current the capacitor bank must carry (Kolar &amp; Round). This, not capacitance, usually sets the part count.</InfoTooltip></div>
-                <div className="value">{fmt(sizing.rippleCurrentRmsA, 1)}<span className="unit">A</span></div>
-                <div className="hint">{fmt(sizing.rippleCurrentRatio, 2)} × phase current</div>
+                <div className="value">{fmt(effSizing.rippleCurrentRmsA, 1)}<span className="unit">A</span></div>
+                <div className="hint">{sizingMode === 'known' ? 'entered directly' : `${fmt(effSizing.rippleCurrentRatio, 2)} × phase current`}</div>
               </div>
               <div className="result-tile">
                 <div className="label">Required capacitance</div>
-                <div className="value">{fmt(sizing.requiredCapacitanceUf, 0)}<span className="unit">µF</span></div>
-                <div className="hint">governed by {sizing.governedBy}</div>
+                <div className="value">{fmt(effSizing.requiredCapacitanceUf, 0)}<span className="unit">µF</span></div>
+                <div className="hint">{sizingMode === 'known' ? 'entered directly' : `governed by ${sizing.governedBy}`}</div>
               </div>
               <div className="result-tile">
                 <div className="label">Peak capacitor voltage<InfoTooltip>DC bus + ½ the pk-pk ripple. The datasheets require the peak voltage (DC + superimposed ripple) to stay within the rated voltage — so the ripple pushes the required voltage rating up, not just the DC bus.</InfoTooltip></div>
@@ -806,7 +879,7 @@ export default function DcLinkCalculator() {
                     <thead>
                       <tr>
                         <th>Capacitor</th><th>N</th><th>Grid</th>
-                        <th>Envelope ({lenUnit})</th><th>Vol (cm³)</th><th>Mass (g)</th><th>Hot spot</th><th>Total C</th><th></th>
+                        <th>Envelope ({lenUnit})</th><th>Vol (cm³)</th><th>Mass (g)</th><th>Hot spot</th><th>Total C</th><th>Cost ($)*</th><th></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -820,12 +893,14 @@ export default function DcLinkCalculator() {
                           <td>{fmt(c.massG, 0)}</td>
                           <td>{fmtU(c.hotSpotTempC, unitSystem, UNIT_TEMP, 0)}{tempUnit}</td>
                           <td>{fmt(c.totalCapacitanceUf, 0)} µF</td>
+                          <td>{fmt(c.costUsd, 0)}</td>
                           <td><button className="btn small" onClick={() => applyCandidate(c)}>Use</button></td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  <span className="hint">Best per {optObjective === 'volume' ? 'smallest volume' : optObjective === 'area' ? 'smallest board area' : optObjective === 'count' ? 'fewest capacitors' : optObjective === 'mass' ? 'lowest mass' : 'lowest hot-spot'} highlighted. Top pick: {fmt(optResults[0].capDensityUfPerCm3, 2)} µF/cm³, ESR {fmt(optResults[0].bankEsrMohm, 3)} mΩ, ESL {fmt(optResults[0].bankEslNh, 1)} nH, {fmt(optResults[0].massG, 0)} g, loss {fmt(optResults[0].lossTotalW, 1)} W.</span>
+                  <span className="hint">Best per {optObjective === 'volume' ? 'smallest volume' : optObjective === 'area' ? 'smallest board area' : optObjective === 'count' ? 'fewest capacitors' : optObjective === 'mass' ? 'lowest mass' : optObjective === 'cost' ? 'lowest indicative cost' : 'lowest hot-spot'} highlighted. Top pick: {fmt(optResults[0].capDensityUfPerCm3, 2)} µF/cm³, ESR {fmt(optResults[0].bankEsrMohm, 3)} mΩ, ESL {fmt(optResults[0].bankEslNh, 1)} nH, {fmt(optResults[0].massG, 0)} g, loss {fmt(optResults[0].lossTotalW, 1)} W, ~${fmt(optResults[0].costUsd, 0)}.</span>
+                  <span className="hint" style={{ display: 'block', marginTop: '0.35rem' }}>* Cost is a <b>parametric indicative estimate</b> (base + rate × the capacitance-voltage product, with an automotive-grade premium), for relative comparison and cost-ranking only — not a quote. Verify against a live distributor price before relying on it.</span>
                 </div>
               )}
             </div>

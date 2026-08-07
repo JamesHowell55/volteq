@@ -17,6 +17,7 @@
 // M ≈ 0.6, reaching ~0.6–0.65 · I_ph,rms — the classic motor-drive result.
 
 import type { DcLinkCapacitor } from './dcLinkCapacitors';
+import { indicativeCapCostUsd } from './dcLinkCapacitors';
 
 const SQRT3 = Math.sqrt(3);
 
@@ -238,7 +239,7 @@ export function solveCapBank(inp: CapBankInput): CapBankResult {
 // most compact grid that fits the envelope, then all parts are ranked by the
 // chosen objective.
 
-export type OptimizeObjective = 'volume' | 'area' | 'count' | 'coolest' | 'mass';
+export type OptimizeObjective = 'volume' | 'area' | 'count' | 'coolest' | 'mass' | 'cost';
 
 // Effective packaged density of a box-type metallized-PP-film DC-link capacitor
 // (film + resin fill + plastic box + terminals), used to estimate mass from the
@@ -254,7 +255,8 @@ export function capMassG(cap: DcLinkCapacitor): number {
 export interface OptimizeInput {
   requiredCapacitanceUf: number;
   rippleCurrentRmsA: number;
-  peakVoltageV: number;        // V_dc + ripple/2 — the rating must exceed this
+  peakVoltageV: number;        // V_dc + ripple/2 — the rating must exceed this (hard floor)
+  minRatedVoltageV: number;    // extra voltage-margin floor: caps must also be rated >= this (0 = ignore)
   ambientTempC: number;
   coolingMethod: CoolingMethod;
   conductionRthCW: number;
@@ -283,6 +285,7 @@ export interface OptimizeCandidate {
   bankEslNh: number;
   lossTotalW: number;
   capDensityUfPerCm3: number;
+  costUsd: number;             // indicative bank cost = count × per-cap indicative cost (see dcLinkCapacitors)
 }
 
 function gridHotSpotC(cap: DcLinkCapacitor, count: number, cols: number, rows: number, inp: OptimizeInput): number {
@@ -299,8 +302,9 @@ export function optimizeDcLinkBank(caps: DcLinkCapacitor[], inp: OptimizeInput):
   const s = inp.spacingMm;
   const out: OptimizeCandidate[] = [];
 
+  const voltageFloor = Math.max(inp.peakVoltageV, inp.minRatedVoltageV);
   for (const cap of caps) {
-    if (cap.ratedVoltageVdc < inp.peakVoltageV) continue;                // rating must exceed the peak (DC + ripple/2)
+    if (cap.ratedVoltageVdc < voltageFloor) continue;                    // rating must exceed the peak (DC + ripple/2) and any extra margin floor
     if (inp.maxHeightMm > 0 && cap.boxHeightMm > inp.maxHeightMm) continue;
 
     const colsMax = inp.maxWidthMm > 0 ? Math.floor((inp.maxWidthMm + s) / (cap.boxLengthMm + s)) : 1000;
@@ -339,6 +343,7 @@ export function optimizeDcLinkBank(caps: DcLinkCapacitor[], inp: OptimizeInput):
           bankEsrMohm: cap.esrMohm / n, bankEslNh: cap.eslNh / n,
           lossTotalW: Math.pow(inp.rippleCurrentRmsA / n, 2) * (cap.esrMohm / 1000) * n,
           capDensityUfPerCm3: volumeCm3 > 0 ? totalC / volumeCm3 : 0,
+          costUsd: n * indicativeCapCostUsd(cap),
         };
         break; // minimum feasible count for this part
       }
@@ -352,6 +357,7 @@ export function optimizeDcLinkBank(caps: DcLinkCapacitor[], inp: OptimizeInput):
     count: (a, b) => a.count - b.count || a.volumeCm3 - b.volumeCm3,
     coolest: (a, b) => a.hotSpotTempC - b.hotSpotTempC || a.volumeCm3 - b.volumeCm3,
     mass: (a, b) => a.massG - b.massG,
+    cost: (a, b) => a.costUsd - b.costUsd || a.volumeCm3 - b.volumeCm3,
   };
   out.sort(cmp[inp.objective]);
   return out.slice(0, 6);
