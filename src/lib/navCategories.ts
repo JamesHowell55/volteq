@@ -74,6 +74,7 @@ export const NAV_CATEGORIES: NavCategory[] = [
   {
     label: 'Thermal',
     links: [
+      { label: 'Flow in Pipes / Pump Sizing', path: '/flow-in-pipes', available: true, seoTitle: 'Flow in Pipes Calculator — Pressure Drop & Coolant Pump Sizing', description: 'Pressure drop of a liquid in a pipe or hose run via Darcy-Weisbach with the Swamee-Jain friction factor, fitting minor losses and static head, plus the required pump head, hydraulic and shaft power — pairs with the heatsink and heat-exchanger calculators to size a liquid-cooling loop.' },
       { label: 'Heat Exchanger Sizing', path: '/heat-exchanger-sizing', available: true, seoTitle: 'Heat Exchanger Sizing Calculator — Radiator & Oil Cooler (ε-NTU)', description: 'Liquid-to-air heat exchanger sizing (radiator, oil cooler, chiller core) via the effectiveness-NTU crossflow method — round-tube plate-fin, louvered-fin, or microchannel flat-tube core geometry, coolant flow rate and inlet temperature, air face velocity and temperature, giving heat rejected and both outlet temperatures.' },
       { label: 'Heatsink Thermal Calculator', path: '/heatsink-thermal', available: true, seoTitle: 'Heatsink Thermal Calculator — Junction-to-Ambient Rth Sizing', description: 'Junction-to-ambient thermal budget for a power device (pairs with the MOSFET Loss calculator) — check a sink\'s thermal resistance directly, or size a natural-convection fin array from its geometry via the Churchill-Chu correlation and rectangular-fin efficiency.' },
     ],

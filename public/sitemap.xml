@@ -117,6 +117,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://volteq.io/flow-in-pipes</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://volteq.io/speed-torque-power</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -263,6 +268,11 @@
   </url>
   <url>
     <loc>https://volteq.io/guides/heat-exchanger-ntu</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/guides/flow-in-pipes</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

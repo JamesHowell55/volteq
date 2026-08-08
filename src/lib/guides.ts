@@ -233,6 +233,17 @@ export const GUIDES: GuideMeta[] = [
     calculator: { label: 'Heat Exchanger Sizing Calculator', path: '/heat-exchanger-sizing' },
   },
   {
+    slug: 'flow-in-pipes',
+    title: 'Pipe Pressure Drop & Pump Sizing: Darcy-Weisbach and the Friction Factor',
+    standard: 'Darcy-Weisbach / Colebrook-White',
+    seoTitle: 'Pipe Pressure Drop Explained — Darcy-Weisbach, Friction Factor & Pump Head',
+    seoDescription:
+      'A plain-language guide to sizing a coolant pump: how Darcy-Weisbach turns flow, pipe size and roughness into a pressure drop, where the friction factor comes from (laminar vs turbulent, Swamee-Jain), how fitting minor losses add up, and how pressure drop becomes pump head and power.',
+    blurb:
+      'How Darcy-Weisbach turns flow, pipe size and roughness into a pressure drop, and how that becomes the pump head and power you need to specify.',
+    calculator: { label: 'Flow in Pipes / Pump Sizing', path: '/flow-in-pipes' },
+  },
+  {
     slug: 'heatsink-thermal',
     title: 'Heatsink Sizing: Junction-to-Ambient Rth and Natural-Convection Fin Arrays',
     standard: 'Heatsink Thermal Design',
