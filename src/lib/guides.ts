@@ -233,6 +233,17 @@ export const GUIDES: GuideMeta[] = [
     calculator: { label: 'Heat Exchanger Sizing Calculator', path: '/heat-exchanger-sizing' },
   },
   {
+    slug: 'cold-plate',
+    title: 'Cold Plate Design: Rectangular-Channel Heat Transfer and Pressure Drop',
+    standard: 'Liquid Cold Plate Design',
+    seoTitle: 'Cold Plate Design Explained — Channel Heat Transfer, Pressure Drop & Rth',
+    seoDescription:
+      'A plain-language guide to sizing a liquid cold plate: why a rectangular channel isn\'t a round pipe, how the Shah-London correlations set the heat-transfer coefficient and friction, how bends add pressure drop, and how it all becomes a thermal resistance and base temperature.',
+    blurb:
+      'Why a rectangular channel isn\'t a round pipe, how Shah-London sets the heat-transfer coefficient and friction, and how it all becomes a base temperature.',
+    calculator: { label: 'Cold Plate Designer', path: '/cold-plate' },
+  },
+  {
     slug: 'flow-in-pipes',
     title: 'Pipe Pressure Drop & Pump Sizing: Darcy-Weisbach and the Friction Factor',
     standard: 'Darcy-Weisbach / Colebrook-White',

@@ -25,6 +25,7 @@ import GroundStrapInductanceCalculator from './pages/GroundStrapInductanceCalcul
 import HeatsinkThermalCalculator from './pages/HeatsinkThermalCalculator';
 import HeatExchangerSizingCalculator from './pages/HeatExchangerSizingCalculator';
 import FlowInPipesCalculator from './pages/FlowInPipesCalculator';
+import ColdPlateCalculator from './pages/ColdPlateCalculator';
 import BundleDiameterCalculator from './pages/BundleDiameterCalculator';
 import HarnessDesigner from './pages/HarnessDesigner';
 import PcbTraceCalculator from './pages/PcbTraceCalculator';
@@ -62,6 +63,7 @@ import EnclosureResonanceGuide from './pages/guides/EnclosureResonanceGuide';
 import GroundStrapInductanceGuide from './pages/guides/GroundStrapInductanceGuide';
 import HeatExchangerNtuGuide from './pages/guides/HeatExchangerNtuGuide';
 import FlowInPipesGuide from './pages/guides/FlowInPipesGuide';
+import ColdPlateGuide from './pages/guides/ColdPlateGuide';
 import FieldOrientedControlGuide from './pages/guides/FieldOrientedControlGuide';
 import BoltGroupElasticGuide from './pages/guides/BoltGroupElasticGuide';
 import EulerBernoulliBeamsGuide from './pages/guides/EulerBernoulliBeamsGuide';
@@ -131,6 +133,7 @@ function App() {
               <Route path="/heatsink-thermal" element={<HeatsinkThermalCalculator />} />
               <Route path="/heat-exchanger-sizing" element={<HeatExchangerSizingCalculator />} />
               <Route path="/flow-in-pipes" element={<FlowInPipesCalculator />} />
+              <Route path="/cold-plate" element={<ColdPlateCalculator />} />
               <Route path="/dc-link" element={<DcLinkCalculator />} />
               <Route path="/harness-bundle-diameter" element={<BundleDiameterCalculator />} />
               <Route path="/harness-designer" element={<HarnessDesigner />} />
@@ -157,6 +160,7 @@ function App() {
               <Route path="/guides/ground-strap-inductance" element={<GroundStrapInductanceGuide />} />
               <Route path="/guides/heat-exchanger-ntu" element={<HeatExchangerNtuGuide />} />
               <Route path="/guides/flow-in-pipes" element={<FlowInPipesGuide />} />
+              <Route path="/guides/cold-plate" element={<ColdPlateGuide />} />
               <Route path="/guides/field-oriented-control" element={<FieldOrientedControlGuide />} />
               <Route path="/guides/bolt-group-elastic" element={<BoltGroupElasticGuide />} />
               <Route path="/guides/euler-bernoulli-beams" element={<EulerBernoulliBeamsGuide />} />
