@@ -54,7 +54,11 @@ export default function ColdPlateGuide() {
         watch both numbers move: the pins are only worth it where the heat flux genuinely demands them, and the pump
         has to be sized for the penalty. The physics here uses the Zukauskas staggered-bank correlation for the heat
         transfer and the Gaddis-Gnielinski (VDI Heat Atlas) drag coefficient for the pressure drop, both classic
-        tube-bank methods applied to the pins, with each pin derated by its own fin efficiency.
+        tube-bank methods applied to the pins, with each pin derated by its own fin efficiency. One detail that
+        trips people up: on a direct-cooled module the pinned baseplate <em>is</em> the sealing surface, so only
+        that side is heated and the pin tip's fate depends on the housing — a tip left wetted in an open coolant
+        cavity sheds a little extra heat, while a tip that bottoms out against the sealed housing floor sheds none
+        there. The calculator lets you pick that tip boundary because it shifts the fin efficiency.
       </p>
 
       <GuideDeepDive

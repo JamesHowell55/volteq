@@ -64,6 +64,9 @@ export interface PinFinConfig {
   pitchTransverseMm: number;   // S_T, spacing across the flow
   pitchLongitudinalMm: number; // S_L, spacing along the flow (row-to-row)
   finConductivityWmK: number;  // pin material conductivity (Cu ≈ 385, Al ≈ 167)
+  // Pin-tip boundary: 'convecting' = tip wetted in an open coolant cavity (corrected
+  // length); 'adiabatic' = tip bottomed against the sealed housing floor (no tip loss).
+  tipBoundary?: 'adiabatic' | 'convecting';
 }
 
 export type Segment =
@@ -266,14 +269,19 @@ export function solveColdPlate(inp: ColdPlateInput): ColdPlateResult {
       const majorSeg = 0.5 * dragCoeff * nRows * fluid.rho * uMax * uMax;
 
       // Effective heat-transfer area: bare base between pins + pin lateral area × fin efficiency.
+      // The pinned baseplate is the sealing surface, so only the base side is heated; the tip
+      // boundary depends on whether the pin sits in an open cavity (convecting) or bottoms out
+      // against the sealed housing (adiabatic). effLen carries the tip condition into both the
+      // fin efficiency and the lateral area so the two stay consistent.
       const nPins = (wM * lenM) / (stM * slM);
-      const pinLateral = nPins * Math.PI * dM * hM;
       const pinFootprint = nPins * Math.PI * dM * dM / 4;
       const baseArea = Math.max(0, wM * lenM - pinFootprint);
       const kFin = Math.max(1, seg.pins.finConductivityWmK);
       const m = Math.sqrt((4 * htc) / (kFin * dM));       // fin parameter, circular pin
-      const lc = hM + dM / 4;                              // corrected length (tip convection)
-      const finEff = m * lc > 0 ? Math.tanh(m * lc) / (m * lc) : 1;
+      const convectingTip = (seg.pins.tipBoundary ?? 'convecting') === 'convecting';
+      const effLen = convectingTip ? hM + dM / 4 : hM;    // corrected length (tip loss) vs adiabatic tip
+      const finEff = m * effLen > 0 ? Math.tanh(m * effLen) / (m * effLen) : 1;
+      const pinLateral = nPins * Math.PI * dM * effLen;    // per channel, matches tip condition
       const effAreaM2 = baseArea + finEff * pinLateral;    // per channel
 
       majorDrop += majorSeg;

@@ -23,7 +23,7 @@ const PIN_MATERIALS = [
   { label: 'Copper pins', k: 385 },
   { label: 'Aluminium pins', k: 167 },
 ];
-const DEFAULT_PINS: PinFinConfig = { diaMm: 1, pitchTransverseMm: 2, pitchLongitudinalMm: 2, finConductivityWmK: 385 };
+const DEFAULT_PINS: PinFinConfig = { diaMm: 1, pitchTransverseMm: 2, pitchLongitudinalMm: 2, finConductivityWmK: 385, tipBoundary: 'convecting' };
 
 function fmt(n: number, digits = 2): string {
   if (!isFinite(n)) return '—';
@@ -224,7 +224,7 @@ export default function ColdPlateCalculator() {
       outputSections,
       calculationSteps,
       disclaimer:
-        'Rectangular-channel liquid cold plate, steady single-phase Newtonian flow. Friction factor from the rectangular-duct Poiseuille number f·Re = 96·(1 − 1.3553α + …) (laminar, Shah & London) and Swamee-Jain (turbulent), interpolated across the 2300–4000 transitional band. Heat-transfer coefficient from the constant-heat-flux (H1) rectangular-duct laminar Nusselt 8.235·(1 − 2.0421α + …) and Dittus-Boelter (turbulent). Bend minor-loss K values (45°≈0.3, 90°≈1.1, 180°≈2.0) are representative for sharp milled bends and vary with radius. Offset pin-fin sections (direct-cooled baseplates) are modelled as a staggered pin bank in cross-flow: Zukauskas Nusselt for heat transfer and the Gaddis-Gnielinski (VDI Heat Atlas) drag coefficient per row for pressure drop, both on the max gap velocity and pin diameter, with a circular-fin efficiency on the pins; the few-row (f_nt) correction and wall Pr ratio are neglected and pin tips treated as free. The channel side and top walls are treated as fully-effective heat-transfer area (no fin-efficiency derating — a first-order over-estimate of UA); flow is assumed fully developed. Fluid density/cp reuse this site\'s coolant presets (single representative values) and ν/k/Pr the Heat Exchanger transport table. Base conduction, when enabled, is 1-D (t/(k·A), no spreading resistance). Verify against CFD or a bench test for a final design.',
+        'Rectangular-channel liquid cold plate, steady single-phase Newtonian flow. Friction factor from the rectangular-duct Poiseuille number f·Re = 96·(1 − 1.3553α + …) (laminar, Shah & London) and Swamee-Jain (turbulent), interpolated across the 2300–4000 transitional band. Heat-transfer coefficient from the constant-heat-flux (H1) rectangular-duct laminar Nusselt 8.235·(1 − 2.0421α + …) and Dittus-Boelter (turbulent). Bend minor-loss K values (45°≈0.3, 90°≈1.1, 180°≈2.0) are representative for sharp milled bends and vary with radius. Offset pin-fin sections (direct-cooled baseplates) are modelled as a staggered pin bank in cross-flow: Zukauskas Nusselt for heat transfer and the Gaddis-Gnielinski (VDI Heat Atlas) drag coefficient per row for pressure drop, both on the max gap velocity and pin diameter, with a selectable circular-fin efficiency on the pins (open-cavity wetted tip or adiabatic against-housing tip, since the pinned baseplate is the sealing surface); the few-row (f_nt) correction and wall Pr ratio are neglected and tip-clearance bypass is not modelled. The channel side and top walls are treated as fully-effective heat-transfer area (no fin-efficiency derating — a first-order over-estimate of UA); flow is assumed fully developed. Fluid density/cp reuse this site\'s coolant presets (single representative values) and ν/k/Pr the Heat Exchanger transport table. Base conduction, when enabled, is 1-D (t/(k·A), no spreading resistance). Verify against CFD or a bench test for a final design.',
       ...branding,
     });
   };
@@ -367,6 +367,15 @@ export default function ColdPlateCalculator() {
                           <label style={{ fontSize: '0.72rem' }}>Pin material</label>
                           <select value={seg.pins.finConductivityWmK} onChange={(e) => updatePins(i, { finConductivityWmK: Number(e.target.value) })}>
                             {PIN_MATERIALS.map((m) => <option key={m.label} value={m.k}>{m.label}</option>)}
+                          </select>
+                        </div>
+                        <div className="field" style={{ flex: 1, minWidth: 150, marginBottom: 0 }}>
+                          <label style={{ fontSize: '0.72rem' }}>Pin tip
+                            <InfoTooltip>The pinned baseplate is the sealing surface, so how the pin tip meets the housing sets its fin boundary. <b>Open cavity</b>: tip is wetted by coolant (corrected-length tip convection). <b>Against housing</b>: tip bottoms out on the sealed housing floor, so it loses no heat there (adiabatic tip).</InfoTooltip>
+                          </label>
+                          <select value={seg.pins.tipBoundary ?? 'convecting'} onChange={(e) => updatePins(i, { tipBoundary: e.target.value as 'adiabatic' | 'convecting' })}>
+                            <option value="convecting">Open cavity (wetted tip)</option>
+                            <option value="adiabatic">Against housing (adiabatic)</option>
                           </select>
                         </div>
                       </div>
@@ -514,10 +523,13 @@ export default function ColdPlateCalculator() {
           with the tube-row correction Cₙ). Pressure drop uses the <strong>Gaddis-Gnielinski</strong> (VDI Heat Atlas)
           staggered drag coefficient per row, ΔP = ½·ζ·N_rows·ρ·u_max², so packing the pins tighter raises the
           pressure drop sharply. Each pin's contribution is derated by a circular-fin efficiency
-          (tanh(mL)/mL, m = √(4h/k_pin·D), tip-corrected) using the selected pin material. The few-row inlet/outlet
-          correction (f_nt) is neglected (valid for ≳10 rows), the wall-to-fluid Pr ratio is taken as 1, and the pin
-          tips are treated as free (not bonded to the opposite wall) — reasonable for a first-order estimate, but
-          confirm a direct-cooled design against CFD or a bench test.
+          (tanh(mL)/mL, m = √(4h/k_pin·D)) using the selected pin material. Because the pinned baseplate is itself
+          the sealing surface, only the base side is heated and you pick the pin-tip boundary: an <em>open-cavity</em>
+          tip wetted by coolant (corrected length L + D/4) or an <em>against-housing</em> tip that bottoms out on the
+          sealed housing floor and loses no heat there (adiabatic). The few-row inlet/outlet correction (f_nt) is
+          neglected (valid for ≳10 rows), the wall-to-fluid Pr ratio is taken as 1, and any tip-clearance bypass flow
+          is not modelled — reasonable for a first-order estimate, but confirm a direct-cooled design against CFD or a
+          bench test.
         </p>
         <p className="note">
           <b>Validated:</b> the rectangular-duct correlations reproduce their Shah &amp; London anchor values
