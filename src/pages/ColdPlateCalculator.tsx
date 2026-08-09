@@ -9,6 +9,7 @@ import PremiumGate from '../components/PremiumGate';
 import ExportPdfButton from '../components/ExportPdfButton';
 import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
+import ColdPlatePathDiagram from '../components/ColdPlatePathDiagram';
 import InfoTooltip from '../components/InfoTooltip';
 import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
@@ -489,6 +490,11 @@ export default function ColdPlateCalculator() {
             </PremiumGate>
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-title">Channel layout</div>
+        <ColdPlatePathDiagram segments={segments} />
       </div>
 
       <SavedCalculations saves={saved.saves} loading={saved.loading} loggedIn={saved.loggedIn}
