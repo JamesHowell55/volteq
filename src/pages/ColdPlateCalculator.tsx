@@ -16,8 +16,14 @@ import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import { COOLANT_PRESETS } from '../lib/materials';
 import {
-  coldPlateFluid, solveColdPlate, BEND_K, type Segment, type BendAngle,
+  coldPlateFluid, solveColdPlate, BEND_K, type Segment, type BendAngle, type PinFinConfig,
 } from '../lib/coldPlatePhysics';
+
+const PIN_MATERIALS = [
+  { label: 'Copper pins', k: 385 },
+  { label: 'Aluminium pins', k: 167 },
+];
+const DEFAULT_PINS: PinFinConfig = { diaMm: 1, pitchTransverseMm: 2, pitchLongitudinalMm: 2, finConductivityWmK: 385 };
 
 function fmt(n: number, digits = 2): string {
   if (!isFinite(n)) return '—';
@@ -88,10 +94,16 @@ export default function ColdPlateCalculator() {
 
   const baseK = baseMatId === 'custom' ? customBaseK : (BASE_MATERIALS.find((m) => m.id === baseMatId)?.k ?? 167);
 
+  // Pin-fin sections are a Premium feature — strip them from the solve (not the state) when locked.
+  const effectiveSegments = useMemo(() =>
+    isPremium ? segments : segments.map((s) => (s.type === 'straight' && s.pins ? { ...s, pins: undefined } : s)),
+    [segments, isPremium]);
+
   const result = useMemo(() => solveColdPlate({
-    fluid, segments, channels, totalFlowLpm, heatLoadW, inletTempC,
+    fluid, segments: effectiveSegments, channels, totalFlowLpm, heatLoadW, inletTempC,
     baseConduction, baseThicknessMm, baseConductivityWmK: baseK, footprintAreaCm2,
-  }), [fluid, segments, channels, totalFlowLpm, heatLoadW, inletTempC, baseConduction, baseThicknessMm, baseK, footprintAreaCm2]);
+  }), [fluid, effectiveSegments, channels, totalFlowLpm, heatLoadW, inletTempC, baseConduction, baseThicknessMm, baseK, footprintAreaCm2]);
+  const hasPins = segments.some((s) => s.type === 'straight' && s.pins);
 
   // ── Segment builder ops ──
   const updateSegment = (i: number, patch: Partial<Extract<Segment, { type: 'straight' }>> | { angleDeg: BendAngle }) => {
@@ -107,6 +119,10 @@ export default function ColdPlateCalculator() {
   });
   const addStraight = () => setSegments((prev) => [...prev, { type: 'straight', lengthMm: 60, widthMm: 5, heightMm: 4 }]);
   const addBend = (angle: BendAngle) => setSegments((prev) => [...prev, { type: 'bend', angleDeg: angle }]);
+  const togglePins = (i: number) => setSegments((prev) => prev.map((s, idx) =>
+    idx === i && s.type === 'straight' ? { ...s, pins: s.pins ? undefined : { ...DEFAULT_PINS } } : s));
+  const updatePins = (i: number, patch: Partial<PinFinConfig>) => setSegments((prev) => prev.map((s, idx) =>
+    idx === i && s.type === 'straight' && s.pins ? { ...s, pins: { ...s.pins, ...patch } } : s));
 
   const getInputs = useCallback((): Record<string, unknown> => ({
     coolantId, tempC, customRho, customNuCst, customK, customCp,
@@ -152,14 +168,14 @@ export default function ColdPlateCalculator() {
         result: s0 ? `first section: Dh = ${fmt(s0.dhMm, 2)} mm, v = ${fmt(s0.velocityMPerS, 3)} m/s, Re = ${fmt(s0.reynolds, 0)} (${s0.regime})` : '—',
       },
       {
-        title: 'Heat-transfer coefficient (Shah-London / Dittus-Boelter)',
-        formula: 'laminar Nu = 8.235·(1 − 2.0421α + …) (rect. duct, H1); turbulent Nu = 0.023·Re^0.8·Pr^0.4;  h = Nu·k/Dh',
+        title: 'Heat-transfer coefficient (Shah-London / Dittus-Boelter' + (hasPins ? ' + Zukauskas pins' : '') + ')',
+        formula: 'channel: laminar Nu = 8.235·(1 − 2.0421α + …) (rect. duct, H1), turbulent Nu = 0.023·Re^0.8·Pr^0.4' + (hasPins ? ';  pin-fin: Nu = C·Cₙ·Re^m·Pr^0.36·(S_T/S_L)^0.2 (Zukauskas, staggered)' : '') + ';  h = Nu·k/D',
         substitution: `k = ${fmt(fluid.k, 3)} W/m·K, Pr = ${fmt(fluid.pr, 2)}`,
         result: `area-weighted h = ${fmt(result.avgHtc, 0)} W/m²K, UA = ${fmt(result.uaWPerK, 2)} W/K`,
       },
       {
-        title: 'Pressure drop (Darcy-Weisbach + bends)',
-        formula: 'ΔP = Σ f·(L/Dh)·(ρv²/2) + Σ K_bend·(ρv²/2)',
+        title: 'Pressure drop (Darcy-Weisbach + bends' + (hasPins ? ' + Gaddis-Gnielinski pins' : '') + ')',
+        formula: 'ΔP = Σ f·(L/Dh)·(ρv²/2) + Σ K_bend·(ρv²/2)' + (hasPins ? ' + Σ ½·ζ·N_rows·ρ·u_max² (pin banks)' : ''),
         substitution: `${straightCount} straight section(s), ${bendCount} bend(s)`,
         result: `major ${fmt(kPa(result.majorDropPa), 2)} + bends ${fmt(kPa(result.bendDropPa), 2)} = ${fmt(kPa(result.totalDropPa), 2)} kPa`,
       },
@@ -170,7 +186,7 @@ export default function ColdPlateCalculator() {
         result: `R = ${fmt(result.rTotalKPerW, 4)} K/W → base/module ${fmt(result.moduleTempC, 1)}°C, coolant out ${fmt(result.outletTempC, 1)}°C (ΔT ${fmt(result.fluidDeltaTC, 1)}°C)`,
       },
     ];
-  }, [result, channels, totalFlowLpm, fluid, straightCount, bendCount, baseConduction, heatLoadW, inletTempC]);
+  }, [result, channels, totalFlowLpm, fluid, straightCount, bendCount, baseConduction, heatLoadW, inletTempC, hasPins]);
 
   const inputSections: ReportSection[] = useMemo(() => ([{
     heading: 'Cold plate',
@@ -208,7 +224,7 @@ export default function ColdPlateCalculator() {
       outputSections,
       calculationSteps,
       disclaimer:
-        'Rectangular-channel liquid cold plate, steady single-phase Newtonian flow. Friction factor from the rectangular-duct Poiseuille number f·Re = 96·(1 − 1.3553α + …) (laminar, Shah & London) and Swamee-Jain (turbulent), interpolated across the 2300–4000 transitional band. Heat-transfer coefficient from the constant-heat-flux (H1) rectangular-duct laminar Nusselt 8.235·(1 − 2.0421α + …) and Dittus-Boelter (turbulent). Bend minor-loss K values (45°≈0.3, 90°≈1.1, 180°≈2.0) are representative for sharp milled bends and vary with radius. The channel side and top walls are treated as fully-effective heat-transfer area (no fin-efficiency derating — a first-order over-estimate of UA); flow is assumed fully developed. Fluid density/cp reuse this site\'s coolant presets (single representative values) and ν/k/Pr the Heat Exchanger transport table. Base conduction, when enabled, is 1-D (t/(k·A), no spreading resistance). Verify against CFD or a bench test for a final design.',
+        'Rectangular-channel liquid cold plate, steady single-phase Newtonian flow. Friction factor from the rectangular-duct Poiseuille number f·Re = 96·(1 − 1.3553α + …) (laminar, Shah & London) and Swamee-Jain (turbulent), interpolated across the 2300–4000 transitional band. Heat-transfer coefficient from the constant-heat-flux (H1) rectangular-duct laminar Nusselt 8.235·(1 − 2.0421α + …) and Dittus-Boelter (turbulent). Bend minor-loss K values (45°≈0.3, 90°≈1.1, 180°≈2.0) are representative for sharp milled bends and vary with radius. Offset pin-fin sections (direct-cooled baseplates) are modelled as a staggered pin bank in cross-flow: Zukauskas Nusselt for heat transfer and the Gaddis-Gnielinski (VDI Heat Atlas) drag coefficient per row for pressure drop, both on the max gap velocity and pin diameter, with a circular-fin efficiency on the pins; the few-row (f_nt) correction and wall Pr ratio are neglected and pin tips treated as free. The channel side and top walls are treated as fully-effective heat-transfer area (no fin-efficiency derating — a first-order over-estimate of UA); flow is assumed fully developed. Fluid density/cp reuse this site\'s coolant presets (single representative values) and ν/k/Pr the Heat Exchanger transport table. Base conduction, when enabled, is 1-D (t/(k·A), no spreading resistance). Verify against CFD or a bench test for a final design.',
       ...branding,
     });
   };
@@ -222,7 +238,8 @@ export default function ColdPlateCalculator() {
           <p>
             Hydraulic and thermal performance of a liquid cold plate whose coolant channel you build up from
             straight sections and 45°/90°/180° bends — heat-transfer coefficient, pressure drop, thermal
-            resistance and base temperature for a given heat load. Pairs with the Heatsink, Heat Exchanger and
+            resistance and base temperature for a given heat load. Drop an <b>offset pin-fin field</b> into any
+            section to model a direct-cooled power-module baseplate. Pairs with the Heatsink, Heat Exchanger and
             Flow-in-Pipes calculators.
           </p>
         </div>
@@ -287,12 +304,16 @@ export default function ColdPlateCalculator() {
           <div className="card">
             <div className="card-title">
               <span><span className="step-num">2</span>Channel path
-                <InfoTooltip>Build one channel's path as an ordered list of straight sections (each with its own width, height and length) and 45°/90°/180° bends. The flow runs through them in order; use ▲▼ to reorder. Multiple parallel channels share the total flow.</InfoTooltip>
+                <InfoTooltip>Build one channel's path as an ordered list of straight sections (each with its own width, height and length) and 45°/90°/180° bends. The flow runs through them in order; use ▲▼ to reorder. Multiple parallel channels share the total flow. Hit <b>⬢ Pins</b> on any straight section to fill it with an offset (staggered) pin-fin field — as used by direct-cooled power-module baseplates — which sharply raises both heat transfer and pressure drop.</InfoTooltip>
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {segments.map((seg, i) => (
-                <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-end', borderLeft: `3px solid ${seg.type === 'straight' ? 'var(--accent)' : 'var(--warn)'}`, paddingLeft: '0.5rem' }}>
+              {segments.map((seg, i) => {
+                const pinned = seg.type === 'straight' && !!seg.pins;
+                const edge = seg.type === 'bend' ? 'var(--warn)' : pinned ? '#a855f7' : 'var(--accent)';
+                return (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', borderLeft: `3px solid ${edge}`, paddingLeft: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-end' }}>
                   {seg.type === 'straight' ? (
                     <>
                       <div className="field" style={{ flex: 1, marginBottom: 0 }}>
@@ -304,7 +325,7 @@ export default function ColdPlateCalculator() {
                         <input autoComplete="off" type="number" min={0.1} step={0.5} value={toDisplay(seg.widthMm, unitSystem, UNIT_LENGTH)} onChange={(e) => updateSegment(i, { widthMm: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
                       </div>
                       <div className="field" style={{ flex: 1, marginBottom: 0 }}>
-                        <label style={{ fontSize: '0.72rem' }}>Height ({lenUnit})</label>
+                        <label style={{ fontSize: '0.72rem' }}>{pinned ? 'Pin height' : 'Height'} ({lenUnit})</label>
                         <input autoComplete="off" type="number" min={0.1} step={0.5} value={toDisplay(seg.heightMm, unitSystem, UNIT_LENGTH)} onChange={(e) => updateSegment(i, { heightMm: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
                       </div>
                     </>
@@ -319,12 +340,40 @@ export default function ColdPlateCalculator() {
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: '0.2rem' }}>
+                    {seg.type === 'straight' && (
+                      <button className="btn small" onClick={() => togglePins(i)} title="Offset pin-fin field (direct-cooled)" style={pinned ? { background: '#a855f7', color: '#fff', borderColor: '#a855f7' } : undefined}>⬢ Pins</button>
+                    )}
                     <button className="btn small" onClick={() => moveSegment(i, -1)} disabled={i === 0} title="Move up">▲</button>
                     <button className="btn small" onClick={() => moveSegment(i, 1)} disabled={i === segments.length - 1} title="Move down">▼</button>
                     <button className="btn small" onClick={() => removeSegment(i)} title="Remove">✕</button>
                   </div>
+                  </div>
+                  {seg.type === 'straight' && seg.pins && (
+                    <PremiumGate feature="Pin-fin (direct-cooled) sections">
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div className="field" style={{ flex: 1, minWidth: 90, marginBottom: 0 }}>
+                          <label style={{ fontSize: '0.72rem' }}>Pin Ø ({lenUnit})</label>
+                          <input autoComplete="off" type="number" min={0.1} step={0.1} value={toDisplay(seg.pins.diaMm, unitSystem, UNIT_LENGTH)} onChange={(e) => updatePins(i, { diaMm: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+                        </div>
+                        <div className="field" style={{ flex: 1, minWidth: 90, marginBottom: 0 }}>
+                          <label style={{ fontSize: '0.72rem' }}>Transv. pitch ({lenUnit})</label>
+                          <input autoComplete="off" type="number" min={0.1} step={0.1} value={toDisplay(seg.pins.pitchTransverseMm, unitSystem, UNIT_LENGTH)} onChange={(e) => updatePins(i, { pitchTransverseMm: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+                        </div>
+                        <div className="field" style={{ flex: 1, minWidth: 90, marginBottom: 0 }}>
+                          <label style={{ fontSize: '0.72rem' }}>Long. pitch ({lenUnit})</label>
+                          <input autoComplete="off" type="number" min={0.1} step={0.1} value={toDisplay(seg.pins.pitchLongitudinalMm, unitSystem, UNIT_LENGTH)} onChange={(e) => updatePins(i, { pitchLongitudinalMm: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+                        </div>
+                        <div className="field" style={{ flex: 1, minWidth: 110, marginBottom: 0 }}>
+                          <label style={{ fontSize: '0.72rem' }}>Pin material</label>
+                          <select value={seg.pins.finConductivityWmK} onChange={(e) => updatePins(i, { finConductivityWmK: Number(e.target.value) })}>
+                            {PIN_MATERIALS.map((m) => <option key={m.label} value={m.k}>{m.label}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    </PremiumGate>
+                  )}
                 </div>
-              ))}
+              ); })}
             </div>
             <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
               <button className="btn small primary" onClick={addStraight}>+ Straight section</button>
@@ -404,12 +453,13 @@ export default function ColdPlateCalculator() {
               <div style={{ overflowX: 'auto' }}>
                 <table className="data-table" style={{ width: '100%' }}>
                   <thead>
-                    <tr><th>#</th><th>w×h ({lenUnit})</th><th>Dh</th><th>v (m/s)</th><th>Re</th><th>h (W/m²K)</th><th>ΔP (kPa)</th></tr>
+                    <tr><th>#</th><th>type</th><th>w×h ({lenUnit})</th><th>Dh/Ø</th><th>v (m/s)</th><th>Re</th><th>h (W/m²K)</th><th>ΔP (kPa)</th></tr>
                   </thead>
                   <tbody>
                     {result.sections.map((s, i) => (
-                      <tr key={i}>
+                      <tr key={i} title={s.note}>
                         <td>{i + 1}</td>
+                        <td>{s.kind === 'pinfin' ? <span style={{ color: '#a855f7', fontWeight: 600 }}>⬢ pins{s.pinCount ? ` ×${Math.round(s.pinCount)}` : ''}</span> : 'channel'}</td>
                         <td>{fmtU(s.widthMm, unitSystem, UNIT_LENGTH, 1)}×{fmtU(s.heightMm, unitSystem, UNIT_LENGTH, 1)}</td>
                         <td>{fmtU(s.dhMm, unitSystem, UNIT_LENGTH, 2)}</td>
                         <td>{fmt(s.velocityMPerS, 2)}</td>
@@ -421,6 +471,12 @@ export default function ColdPlateCalculator() {
                   </tbody>
                 </table>
               </div>
+              {hasPins && (
+                <p className="hint" style={{ marginTop: '0.4rem' }}>
+                  For pin-fin rows, <b>Dh/Ø</b> is the pin diameter, <b>v</b> the max velocity through the narrowest gap,
+                  and <b>ΔP</b> the Gaddis-Gnielinski array loss; <b>h</b> and Re are on the pin diameter.
+                </p>
+              )}
             </PremiumGate>
           </div>
         </div>
@@ -451,11 +507,28 @@ export default function ColdPlateCalculator() {
           or a bench test before committing a design.
         </p>
         <p className="note">
+          <strong>Offset pin-fin sections</strong> (⬢, direct-cooled power-module baseplates) are modelled as a
+          staggered bank of circular pins in cross-flow, with all velocities and Reynolds numbers on the
+          <em> maximum</em> velocity through the narrowest gap and the pin diameter as length scale. Heat transfer
+          uses the <strong>Zukauskas</strong> staggered-bank Nusselt (C·Cₙ·Re<sup>m</sup>·Pr<sup>0.36</sup>·(S_T/S_L)<sup>0.2</sup>,
+          with the tube-row correction Cₙ). Pressure drop uses the <strong>Gaddis-Gnielinski</strong> (VDI Heat Atlas)
+          staggered drag coefficient per row, ΔP = ½·ζ·N_rows·ρ·u_max², so packing the pins tighter raises the
+          pressure drop sharply. Each pin's contribution is derated by a circular-fin efficiency
+          (tanh(mL)/mL, m = √(4h/k_pin·D), tip-corrected) using the selected pin material. The few-row inlet/outlet
+          correction (f_nt) is neglected (valid for ≳10 rows), the wall-to-fluid Pr ratio is taken as 1, and the pin
+          tips are treated as free (not bonded to the opposite wall) — reasonable for a first-order estimate, but
+          confirm a direct-cooled design against CFD or a bench test.
+        </p>
+        <p className="note">
           <b>Validated:</b> the rectangular-duct correlations reproduce their Shah &amp; London anchor values
           exactly — laminar f·Re = 56.92 and Nusselt = 3.61 for a square channel, and 96 / 8.235 for the
           parallel-plate limit. A hand-worked single 5×3 mm × 100 mm water channel at 1 L/min (Dh = 3.75 mm,
           v = 1.11 m/s, Re ≈ 4150 turbulent) reproduces h ≈ 6270 W/m²K, a 0.66 kPa section pressure drop, a
           1.44 °C coolant temperature rise and a 180° bend loss of 1.23 kPa — all matching hand calculation.
+          The pin-fin path is checked against an independent hand calculation too: a Ø1 mm staggered array at
+          2 mm pitch in 40 °C water (approach 0.5 m/s → 1.0 m/s in the gaps, Re 1515) gives ζ = 0.482,
+          h ≈ 30,200 W/m²K and a 4.78 kPa loss over 40 mm — turning a 0.035 kPa plain channel into 4.8 kPa while
+          cutting its thermal resistance ~6.6×.
         </p>
       </div>
 

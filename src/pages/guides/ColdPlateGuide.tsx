@@ -40,6 +40,23 @@ export default function ColdPlateGuide() {
         45°, 90° and 180°) are representative of sharp milled bends; radiused or vaned turns are lower.
       </p>
 
+      <h2>Direct cooling and offset pin fins</h2>
+      <p>
+        Most modern power modules have abandoned the flat baseplate-on-cold-plate sandwich entirely. Instead the
+        module's baseplate is itself a field of little pins — an <strong>offset (staggered) pin-fin</strong> array
+        — that dips straight into the coolant, so the heat never has to cross a thermal-interface layer. Infineon's
+        HybridPACK and the Danfoss ShowerPower designs are the familiar examples. Turning a plain channel into a
+        pin field does two things at once: it multiplies the wetted surface area and it forces the coolant to weave
+        between staggered pins, which trips turbulence at a far lower Reynolds number than a smooth channel. The
+        heat-transfer coefficient can jump by several times — but the pressure drop climbs even faster, often by one
+        to two <em>orders of magnitude</em>, because the flow is now squeezing through narrow gaps and paying a loss
+        at every row. That's the whole reason this calculator lets you drop a pin field into a single section and
+        watch both numbers move: the pins are only worth it where the heat flux genuinely demands them, and the pump
+        has to be sized for the penalty. The physics here uses the Zukauskas staggered-bank correlation for the heat
+        transfer and the Gaddis-Gnielinski (VDI Heat Atlas) drag coefficient for the pressure drop, both classic
+        tube-bank methods applied to the pins, with each pin derated by its own fin efficiency.
+      </p>
+
       <GuideDeepDive
         title="From heat-transfer coefficient to a base temperature, and the fin-efficiency caveat"
         teaser="How the convective, caloric and conduction resistances stack up to a base temperature, why tall channels don't deliver all the area they seem to, and a cold-plate design checklist."
