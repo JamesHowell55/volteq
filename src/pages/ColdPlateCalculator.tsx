@@ -235,13 +235,22 @@ export default function ColdPlateCalculator() {
       <div className="page-header page-header-actions">
         <div>
           <div className="eyebrow">● Cold Plate Designer</div>
-          <h1>Cold Plate Designer</h1>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            Cold Plate Designer
+            <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--warn, #f59e0b)', border: '1px solid var(--warn, #f59e0b)', borderRadius: 'var(--radius-pill, 9999px)', padding: '0.15rem 0.6rem' }}>
+              Work in progress
+            </span>
+          </h1>
           <p>
             Hydraulic and thermal performance of a liquid cold plate whose coolant channel you build up from
             straight sections and 45°/90°/180° bends — heat-transfer coefficient, pressure drop, thermal
             resistance and base temperature for a given heat load. Drop an <b>offset pin-fin field</b> into any
             section to model a direct-cooled power-module baseplate. Pairs with the Heatsink, Heat Exchanger and
             Flow-in-Pipes calculators.
+          </p>
+          <p className="note" style={{ borderLeft: '3px solid var(--warn, #f59e0b)', paddingLeft: '0.6rem', margin: '0.4rem 0 0' }}>
+            <b>Work in progress:</b> this calculator is still being validated and refined — treat its results as
+            indicative and cross-check anything design-critical against CFD or a bench test.
           </p>
         </div>
         <CalculatorActions saved={saved} getInputs={getInputs}>
@@ -493,16 +502,10 @@ export default function ColdPlateCalculator() {
       </div>
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
-        <div className="card-title">
-          <span>Channel layout
-            <span style={{ marginLeft: '0.5rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--warn, #f59e0b)', border: '1px solid var(--warn, #f59e0b)', borderRadius: 'var(--radius-pill, 9999px)', padding: '0.1rem 0.5rem', verticalAlign: 'middle' }}>
-              Work in progress
-            </span>
-          </span>
-        </div>
+        <div className="card-title">Channel layout</div>
         <p className="hint" style={{ marginTop: 0, marginBottom: '0.5rem' }}>
-          This plan-view sketch is a work in progress — it routes simple serpentine paths well, but more complex
-          bend sequences can lay out inaccurately. It's a visual aid only and doesn't affect the calculated results.
+          Plan-view sketch — it routes simple serpentine paths well, but more complex bend sequences can lay out
+          inaccurately. Visual aid only; it doesn't affect the calculated results.
         </p>
         <ColdPlatePathDiagram segments={segments} />
       </div>
