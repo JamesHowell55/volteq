@@ -493,7 +493,17 @@ export default function ColdPlateCalculator() {
       </div>
 
       <div className="card" style={{ marginTop: '1.25rem' }}>
-        <div className="card-title">Channel layout</div>
+        <div className="card-title">
+          <span>Channel layout
+            <span style={{ marginLeft: '0.5rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--warn, #f59e0b)', border: '1px solid var(--warn, #f59e0b)', borderRadius: 'var(--radius-pill, 9999px)', padding: '0.1rem 0.5rem', verticalAlign: 'middle' }}>
+              Work in progress
+            </span>
+          </span>
+        </div>
+        <p className="hint" style={{ marginTop: 0, marginBottom: '0.5rem' }}>
+          This plan-view sketch is a work in progress — it routes simple serpentine paths well, but more complex
+          bend sequences can lay out inaccurately. It's a visual aid only and doesn't affect the calculated results.
+        </p>
         <ColdPlatePathDiagram segments={segments} />
       </div>
 
