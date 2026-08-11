@@ -228,11 +228,21 @@ export default function MotorWindingLossCalculator() {
       <div className="page-header page-header-actions">
         <div>
           <div className="eyebrow">● Motor Winding / AC Copper Loss</div>
-          <h1>Motor Winding / AC Copper Loss</h1>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            Motor Winding / AC Copper Loss
+            <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--warn, #f59e0b)', border: '1px solid var(--warn, #f59e0b)', borderRadius: 'var(--radius-pill, 9999px)', padding: '0.15rem 0.6rem' }}>
+              Work in progress
+            </span>
+          </h1>
           <p>
             DC and AC-inflated copper loss for a motor stator winding — round magnet wire, flat/hairpin
             conductors, or litz wire — from skin and proximity effect (Dowell's equation and Sullivan &amp;
             Zhang's closed-form litz/round-wire method). Pairs with the Skin Depth and MOSFET Loss calculators.
+          </p>
+          <p className="note" style={{ borderLeft: '3px solid var(--warn, #f59e0b)', paddingLeft: '0.6rem', margin: '0.4rem 0 0' }}>
+            <b>Work in progress:</b> this calculator is still being validated and refined — treat its results as
+            indicative and cross-check anything design-critical against FEA or measurement. It also does not yet
+            model circulating currents between parallel winding paths (a separate calculator is planned for that).
           </p>
         </div>
         <CalculatorActions saved={saved} getInputs={getInputs}>
