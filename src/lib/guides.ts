@@ -178,6 +178,17 @@ export const GUIDES: GuideMeta[] = [
     calculator: { label: 'Motor Winding / AC Copper Loss Calculator', path: '/motor-winding-loss' },
   },
   {
+    slug: 'circulating-current',
+    title: 'Parallel Path Circulating Current: Why Untransposed Strands Fight Each Other',
+    standard: 'Slot-Leakage Loop Inductance (Classical Machine Design)',
+    seoTitle: 'Parallel Path Circulating Current Explained — Hairpin Strand Transposition',
+    seoDescription:
+      'A plain-language guide to circulating current between electrically-parallel winding strands at different slot depths: why unequal flux linkage drives a loop current, why transposition cancels it, and the classical slot-leakage loop inductance that sets its size.',
+    blurb:
+      'Why parallel strands at different slot depths fight each other with a circulating current, and why transposition — the classical fix — cancels it.',
+    calculator: { label: 'Parallel Path Circulating Current Calculator', path: '/circulating-current' },
+  },
+  {
     slug: 'bolt-group-elastic',
     title: 'Bolt Pattern Analysis: The Elastic Method for Bolt Groups',
     standard: 'Bolt Group (Elastic Method)',
