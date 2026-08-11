@@ -54,6 +54,7 @@ export const NAV_CATEGORIES: NavCategory[] = [
     links: [
       { label: 'Speed ↔ Torque ↔ Power', path: '/speed-torque-power', available: true, seoTitle: 'Torque, Power & Speed Calculator (P = T·ω)', description: 'Solve for any one of torque, power, or speed given the other two (P = T·ω), with common unit conversions built in, plus optional cross-checks for a PM motor\'s torque constant and efficiency-adjusted electrical input power.' },
       { label: 'Id / Iq Current Vector', path: '/id-iq-current', available: true, seoTitle: 'Id/Iq Current Vector Calculator — PMSM Field-Oriented Control', description: 'Convert between phase-current magnitude (peak or RMS), current angle, and the rotor-frame d-/q-axis currents (Id, Iq) of a PMSM under field-oriented control, with a space-vector diagram plus derived torque (magnet + reluctance), MTPA comparison, and speed-dependent back-EMF and shaft power.' },
+      { label: 'Motor Winding / AC Copper Loss', path: '/motor-winding-loss', available: true, seoTitle: 'Motor Winding AC Copper Loss Calculator — Skin & Proximity Effect', description: 'DC and AC-inflated copper loss for a stator winding — round magnet wire, flat/hairpin conductors, or litz wire — from skin and proximity effect via Dowell\'s equation and Sullivan & Zhang\'s closed-form litz/round-wire method, with a frequency sweep and litz construction check.' },
     ],
   },
   {

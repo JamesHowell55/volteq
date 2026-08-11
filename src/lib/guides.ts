@@ -167,6 +167,17 @@ export const GUIDES: GuideMeta[] = [
     calculator: { label: 'Id/Iq Current Vector Calculator', path: '/id-iq-current' },
   },
   {
+    slug: 'motor-winding-loss',
+    title: 'Motor Winding AC Copper Loss: Skin Effect, Proximity Effect and Dowell\'s Equation',
+    standard: 'Winding AC Resistance (Dowell 1966 / Sullivan & Zhang 2014)',
+    seoTitle: 'Motor Winding AC Copper Loss Explained — Skin, Proximity & Dowell\'s Equation',
+    seoDescription:
+      'A plain-language guide to why a motor winding\'s AC resistance exceeds its DC resistance: skin effect, proximity effect between turns, Dowell\'s classical m-layer equation, and why round wire, flat/hairpin conductors and litz wire behave so differently.',
+    blurb:
+      'Why a winding\'s AC resistance exceeds its DC value, how Dowell\'s equation captures skin and proximity effect together, and why round, hairpin and litz wire behave so differently.',
+    calculator: { label: 'Motor Winding / AC Copper Loss Calculator', path: '/motor-winding-loss' },
+  },
+  {
     slug: 'bolt-group-elastic',
     title: 'Bolt Pattern Analysis: The Elastic Method for Bolt Groups',
     standard: 'Bolt Group (Elastic Method)',

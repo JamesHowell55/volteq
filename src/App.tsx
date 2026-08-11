@@ -33,6 +33,7 @@ import ORingCalculator from './pages/ORingCalculator';
 import FitsAndLimitsCalculator from './pages/FitsAndLimitsCalculator';
 import MohrsCircleCalculator from './pages/MohrsCircleCalculator';
 import DqCurrentCalculator from './pages/DqCurrentCalculator';
+import MotorWindingLossCalculator from './pages/MotorWindingLossCalculator';
 import MotorProfilesPage from './pages/MotorProfilesPage';
 import BatteryProfilesPage from './pages/BatteryProfilesPage';
 import ControllerProfilesPage from './pages/ControllerProfilesPage';
@@ -65,6 +66,7 @@ import HeatExchangerNtuGuide from './pages/guides/HeatExchangerNtuGuide';
 import FlowInPipesGuide from './pages/guides/FlowInPipesGuide';
 import ColdPlateGuide from './pages/guides/ColdPlateGuide';
 import FieldOrientedControlGuide from './pages/guides/FieldOrientedControlGuide';
+import MotorWindingLossGuide from './pages/guides/MotorWindingLossGuide';
 import BoltGroupElasticGuide from './pages/guides/BoltGroupElasticGuide';
 import EulerBernoulliBeamsGuide from './pages/guides/EulerBernoulliBeamsGuide';
 import TorquePowerSpeedGuide from './pages/guides/TorquePowerSpeedGuide';
@@ -120,6 +122,7 @@ function App() {
               <Route path="/battery-pack-series-parallel" element={<BatteryPackSeriesParallelCalculator />} />
               <Route path="/speed-torque-power" element={<MotorTorquePowerSpeedCalculator />} />
               <Route path="/id-iq-current" element={<DqCurrentCalculator />} />
+              <Route path="/motor-winding-loss" element={<MotorWindingLossCalculator />} />
               <Route path="/motor-profiles" element={<MotorProfilesPage />} />
               <Route path="/battery-profiles" element={<BatteryProfilesPage />} />
               <Route path="/controller-profiles" element={<ControllerProfilesPage />} />
@@ -162,6 +165,7 @@ function App() {
               <Route path="/guides/flow-in-pipes" element={<FlowInPipesGuide />} />
               <Route path="/guides/cold-plate" element={<ColdPlateGuide />} />
               <Route path="/guides/field-oriented-control" element={<FieldOrientedControlGuide />} />
+              <Route path="/guides/motor-winding-loss" element={<MotorWindingLossGuide />} />
               <Route path="/guides/bolt-group-elastic" element={<BoltGroupElasticGuide />} />
               <Route path="/guides/euler-bernoulli-beams" element={<EulerBernoulliBeamsGuide />} />
               <Route path="/guides/torque-power-speed" element={<TorquePowerSpeedGuide />} />
