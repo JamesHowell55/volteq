@@ -1,9 +1,30 @@
 name: Supabase keep-alive
 
-# Free-tier Supabase projects are paused after 7 days of inactivity. This job
-# makes a lightweight authenticated request to the project's Auth (GoTrue) health
-# endpoint every 2 days so the project keeps counting as active and is never
-# auto-paused. It also runs on demand from the Actions tab (workflow_dispatch).
+# Free-tier Supabase projects are paused after 7 days with no DATABASE activity
+# (Supabase's own criterion: "no API requests, no database queries, and no Edge
+# Function invocations" — dashboard visits and non-DB-touching pings don't count).
+# This job makes a lightweight authenticated REST (PostgREST) request against a
+# real table every 2 days so the project keeps counting as active. It also runs
+# on demand from the Actions tab (workflow_dispatch).
+#
+# IMPORTANT: this previously pinged /auth/v1/health (the GoTrue auth
+# microservice's liveness check). That endpoint never touches Postgres, so it
+# doesn't count as "activity" for pause purposes — confirmed the hard way: the
+# old ping ran successfully every 2 days for weeks and Supabase still scheduled
+# a pause for inactivity. Pinging /rest/v1/<table> instead genuinely reaches
+# PostgREST -> Postgres, which is what actually resets the inactivity timer.
+#
+# This project's RLS deliberately grants the anon/publishable key NO read access
+# to any table (see supabase/migration.sql) — there is no secret-free way to get
+# a clean HTTP 200 here. Rather than add a service_role secret (a much higher-
+# value credential to keep in CI just for a keep-alive ping), this accepts the
+# EXPECTED response for an anon request against an RLS-protected table: HTTP 401
+# with a Postgres permission-denied body (code 42501). That response can only be
+# produced by the request actually reaching Postgres and being evaluated against
+# real RLS policy — i.e. it IS proof of genuine database activity, verified by
+# testing directly against this project. Any other outcome (timeout, 5xx, or a
+# 401 body that doesn't match — e.g. "Invalid API key", which would mean the
+# publishable key was rotated) is treated as a real failure.
 #
 # The values below are PUBLIC: the project URL appears in every request and the
 # `sb_publishable_...` key is the anon/publishable key that already ships in the
@@ -26,21 +47,25 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase (Auth health)
+      - name: Ping Supabase (real database query via PostgREST)
         run: |
           SUPABASE_URL="https://hxqnhhbbynsursaikyds.supabase.co"
           SUPABASE_ANON_KEY="sb_publishable_7L6oroZUHrY-A_wgEbITCw_ibadgVGz"
-          echo "Pinging ${SUPABASE_URL}/auth/v1/health ..."
+          echo "Pinging ${SUPABASE_URL}/rest/v1/saved_calculations (RLS-protected table — a permission-denied response confirms the query reached Postgres) ..."
           code=$(curl -s -o /tmp/body.txt -w '%{http_code}' \
-            "${SUPABASE_URL}/auth/v1/health" \
+            "${SUPABASE_URL}/rest/v1/saved_calculations?select=id&limit=1" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
             --max-time 30 --retry 3 --retry-delay 10 --retry-all-errors)
           echo "HTTP ${code}"
-          cat /tmp/body.txt || true
+          body=$(cat /tmp/body.txt || true)
+          echo "${body}"
           echo
           if [ "${code}" = "200" ]; then
-            echo "✅ Supabase project is awake — inactivity timer reset."
+            echo "✅ Query succeeded (200) — Supabase project is awake, inactivity timer reset."
+          elif [ "${code}" = "401" ] && echo "${body}" | grep -q '42501'; then
+            echo "✅ Got the expected RLS permission-denied response (401, code 42501) — this confirms the request reached Postgres and was evaluated, which is genuine database activity. Inactivity timer reset."
           else
-            echo "::error::Unexpected HTTP ${code} — the project may be paused, or the publishable key was rotated. Check the Supabase dashboard."
+            echo "::error::Unexpected HTTP ${code} with an unrecognized response — the project may be paused, the publishable key may have been rotated, or RLS policy changed. Check the Supabase dashboard."
             exit 1
           fi
