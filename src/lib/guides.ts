@@ -189,6 +189,17 @@ export const GUIDES: GuideMeta[] = [
     calculator: { label: 'Parallel Path Circulating Current Calculator', path: '/circulating-current' },
   },
   {
+    slug: 'battery-cell-cooling',
+    title: 'Battery Cell Cooling: Why Distributed Heat Generation Changes the Math',
+    standard: 'Distributed-Generation Conduction (Classical Heat Transfer)',
+    seoTitle: 'Battery Cell Cooling Explained — Distributed Conduction & Anisotropic Cells',
+    seoDescription:
+      'A plain-language guide to battery cell thermal design: why a cell\'s heat generation fills its volume rather than starting at a point, how that changes the conduction-resistance math, and why cylindrical, prismatic, and pouch cells each have a natural (and an unnatural) cooling face.',
+    blurb:
+      'Why a cell\'s distributed heat generation changes the conduction math, and why cylindrical, prismatic, and pouch cells each have a natural cooling face.',
+    calculator: { label: 'Battery Cell Cooling Calculator', path: '/battery-cell-cooling' },
+  },
+  {
     slug: 'bolt-group-elastic',
     title: 'Bolt Pattern Analysis: The Elastic Method for Bolt Groups',
     standard: 'Bolt Group (Elastic Method)',

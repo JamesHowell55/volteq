@@ -147,6 +147,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://volteq.io/battery-cell-cooling</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://volteq.io/battery-pack-series-parallel</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -313,6 +318,11 @@
   </url>
   <url>
     <loc>https://volteq.io/guides/motor-winding-loss</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/guides/battery-cell-cooling</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

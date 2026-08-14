@@ -89,6 +89,7 @@ export const TIM_PRESETS: TimPreset[] = [
   { id: 'pad', label: 'Silicone gap-pad (~3 W/m·K)', thicknessMm: 1.0, thermalConductivity: 3.0 },
   { id: 'grease', label: 'Thermal grease (~5 W/m·K)', thicknessMm: 0.1, thermalConductivity: 5.0 },
   { id: 'graphite', label: 'Graphite pad (~5 W/m·K through-plane)', thicknessMm: 0.25, thermalConductivity: 5.0 },
+  { id: 'gapfiller', label: 'Dispensed gap filler (~2 W/m·K)', thicknessMm: 1.5, thermalConductivity: 2.0 },
   { id: 'custom', label: 'Custom', thicknessMm: 0.5, thermalConductivity: 3.0 },
 ];
 

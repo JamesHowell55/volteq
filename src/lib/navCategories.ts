@@ -62,6 +62,7 @@ export const NAV_CATEGORIES: NavCategory[] = [
     label: 'Battery',
     links: [
       { label: 'Battery Pack Series/Parallel Calculator', path: '/battery-pack-series-parallel', available: true, description: 'Resulting pack voltage, capacity, energy, and internal resistance from a chosen series/parallel (SxP) cell arrangement, plus a voltage-sag check under load.' },
+      { label: 'Battery Cell Cooling', path: '/battery-cell-cooling', available: true, seoTitle: 'Battery Cell Cooling Calculator — Cylindrical, Prismatic & Pouch Thermal Path', description: 'Steady-state thermal path from a battery cell\'s internal heat generation to coolant or ambient air — cylindrical (18650/21700/26650/4680), prismatic, or pouch cells, cooled from the base, sides, or top through a thermal interface material, using distributed (not point-source) internal conduction.' },
     ],
   },
   {
