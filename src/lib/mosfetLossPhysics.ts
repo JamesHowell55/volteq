@@ -86,6 +86,7 @@ export interface OperatingPoint {
   syncRect: boolean;
   voltageExponent: number;
   parallelCount: number;
+  extraRthKPerW: number; // additional case-to-heatsink resistance (e.g. a solder/sinter TIM layer); 0 for direct-cooled modules where caseTempC already references the coolant
 }
 
 export interface DeviceLossResult {
@@ -105,7 +106,10 @@ export interface DeviceLossResult {
 }
 
 /** Full per-device solve with fixed-point junction-temperature iteration:
- *  Tj = Tcase + P_die·RthJC, Rdson(Tj) interpolated from the two datasheet points.
+ *  Tj = Tcase + P_die·(RthJC + RthExtra), Rdson(Tj) interpolated from the two datasheet points.
+ *  RthExtra is 0 for direct-cooled modules (caseTempC already references the coolant/heatsink
+ *  through the device's own RthJC/RthJHS); for a TIM-mounted baseplate it's the added
+ *  solder/sinter/pad conduction resistance, and caseTempC is then the heatsink-side temperature.
  *  Switching energies are held temperature-independent (disclosed — datasheet Eon/Eoff
  *  vary only weakly with Tvj for SiC, e.g. CAB450M12XM3: 25.4→24.4 mJ across 25→175 °C). */
 export function solveDeviceLosses(device: SicDevicePreset, op: OperatingPoint): DeviceLossResult {
@@ -150,7 +154,7 @@ export function solveDeviceLosses(device: SicDevicePreset, op: OperatingPoint): 
       conductionDiodeW = conductionLossClassicDiodeW(device.vsdV, ipkDev, op.modulationIndex, op.cosPhi);
     }
     const dieW = conductionChannelW + conductionDiodeW + deadTimeDiodeW + switchingW + reverseRecoveryW;
-    const tjNext = op.caseTempC + dieW * device.rthJcKPerW;
+    const tjNext = op.caseTempC + dieW * (device.rthJcKPerW + op.extraRthKPerW);
     if (Math.abs(tjNext - tj) < 0.01) {
       tj = tjNext;
       converged = true;

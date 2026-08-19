@@ -90,6 +90,8 @@ export const TIM_PRESETS: TimPreset[] = [
   { id: 'grease', label: 'Thermal grease (~5 W/m·K)', thicknessMm: 0.1, thermalConductivity: 5.0 },
   { id: 'graphite', label: 'Graphite pad (~5 W/m·K through-plane)', thicknessMm: 0.25, thermalConductivity: 5.0 },
   { id: 'gapfiller', label: 'Dispensed gap filler (~2 W/m·K)', thicknessMm: 1.5, thermalConductivity: 2.0 },
+  { id: 'solder', label: 'Reflow solder, SAC305 (~50 W/m·K)', thicknessMm: 0.1, thermalConductivity: 50 },
+  { id: 'sinteredAg', label: 'Silver sintering (~200 W/m·K)', thicknessMm: 0.05, thermalConductivity: 200 },
   { id: 'custom', label: 'Custom', thicknessMm: 0.5, thermalConductivity: 3.0 },
 ];
 

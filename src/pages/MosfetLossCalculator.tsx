@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTheme } from '../lib/ThemeContext';
 import { useUnitSystem } from '../lib/UnitSystemContext';
-import { toDisplay, fromDisplay, unitLabel, UNIT_TEMP } from '../lib/globalUnits';
+import { toDisplay, fromDisplay, unitLabel, UNIT_TEMP, UNIT_AREA, UNIT_LENGTH } from '../lib/globalUnits';
 import { exportReportToPdf, type ReportSection, type ReportRow, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
@@ -17,6 +17,8 @@ import SavedCalculations from '../components/SavedCalculations';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import { SIC_DEVICE_PRESETS, getSicDevice, inverterStructureLabel, type SicDevicePreset } from '../lib/sicDevices';
+import { TIM_PRESETS } from '../lib/materials';
+import { timResistanceKPerW } from '../lib/heatsinkThermalPhysics';
 import { fundamentalElectricalFreqHz } from '../lib/chokePhysics';
 import ControllerProfilePicker from '../components/ControllerProfilePicker';
 import type { ControllerProfileParams } from '../lib/controllerProfiles';
@@ -70,6 +72,31 @@ export default function MosfetLossCalculator() {
   usePowertrainPrefill({ onController: applyControllerProfile });
   const [deadTimeNs, setDeadTimeNs] = useState(500);
   const [caseTempC, setCaseTempC] = useState(65);
+
+  // Cooling mount (Premium: TIM + baseplate stack) — direct cooling (default/free) assumes the
+  // device's own RthJC/RthJHS already spans junction to coolant, so caseTempC is the coolant temp
+  // directly; TIM + baseplate adds a solder/sinter/pad conduction layer between the case/baseplate
+  // and the heatsink, and caseTempC becomes the heatsink-side reference temperature.
+  const [coolingMount, setCoolingMount] = useState<'direct' | 'tim'>('direct');
+  const [timPresetId, setTimPresetId] = useState('solder');
+  const [timThicknessMm, setTimThicknessMm] = useState(TIM_PRESETS.find((p) => p.id === 'solder')!.thicknessMm);
+  const [timConductivity, setTimConductivity] = useState(TIM_PRESETS.find((p) => p.id === 'solder')!.thermalConductivity);
+  const [timContactAreaMm2, setTimContactAreaMm2] = useState(400);
+  const onTimPresetChange = (id: string) => {
+    setTimPresetId(id);
+    const preset = TIM_PRESETS.find((p) => p.id === id);
+    if (preset) {
+      setTimThicknessMm(preset.thicknessMm);
+      setTimConductivity(preset.thermalConductivity);
+    }
+  };
+  const extraRthKPerW = useMemo(
+    () => (coolingMount === 'tim'
+      ? timResistanceKPerW({ id: timPresetId, label: '', thicknessMm: timThicknessMm, thermalConductivity: timConductivity }, timContactAreaMm2)
+      : 0),
+    [coolingMount, timPresetId, timThicknessMm, timConductivity, timContactAreaMm2]
+  );
+
   const [syncRect, setSyncRect] = useState(true);
   const [voltageExponent, setVoltageExponent] = useState(1.0);
   const [motorPolePairs, setMotorPolePairs] = useState(4);
@@ -93,10 +120,12 @@ export default function MosfetLossCalculator() {
 
   const getInputs = useCallback((): Record<string, unknown> => ({
     deviceId, device, parallelCount, vdc, switchingFreqKhz, modulationIndex,
-    cosPhiMag, deadTimeNs, caseTempC, syncRect, voltageExponent,
+    cosPhiMag, deadTimeNs, caseTempC, coolingMount, timPresetId, timThicknessMm, timConductivity, timContactAreaMm2,
+    syncRect, voltageExponent,
     motorPolePairs, motorSpeedRpm, analysisMode, phaseCurrentArms, driveMode, dutySteps,
   }), [deviceId, device, parallelCount, vdc, switchingFreqKhz, modulationIndex,
-    cosPhiMag, deadTimeNs, caseTempC, syncRect, voltageExponent,
+    cosPhiMag, deadTimeNs, caseTempC, coolingMount, timPresetId, timThicknessMm, timConductivity, timContactAreaMm2,
+    syncRect, voltageExponent,
     motorPolePairs, motorSpeedRpm, analysisMode, phaseCurrentArms, driveMode, dutySteps]);
 
   const restoreInputs = useCallback((inp: Record<string, unknown>) => {
@@ -110,6 +139,11 @@ export default function MosfetLossCalculator() {
     if (v.cosPhiMag != null) setCosPhiMag(v.cosPhiMag);
     if (v.deadTimeNs != null) setDeadTimeNs(v.deadTimeNs);
     if (v.caseTempC != null) setCaseTempC(v.caseTempC);
+    if (v.coolingMount != null) setCoolingMount(v.coolingMount);
+    if (v.timPresetId != null) setTimPresetId(v.timPresetId);
+    if (v.timThicknessMm != null) setTimThicknessMm(v.timThicknessMm);
+    if (v.timConductivity != null) setTimConductivity(v.timConductivity);
+    if (v.timContactAreaMm2 != null) setTimContactAreaMm2(v.timContactAreaMm2);
     if (v.syncRect != null) setSyncRect(v.syncRect);
     if (v.voltageExponent != null) setVoltageExponent(v.voltageExponent);
     if (v.motorPolePairs != null) setMotorPolePairs(v.motorPolePairs);
@@ -129,6 +163,14 @@ export default function MosfetLossCalculator() {
   useEffect(() => {
     if (entitlementLoading || isPremium) return;
     setAnalysisMode((prev) => (prev === 'duty' ? 'single' : prev));
+  }, [isPremium, entitlementLoading]);
+
+  // Safety net: bail out of the TIM + baseplate cooling mount if entitlement lapses
+  // mid-session, or a `?share=` link / old save carries a premium user's mount (same
+  // guard pattern as the duty-cycle mode above).
+  useEffect(() => {
+    if (entitlementLoading || isPremium) return;
+    setCoolingMount((prev) => (prev === 'tim' ? 'direct' : prev));
   }, [isPremium, entitlementLoading]);
 
   // Reset current to something sensible when switching to a small discrete device
@@ -151,7 +193,12 @@ export default function MosfetLossCalculator() {
     syncRect,
     voltageExponent,
     parallelCount,
-  }), [vdc, phaseCurrentArms, switchingFreqKhz, modulationIndex, driveMode, cosPhiMag, deadTimeNs, caseTempC, syncRect, voltageExponent, parallelCount]);
+    extraRthKPerW,
+  }), [vdc, phaseCurrentArms, switchingFreqKhz, modulationIndex, driveMode, cosPhiMag, deadTimeNs, caseTempC, syncRect, voltageExponent, parallelCount, extraRthKPerW]);
+
+  // Case/baseplate temperature implied by the TIM stack — display-only breakdown of caseTempC
+  // (which becomes the heatsink-side reference once a TIM layer is in the path).
+  const displayCaseTempC = (r: DeviceLossResult) => (coolingMount === 'tim' ? caseTempC + r.totalDeviceDieW * extraRthKPerW : caseTempC);
 
   const single: DeviceLossResult = useMemo(() => solveDeviceLosses(device, baseOp), [device, baseOp]);
   const duty = useMemo(() => solveDutyCycle(device, baseOp, dutySteps), [device, baseOp, dutySteps]);
@@ -233,10 +280,27 @@ export default function MosfetLossCalculator() {
       substitution: `QG = ${fmt(device.qgNc, 0)} nC, ΔVGS = ${fmt(device.vgsOnV - device.vgsOffV, 0)} V`,
       result: `P_gate = ${fmt(r.gateDriveW, 3)} W per device`,
     });
+    steps.push(coolingMount === 'tim'
+      ? {
+        title: 'Case-to-heatsink TIM resistance',
+        formula: 'RthTIM = t / (k · A) — solder/sinter/pad conduction layer between the device case/baseplate and the heatsink',
+        substitution: `${TIM_PRESETS.find((p) => p.id === timPresetId)?.label ?? 'Custom'}: t = ${fmt(timThicknessMm, 3)} mm, k = ${fmt(timConductivity, 1)} W/m·K, A = ${fmt(timContactAreaMm2, 0)} mm²`,
+        result: `RthTIM = ${fmt(extraRthKPerW, 4)} K/W`,
+      }
+      : {
+        title: 'Cooling mount',
+        formula: 'Direct cooling — RthJC already spans junction to coolant (baseplate-less module, or a tab pressed straight to a cold plate)',
+        substitution: `RthJC = ${fmt(device.rthJcKPerW, 3)} K/W`,
+        result: 'No added TIM resistance',
+      });
     steps.push({
       title: 'Junction temperature (fixed-point iteration)',
-      formula: 'Tj = T_case + P_die · RthJC, RDS(on)(Tj) re-evaluated each pass until converged',
-      substitution: `T_case = ${fmt(caseTempC, 0)}°C, RthJC = ${fmt(device.rthJcKPerW, 3)} K/W, P_die = ${fmt(r.totalDeviceDieW, 2)} W`,
+      formula: coolingMount === 'tim'
+        ? 'Tj = T_heatsink + P_die · (RthJC + RthTIM), RDS(on)(Tj) re-evaluated each pass until converged'
+        : 'Tj = T_case + P_die · RthJC, RDS(on)(Tj) re-evaluated each pass until converged',
+      substitution: coolingMount === 'tim'
+        ? `T_heatsink = ${fmt(caseTempC, 0)}°C, RthJC = ${fmt(device.rthJcKPerW, 3)} K/W, RthTIM = ${fmt(extraRthKPerW, 4)} K/W, P_die = ${fmt(r.totalDeviceDieW, 2)} W (case temp ≈ ${fmt(displayCaseTempC(r), 1)}°C)`
+        : `T_case = ${fmt(caseTempC, 0)}°C, RthJC = ${fmt(device.rthJcKPerW, 3)} K/W, P_die = ${fmt(r.totalDeviceDieW, 2)} W`,
       result: `Tj = ${fmt(r.junctionTempC, 1)}°C vs Tvj(max) ${fmt(device.tvjMaxC, 0)}°C — ${tjPass ? 'pass' : 'FAIL'}${r.converged ? '' : ' (iteration did not converge — thermally unstable operating point)'}`,
     });
     steps.push({
@@ -254,7 +318,7 @@ export default function MosfetLossCalculator() {
       });
     }
     return steps;
-  }, [parallelCount, isDuty, dutySteps, duty, phaseCurrentArms, headline, syncRect, device, modulationIndex, baseOp.cosPhi, deadTimeNs, switchingFreqKhz, vdc, voltageExponent, caseTempC, tjPass]);
+  }, [parallelCount, isDuty, dutySteps, duty, phaseCurrentArms, headline, syncRect, device, modulationIndex, baseOp.cosPhi, deadTimeNs, switchingFreqKhz, vdc, voltageExponent, caseTempC, tjPass, coolingMount, timPresetId, timThicknessMm, timConductivity, timContactAreaMm2, extraRthKPerW]);
 
   const inputSections: ReportSection[] = useMemo(() => {
     const deviceRows: ReportRow[] = [
@@ -272,7 +336,10 @@ export default function MosfetLossCalculator() {
       { label: 'Switching frequency', value: `${fmt(switchingFreqKhz, 1)} kHz` },
       { label: 'Modulation index / |cosφ|', value: `${fmt(modulationIndex, 2)} / ${fmt(cosPhiMag, 2)}` },
       { label: 'Dead time', value: `${fmt(deadTimeNs, 0)} ns` },
-      { label: 'Case/heatsink temperature', value: `${fmtU(caseTempC, unitSystem, UNIT_TEMP, 0)}${unitLabel(unitSystem, UNIT_TEMP)}` },
+      { label: coolingMount === 'tim' ? 'Heatsink temperature' : 'Case/heatsink temperature', value: `${fmtU(caseTempC, unitSystem, UNIT_TEMP, 0)}${unitLabel(unitSystem, UNIT_TEMP)}` },
+      ...(coolingMount === 'tim' ? [
+        { label: 'Cooling mount', value: `TIM + baseplate — ${TIM_PRESETS.find((p) => p.id === timPresetId)?.label ?? 'Custom'}, t=${fmt(timThicknessMm, 3)} mm, A=${fmt(timContactAreaMm2, 0)} mm² (RthTIM = ${fmt(extraRthKPerW, 4)} K/W)` },
+      ] : [{ label: 'Cooling mount', value: 'Direct cooling (RthJC spans junction to coolant)' }]),
       { label: 'Synchronous rectification', value: syncRect ? 'On' : 'Off (classic channel/diode split)' },
       { label: 'Voltage scaling exponent kv', value: fmt(voltageExponent, 2) },
       { label: 'Motor speed / pole pairs', value: `${fmt(motorSpeedRpm, 0)} rpm / ${motorPolePairs} (f1 = ${fmt(f1Hz, 1)} Hz)` },
@@ -291,7 +358,7 @@ export default function MosfetLossCalculator() {
       { heading: 'Operating point', rows: opRows },
       { heading: isDuty ? 'Duty cycle profile' : 'Load condition', rows: loadRows },
     ];
-  }, [device, parallelCount, vdc, switchingFreqKhz, modulationIndex, cosPhiMag, deadTimeNs, caseTempC, syncRect, voltageExponent, motorSpeedRpm, motorPolePairs, f1Hz, isDuty, dutySteps, phaseCurrentArms, driveMode, unitSystem]);
+  }, [device, parallelCount, vdc, switchingFreqKhz, modulationIndex, cosPhiMag, deadTimeNs, caseTempC, coolingMount, timPresetId, timThicknessMm, timContactAreaMm2, extraRthKPerW, syncRect, voltageExponent, motorSpeedRpm, motorPolePairs, f1Hz, isDuty, dutySteps, phaseCurrentArms, driveMode, unitSystem]);
 
   const outputSections: ReportSection[] = useMemo(() => {
     const r = headline;
@@ -307,6 +374,7 @@ export default function MosfetLossCalculator() {
     const totalsRows: ReportRow[] = [
       { label: 'Whole-inverter loss', value: `${fmt(r.inverterTotalW, 1)} W` },
       { label: 'Junction temperature', value: `${fmtU(r.junctionTempC, unitSystem, UNIT_TEMP, 1)}${unitLabel(unitSystem, UNIT_TEMP)} (limit ${fmtU(device.tvjMaxC, unitSystem, UNIT_TEMP, 0)}${unitLabel(unitSystem, UNIT_TEMP)})` },
+      ...(coolingMount === 'tim' ? [{ label: 'Case/baseplate temperature (implied)', value: `${fmtU(displayCaseTempC(r), unitSystem, UNIT_TEMP, 1)}${unitLabel(unitSystem, UNIT_TEMP)}` }] : []),
       { label: 'Output power', value: `${fmt(r.outputPowerW / 1000, 1)} kW` },
       { label: 'Efficiency', value: `${fmt(r.efficiencyPercent, 3)}%` },
       ...(isDuty ? [
@@ -319,7 +387,7 @@ export default function MosfetLossCalculator() {
       { heading: isDuty ? 'Per-device losses (worst duty step)' : 'Per-device losses', rows: breakdownRows },
       { heading: 'Inverter totals', rows: totalsRows },
     ];
-  }, [headline, device.tvjMaxC, isDuty, duty, unitSystem]);
+  }, [headline, device.tvjMaxC, isDuty, duty, unitSystem, coolingMount, caseTempC, extraRthKPerW]);
 
   const handleExportPdf = () => {
     const pdfBars: PdfLossBar[] = lossBars.map((b) => ({ ...b }));
@@ -480,9 +548,46 @@ export default function MosfetLossCalculator() {
                 <input autoComplete="off" type="number" min={0} step={50} value={deadTimeNs} onChange={(e) => setDeadTimeNs(Number(e.target.value))} />
               </div>
               <div className="field">
-                <label>Case/heatsink temperature ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                <label>{coolingMount === 'tim' ? `Heatsink temperature (${unitLabel(unitSystem, UNIT_TEMP)})` : `Case/heatsink temperature (${unitLabel(unitSystem, UNIT_TEMP)})`}</label>
                 <input autoComplete="off" type="number" value={toDisplay(caseTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setCaseTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
               </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label>
+                  Cooling mount
+                  <InfoTooltip>Direct cooling: the device's RthJC already spans junction to coolant (baseplate-less modules, or a discrete tab pressed straight to a cold plate) — the temperature above is the coolant/heatsink temperature. TIM + baseplate: models an added solder or sintered-silver interface between the device case/baseplate and the heatsink, on top of RthJC.</InfoTooltip>
+                </label>
+                <div className="segmented">
+                  <button className={coolingMount === 'direct' ? 'active' : ''} onClick={() => setCoolingMount('direct')}>Direct cooling</button>
+                  <PremiumGate feature="TIM + baseplate cooling stack">
+                    <button className={coolingMount === 'tim' ? 'active' : ''} onClick={() => setCoolingMount('tim')}>TIM + baseplate</button>
+                  </PremiumGate>
+                </div>
+              </div>
+              {coolingMount === 'tim' && (
+                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                  <div className="grid grid-3">
+                    <div className="field">
+                      <label>TIM material</label>
+                      <select value={timPresetId} onChange={(e) => onTimPresetChange(e.target.value)}>
+                        {TIM_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label>TIM thickness ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
+                      <input autoComplete="off" type="number" min={0.001} step={0.01} value={toDisplay(timThicknessMm, unitSystem, UNIT_LENGTH)} onChange={(e) => setTimThicknessMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
+                    </div>
+                    <div className="field">
+                      <label>TIM conductivity (W/m·K)</label>
+                      <input autoComplete="off" type="number" min={0.01} step={0.1} value={timConductivity} onChange={(e) => setTimConductivity(Number(e.target.value))} />
+                    </div>
+                    <div className="field">
+                      <label>Baseplate contact area ({unitLabel(unitSystem, UNIT_AREA)})</label>
+                      <input autoComplete="off" type="number" min={0} step={10} value={toDisplay(timContactAreaMm2, unitSystem, UNIT_AREA)} onChange={(e) => setTimContactAreaMm2(fromDisplay(Number(e.target.value), unitSystem, UNIT_AREA))} />
+                    </div>
+                  </div>
+                  <span className="hint">RthTIM (computed) = {fmt(extraRthKPerW, 4)} K/W — implied case/baseplate temperature ≈ {fmtU(displayCaseTempC(headline), unitSystem, UNIT_TEMP, 1)}{unitLabel(unitSystem, UNIT_TEMP)}</span>
+                </div>
+              )}
               <div className="field">
                 <label>Motor pole pairs</label>
                 <input autoComplete="off" type="number" min={1} step={1} value={motorPolePairs} onChange={(e) => setMotorPolePairs(Number(e.target.value))} />
@@ -607,7 +712,13 @@ export default function MosfetLossCalculator() {
                 <div className={`value ${tjPass ? 'pos' : 'neg'}`}>
                   {thermalRunaway ? `>${fmtU(2 * device.tvjMaxC, unitSystem, UNIT_TEMP, 0)}` : fmtU(worstTj, unitSystem, UNIT_TEMP, 1)}<span className="unit">{unitLabel(unitSystem, UNIT_TEMP)}</span>
                 </div>
-                <div className="hint">{thermalRunaway ? 'thermal runaway — model invalid beyond this point' : `case ${fmtU(caseTempC, unitSystem, UNIT_TEMP, 0)}${unitLabel(unitSystem, UNIT_TEMP)}, RthJC ${fmt(device.rthJcKPerW, 3)} K/W`}</div>
+                <div className="hint">
+                  {thermalRunaway
+                    ? 'thermal runaway — model invalid beyond this point'
+                    : coolingMount === 'tim'
+                      ? `heatsink ${fmtU(caseTempC, unitSystem, UNIT_TEMP, 0)}${unitLabel(unitSystem, UNIT_TEMP)}, case ≈ ${fmtU(displayCaseTempC(headline), unitSystem, UNIT_TEMP, 0)}${unitLabel(unitSystem, UNIT_TEMP)}, RthJC+TIM ${fmt(device.rthJcKPerW + extraRthKPerW, 3)} K/W`
+                      : `case ${fmtU(caseTempC, unitSystem, UNIT_TEMP, 0)}${unitLabel(unitSystem, UNIT_TEMP)}, RthJC ${fmt(device.rthJcKPerW, 3)} K/W`}
+                </div>
               </div>
               <div className="result-tile">
                 <div className="label">Output power</div>
