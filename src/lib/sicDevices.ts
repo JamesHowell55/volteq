@@ -133,6 +133,14 @@ export const SIC_DEVICE_PRESETS: SicDevicePreset[] = [
     notes: 'Transcribed from the IMBG120R008M2H datasheet (v1.10): Eon 1.28 mJ/Eoff 0.81 mJ at VDD=800 V, ID=89.9 A, VGS=0/+18 V, RG,ext=2.3 Ω; Qfr 2.1 µC and Efr 0.28 mJ at 175 °C used as Qrr/Err; 200 °C cumulative-overload capability. RthJC estimated from package class (datasheet grep returned Rth(j-a) only) — verify.',
   },
   {
+    id: 'aimbg120r010m1', manufacturer: 'Infineon', partNumber: 'AIMBG120R010M1', packageLabel: 'PG-TO263-7-U01 / D2PAK-7L (CoolSiC Automotive G1p)',
+    topology: 'discrete', currentRatingA: 205, rdsOn25mOhm: 8.7, rdsOnHotmOhm: 17.3, rdsOnHotTempC: 175,
+    vgsOnV: 20, vgsOffV: 0, eOnMj: 0.954, eOffMj: 0.450, eTestVdcV: 800, eTestCurrentA: 93,
+    eRrMj: 0, qrrUc: 0.514, vsdV: 3.9, rthJcKPerW: 0.13, tvjMaxC: 175, qgNc: 178,
+    sourced: true,
+    notes: 'Transcribed from the AIMBG120R010M1 datasheet (Rev. 1.30, 2026-02-19): automotive-qualified (AEC-Q100/101) Gen1p CoolSiC in PG-TO263-7-U01 (D2PAK-7L), Kelvin-source pin, recommended VGS(on)=20 V. Eon 954 µJ/Eoff 450 µJ at VDD=800 V, ID=93 A, VGS=0/20 V, RG,ext=2 Ω, Lσ=20 nH, Tvj=25°C. Body diode: no reverse-recovery energy published, only MOSFET forward recovery charge Qfr=514 nC at the same test point — engine uses the Qrr·Vdc/4 fallback. RthJC typ 0.13 K/W from the package table.',
+  },
+  {
     id: 'ff2mr12km1h', manufacturer: 'Infineon', partNumber: 'FF2MR12KM1H', packageLabel: '62 mm half-bridge module (CoolSiC M1H)',
     topology: 'halfBridge', currentRatingA: 500, rdsOn25mOhm: 1.6, rdsOnHotmOhm: 3.0, rdsOnHotTempC: 150,
     vgsOnV: 15, vgsOffV: -5, eOnMj: 28, eOffMj: 15, eTestVdcV: 600, eTestCurrentA: 500,
