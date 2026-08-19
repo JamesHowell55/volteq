@@ -288,6 +288,25 @@ export const CABLE_PRODUCTS: CableProduct[] = [
     sourceLabel: 'Huber+Suhner RADOX 4/9 GKW-AX Technical Datasheet 557 578 G(e), issue 03.06.2005',
   },
   {
+    id: 'amphenol-powerlink-hv',
+    manufacturer: 'Amphenol (Times Fiber Communications)',
+    productName: 'PowerLink HV USA (Shielded)',
+    typeDesignation: 'TFC-HV-35S-OR ... TFC-HV-150S-OR — designed for Amphenol PowerLok G1/G2 connectors',
+    ratingKind: 'construction',
+    sizeUnit: 'mm2',
+    ratingBaselineTempC: 20, // DC resistance is the only temperature-anchored figure this cable publishes (measured at 20°C) — no ampacity baseline exists to anchor to
+    ratingConductorTempC: 150,
+    ratingBasisNote: 'Amphenol does not publish an ampacity/current-rating table — or even an approximate derating chart — for this cable in any sourced document, only construction and dimensional data (conductor strand count/diameter, DC resistance, insulation/jacket thickness, sizes 35-150mm²). Confirmed absent across BOTH the US-made "PowerLink HV USA" line used here (Amphenol TFC, Chatham VA — "Powerlink HV USA Shielded 100124 Rev 05") and the separately-branded global "PowerLink HV Cable" line (Amphenol GEC|TPI, Document 8P1132 Rev A, 2.5-150mm², rated 125°C/ISO 6722 Class C rather than this one\'s 150°C/Class D) — so this preset feeds the real, sourced construction into this tool\'s own validated first-principles model rather than fabricating a table.',
+    temperatureDerating: null,
+    derivedDeratingDisclosure: 'No ambient-temperature derating curve or chart is published for this cable at all — unlike some other construction-only presets in this tool, there is no approximate cross-check value available either. Ampacity shown is entirely this tool\'s own physics calculation for the stated construction, not a manufacturer figure.',
+    variants: [{ id: 'bare-cu', label: 'Bare copper conductor, XLPO insulation (150°C, ISO 6722 Class D)', maxTempC: 150 }],
+    constructionMaterialId: 'copper',
+    constructionInsulationThermalConductivity: 0.33, // matches this tool's existing XLPE (ISO 6722 Class D, 150°C) preset — same insulation family/class as printed on the datasheet
+    constructionNote: 'Sets conductor = bare copper, insulation = custom 150°C / XLPE-family thermal conductivity (0.33 W/m·K) — set the insulation thickness for your actual cable size (1.5mm avg. wall on the 150mm² shielded construction, per datasheet), then this tool computes ampacity the same way it does for any other cable.',
+    sourceUrl: 'https://www.amphenolbroadband.com/wp-content/uploads/2024/10/PowerLink-HV-USA-Shielded-High-Voltage-Power-Cable-Data-Sheet.pdf',
+    sourceLabel: 'Amphenol TFC "PowerLink HV USA Shielded High Voltage (HV) Power Cable" datasheet, Powerlink HV USA Shielded 100124 Rev 05',
+  },
+  {
     id: 'exrad-150',
     manufacturer: 'Champlain Cable',
     productName: 'EXRAD 150 XLE / FX',
