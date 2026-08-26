@@ -12,6 +12,9 @@
 // capacitance) rather than the full ~110-part table; the "Custom" path lets a
 // user enter any part's C / ESR / Rth / Irms / dimensions and a reference
 // part number.
+//
+// Also included: KEMET C4AQ (plain, non-miniaturized) at 1,300 VDC — see the
+// C4AQ_ROWS comment below for sourcing.
 
 export interface DcLinkCapacitor {
   partNumber: string;
@@ -84,6 +87,30 @@ const C4AQ_M_ROWS: Row[] = [
   [45, 1200, 3.0, 34.3, 7, 19, 45, 65, 57.5, 'C4AQPEW5450M3BJ'],
 ];
 
+// KEMET C4AQ (plain, non-"miniaturized") — the standard-line sibling of C4AQ-M
+// above: radial 2/4-lead automotive-grade (AEC-Q200) DC-Link PP film, 500–1,500
+// VDC. Values below cover only the 1,300 VDC class (voltage code "U"), each
+// figure independently confirmed against KEMET's per-part specsheet (Series
+// Selection tree + Table 1 "Ratings & Part Number Reference", datasheet
+// F3114_C4AQ, rev 5/5/2025; individual specsheets pulled from
+// search.kemet.com/component-documentation/download/specsheet/<partNumber>).
+// Note: this series' VNDC is referenced at 70 °C hot spot (vs. C4AQ-M's VNDC
+// at 85 °C) — the shared maxOperatingVoltage()/estimateLifeHours() derating
+// curve below is anchored to C4AQ-M and applied as an approximation here too,
+// same simplification already in effect for the C4AE/TDK series further down.
+// [C, V, ESR(mΩ), Irms(A), Rth(°C/W), ESL(nH), T, H, L, part, leads] — leads
+// read off each part's own specsheet ("Lead: Wire Leads" = 2, "4 Wire Leads" = 4),
+// unlike the C4AQ-M block above which assumes 4 uniformly.
+const C4AQ_ROWS: [number, number, number, number, number, number, number, number, number, string, number][] = [
+  // 1300 VDC (voltage code "U")
+  [1, 1300, 33.1, 4.2, 44, 17, 11, 20, 31.5, 'C4AQUBU4100A1WJ', 2],
+  [5, 1300, 8.2, 11.8, 23, 28, 22, 37, 31.5, 'C4AQUBU4500A12J', 2],
+  [8, 1300, 7.9, 12.9, 20, 12, 20, 40, 42, 'C4AQUBW4800A3FJ', 4],
+  [20, 1300, 6.5, 18.3, 12, 13, 30, 45, 57.5, 'C4AQUBW5200A3MJ', 4],
+  [27, 1300, 4.9, 22.8, 10, 15, 35, 50, 57.5, 'C4AQUBW5270A3NJ', 4],
+  [45, 1300, 3.1, 34.0, 7, 19, 45, 65, 57.5, 'C4AQUEW5450A3BJ', 4],
+];
+
 // KEMET C4AE — radial 2/4-lead DC-Link PP film, 450–1,100 VDC (datasheet
 // F3046_C4AE_RADIAL). Same ΔT = ESR·Irms²·Rth basis (Irms for a 30 °C rise).
 // [C, V, ESR(mΩ), Irms(A), Rth(°C/W), T, H, L, part]
@@ -145,6 +172,14 @@ const C4AQ_M_CAPS: DcLinkCapacitor[] = C4AQ_M_ROWS.map(
   })
 );
 
+const C4AQ_CAPS: DcLinkCapacitor[] = C4AQ_ROWS.map(
+  ([c, v, esr, irms, rth, esl, t, h, l, pn, leads]) => ({
+    partNumber: pn, supplier: 'KEMET', series: 'C4AQ', capacitanceUf: c, ratedVoltageVdc: v,
+    esrMohm: esr, irmsRatedA: irms, rthCW: rth, eslNh: esl,
+    boxThicknessMm: t, boxHeightMm: h, boxLengthMm: l, leads: (leads === 2 ? 2 : 4),
+  })
+);
+
 const C4AE_CAPS: DcLinkCapacitor[] = C4AE_ROWS.map(
   ([c, v, esr, irms, rth, t, h, l, pn]) => ({
     partNumber: pn, supplier: 'KEMET', series: 'C4AE', capacitanceUf: c, ratedVoltageVdc: v,
@@ -161,7 +196,7 @@ const TDK_CAPS: DcLinkCapacitor[] = TDK_ROWS.map(
   })
 );
 
-export const DC_LINK_CAPACITORS: DcLinkCapacitor[] = [...C4AQ_M_CAPS, ...C4AE_CAPS, ...TDK_CAPS];
+export const DC_LINK_CAPACITORS: DcLinkCapacitor[] = [...C4AQ_M_CAPS, ...C4AQ_CAPS, ...C4AE_CAPS, ...TDK_CAPS];
 
 export const CAP_SUPPLIERS = ['KEMET', 'TDK'] as const;
 
@@ -202,7 +237,7 @@ const COST_BASE_USD = 2.5;
 const COST_RATE_USD_PER_KVUF = 0.42; // per (µF·V/1000)
 
 function costGradeTier(series: string): number {
-  return series === 'C4AQ-M' ? 1.25 : 1.0; // automotive miniaturised premium
+  return series === 'C4AQ-M' || series === 'C4AQ' ? 1.25 : 1.0; // AEC-Q200 automotive-grade premium
 }
 
 export function indicativeCapCostUsd(cap: DcLinkCapacitor): number {
