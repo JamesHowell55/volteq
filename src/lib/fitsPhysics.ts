@@ -22,13 +22,19 @@
 // Axial press-in (insertion) force: F = π·f·p·d·L (f = friction coefficient,
 // L = engagement length), evaluated at the assembly-temperature pressure.
 //
-// Thermal effect: ISO 286 tolerances are referenced at 20°C. At a different
-// temperature T, differential thermal expansion shifts the diametral
-// interference by δ_thermal(T) = d·(αshaft − αhub)·(T − 20), added to the
-// as-machined interference before solving for pressure/stress at that
-// temperature. A positive shift (net growth of interference) occurs when the
-// shaft's CTE exceeds the hub's and the part is heated (or the reverse and
-// the part is cooled).
+// Thermal effect: ISO 286 tolerances are referenced at 20°C. At a given
+// temperature T, a part's own diametral growth is δgrowth = α·d·(T − 20)
+// (positive = expansion). The two parts can be AT DIFFERENT TEMPERATURES —
+// the normal heat/shrink-fit assembly method, where the hub is heated (or the
+// shaft chilled, e.g. in dry ice or liquid nitrogen) to open up a sliding
+// clearance before the parts are dropped together with little or no force,
+// then allowed to equalise back to the operational/storage temperature. The
+// net shift in diametral interference is therefore
+// δ_thermal = δgrowth,shaft − δgrowth,hub = d·[αshaft·(Tshaft−20) − αhub·(Thub−20)],
+// added to the as-machined interference before solving for pressure/stress at
+// that condition. The operational and storage points assume both parts have
+// equalised to one shared ambient (Tshaft = Thub = T), which reduces this to
+// the single-temperature form d·(αshaft−αhub)·(T−20).
 
 import type { FitsMaterial } from './fitsMaterials';
 
@@ -53,7 +59,10 @@ export interface TemperatureStressSet {
 }
 
 export interface TemperaturePointResult {
-  temperatureC: number;
+  shaftTempC: number;
+  hubTempC: number;
+  shaftThermalGrowthMm: number; // shaft OD diametral change from the 20°C reference (+ = expansion, − = contraction)
+  hubThermalGrowthMm: number; // hub bore diametral change from the 20°C reference (+ = expansion, − = contraction)
   interferenceMm: TriValue; // diametral, after thermal shift
   contactPressureMPa: TriValue;
   hubBore: TemperatureStressSet;
@@ -84,8 +93,9 @@ export interface FitsInput {
   frictionCoefficient: number;
   shaftMaterial: FitsMaterial;
   hubMaterial: FitsMaterial;
-  assemblyTempC: number;
-  operationalTempC: number;
+  shaftAssemblyTempC: number; // heat/shrink fits: the shaft and hub can be brought to assembly at different temperatures
+  hubAssemblyTempC: number;
+  operationalTempC: number; // both parts assumed equalised to a shared ambient at these two points
   storageTempC: number;
 }
 
@@ -162,10 +172,12 @@ function triValue(nom: number, min: number, max: number): TriValue {
 }
 
 function solveAtTemperature(
-  input: FitsInput, temperatureC: number, interferenceBase: TriValue,
+  input: FitsInput, shaftTempC: number, hubTempC: number, interferenceBase: TriValue,
 ): TemperaturePointResult {
   const { interfaceDiameterMm: d, shaftBoreMm: di, hubOuterDiameterMm: doD, shaftMaterial, hubMaterial } = input;
-  const thermalShiftMm = d * (shaftMaterial.thermalExpansionPerC - hubMaterial.thermalExpansionPerC) * (temperatureC - 20);
+  const shaftThermalGrowthMm = shaftMaterial.thermalExpansionPerC * d * (shaftTempC - 20);
+  const hubThermalGrowthMm = hubMaterial.thermalExpansionPerC * d * (hubTempC - 20);
+  const thermalShiftMm = shaftThermalGrowthMm - hubThermalGrowthMm;
   const interferenceMm = triValue(
     interferenceBase.nom + thermalShiftMm,
     interferenceBase.min + thermalShiftMm,
@@ -216,7 +228,10 @@ function solveAtTemperature(
   }
 
   return {
-    temperatureC,
+    shaftTempC,
+    hubTempC,
+    shaftThermalGrowthMm,
+    hubThermalGrowthMm,
     interferenceMm,
     contactPressureMPa: contactPressureMPaTri,
     hubBore,
@@ -236,9 +251,9 @@ export function solveFitsCalc(input: FitsInput): FitsResult {
     shaftTolUpperMm - hubTolLowerMm,
   );
 
-  const assembly = solveAtTemperature(input, input.assemblyTempC, interferenceAtRefTemp);
-  const operational = solveAtTemperature(input, input.operationalTempC, interferenceAtRefTemp);
-  const storage = solveAtTemperature(input, input.storageTempC, interferenceAtRefTemp);
+  const assembly = solveAtTemperature(input, input.shaftAssemblyTempC, input.hubAssemblyTempC, interferenceAtRefTemp);
+  const operational = solveAtTemperature(input, input.operationalTempC, input.operationalTempC, interferenceAtRefTemp);
+  const storage = solveAtTemperature(input, input.storageTempC, input.storageTempC, interferenceAtRefTemp);
 
   const fMin = Math.PI * input.frictionCoefficient * assembly.contactPressureMPa.min * d * input.engagementLengthMm;
   const fNom = Math.PI * input.frictionCoefficient * assembly.contactPressureMPa.nom * d * input.engagementLengthMm;
@@ -254,6 +269,31 @@ export function solveFitsCalc(input: FitsInput): FitsResult {
       severity: 'fail',
       detail: `The loosest tolerance combination (shaft min, hub max) gives ${interferenceAtRefTemp.min <= 0 ? 'zero or negative' : 'positive'} interference at 20°C — this tolerance stack can produce a clearance fit, not a press fit. Tighten the shaft or hub tolerance.`,
     });
+  }
+
+  if (input.shaftAssemblyTempC !== input.hubAssemblyTempC) {
+    if (assembly.interferenceMm.max <= 0) {
+      checks.push({
+        id: 'thermal-assembly-clearance',
+        label: 'Heat/shrink assembly clearance',
+        severity: 'pass',
+        detail: `At shaft ${fmtT(input.shaftAssemblyTempC)} / hub ${fmtT(input.hubAssemblyTempC)}, the parts have a guaranteed diametral clearance of at least ${(-assembly.interferenceMm.max).toFixed(3)} mm across the full tolerance range — they should drop together with little or no force.`,
+      });
+    } else if (assembly.interferenceMm.min <= 0) {
+      checks.push({
+        id: 'thermal-assembly-clearance',
+        label: 'Heat/shrink assembly clearance',
+        severity: 'warn',
+        detail: `At shaft ${fmtT(input.shaftAssemblyTempC)} / hub ${fmtT(input.hubAssemblyTempC)}, the nominal diametral clearance is ${(-assembly.interferenceMm.nom).toFixed(3)} mm, but the tightest tolerance combination still has ${assembly.interferenceMm.max.toFixed(3)} mm of interference (up to ${insertionForceN.max.toFixed(0)} N of press force at that extreme) — increase the temperature differential for a guaranteed force-free assembly.`,
+      });
+    } else {
+      checks.push({
+        id: 'thermal-assembly-clearance',
+        label: 'Heat/shrink assembly clearance',
+        severity: 'warn',
+        detail: `At shaft ${fmtT(input.shaftAssemblyTempC)} / hub ${fmtT(input.hubAssemblyTempC)}, ${assembly.interferenceMm.nom.toFixed(3)} mm of interference remains (nominal) — this temperature differential alone is not enough for a force-free assembly (still ~${insertionForceN.nom.toFixed(0)} N nominal press force). Increase the differential, or plan for the insertion force shown below.`,
+      });
+    }
   }
 
   if (!operational.fitRetainedAtMin) {

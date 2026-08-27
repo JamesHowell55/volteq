@@ -96,7 +96,8 @@ export default function FitsAndLimitsCalculator() {
   const [hubMaterialId, setHubMaterialId] = useState<FitsMaterialId>('steelGeneric');
   const [hubCustom, setHubCustom] = useState<CustomMaterialState>(makeCustomMaterial());
 
-  const [assemblyTempC, setAssemblyTempC] = useState(20);
+  const [shaftAssemblyTempC, setShaftAssemblyTempC] = useState(20);
+  const [hubAssemblyTempC, setHubAssemblyTempC] = useState(20);
   const [operationalTempC, setOperationalTempC] = useState(125);
   const [storageTempC, setStorageTempC] = useState(-55);
 
@@ -118,20 +119,21 @@ export default function FitsAndLimitsCalculator() {
     frictionCoefficient,
     shaftMaterial,
     hubMaterial,
-    assemblyTempC,
+    shaftAssemblyTempC,
+    hubAssemblyTempC,
     operationalTempC,
     storageTempC,
   }), [interfaceDiameterMm, shaftDev, hubDev, shaftKind, shaftBoreMm, hubOuterDiameterMm, engagementLengthMm,
-    frictionCoefficient, shaftMaterial, hubMaterial, assemblyTempC, operationalTempC, storageTempC]);
+    frictionCoefficient, shaftMaterial, hubMaterial, shaftAssemblyTempC, hubAssemblyTempC, operationalTempC, storageTempC]);
 
   const result: FitsResult = useMemo(() => solveFitsCalc(fitsInput), [fitsInput]);
 
   const getInputs = useCallback((): Record<string, unknown> => ({
     shaftKind, interfaceDiameterMm, shaftBoreMm, hubOuterDiameterMm, engagementLengthMm, frictionCoefficient,
     shaftTol, hubTol, shaftMaterialId, shaftCustom, hubMaterialId, hubCustom,
-    assemblyTempC, operationalTempC, storageTempC,
+    shaftAssemblyTempC, hubAssemblyTempC, operationalTempC, storageTempC,
   }), [shaftKind, interfaceDiameterMm, shaftBoreMm, hubOuterDiameterMm, engagementLengthMm, frictionCoefficient,
-    shaftTol, hubTol, shaftMaterialId, shaftCustom, hubMaterialId, hubCustom, assemblyTempC, operationalTempC, storageTempC]);
+    shaftTol, hubTol, shaftMaterialId, shaftCustom, hubMaterialId, hubCustom, shaftAssemblyTempC, hubAssemblyTempC, operationalTempC, storageTempC]);
 
   const restoreInputs = useCallback((inp: Record<string, unknown>) => {
     const v = inp as Record<string, any>;
@@ -147,7 +149,12 @@ export default function FitsAndLimitsCalculator() {
     if (v.shaftCustom) setShaftCustom(v.shaftCustom);
     if (v.hubMaterialId) setHubMaterialId(v.hubMaterialId);
     if (v.hubCustom) setHubCustom(v.hubCustom);
-    if (v.assemblyTempC != null) setAssemblyTempC(v.assemblyTempC);
+    // shaftAssemblyTempC/hubAssemblyTempC replace the old single assemblyTempC (both parts at the
+    // same temperature) — fall back to it for saves/share-links made before the split.
+    if (v.shaftAssemblyTempC != null) setShaftAssemblyTempC(v.shaftAssemblyTempC);
+    else if (v.assemblyTempC != null) setShaftAssemblyTempC(v.assemblyTempC);
+    if (v.hubAssemblyTempC != null) setHubAssemblyTempC(v.hubAssemblyTempC);
+    else if (v.assemblyTempC != null) setHubAssemblyTempC(v.assemblyTempC);
     if (v.operationalTempC != null) setOperationalTempC(v.operationalTempC);
     if (v.storageTempC != null) setStorageTempC(v.storageTempC);
   }, []);
@@ -262,10 +269,10 @@ export default function FitsAndLimitsCalculator() {
       result: `δ = ${fmt(result.interferenceAtRefTemp.nom, 4)} mm nominal (${fmt(result.interferenceAtRefTemp.min, 4)} … ${fmt(result.interferenceAtRefTemp.max, 4)} mm)`,
     });
     steps.push({
-      title: 'Thermal shift in interference',
-      formula: 'δ_thermal(T) = d·(αshaft − αhub)·(T − 20°C), added to the as-machined interference',
+      title: 'Per-part thermal growth and shift in interference',
+      formula: 'δgrowth,shaft = αshaft·d·(Tshaft−20°C), δgrowth,hub = αhub·d·(Thub−20°C); δ_thermal = δgrowth,shaft − δgrowth,hub, added to the as-machined interference (heat/shrink fits: shaft and hub can be at different temperatures during assembly)',
       substitution: `d = ${fmt(interfaceDiameterMm, 2)} mm, αshaft = ${fmt(shaftMaterial.thermalExpansionPerC * 1e6, 1)}×10⁻⁶/°C, αhub = ${fmt(hubMaterial.thermalExpansionPerC * 1e6, 1)}×10⁻⁶/°C`,
-      result: `At ${fmt(operationalTempC, 0)}°C: δ = ${fmt(result.operational.interferenceMm.nom, 4)} mm nominal. At ${fmt(storageTempC, 0)}°C: δ = ${fmt(result.storage.interferenceMm.nom, 4)} mm nominal.`,
+      result: `At assembly (shaft ${fmt(shaftAssemblyTempC, 0)}°C / hub ${fmt(hubAssemblyTempC, 0)}°C): shaft ${result.assembly.shaftThermalGrowthMm >= 0 ? 'grows' : 'shrinks'} ${fmt(Math.abs(result.assembly.shaftThermalGrowthMm), 4)} mm, hub ${result.assembly.hubThermalGrowthMm >= 0 ? 'grows' : 'shrinks'} ${fmt(Math.abs(result.assembly.hubThermalGrowthMm), 4)} mm → δ = ${fmt(result.assembly.interferenceMm.nom, 4)} mm nominal. At ${fmt(operationalTempC, 0)}°C: δ = ${fmt(result.operational.interferenceMm.nom, 4)} mm. At ${fmt(storageTempC, 0)}°C: δ = ${fmt(result.storage.interferenceMm.nom, 4)} mm.`,
     });
     steps.push({
       title: 'Contact pressure (Lamé thick-cylinder / Shigley shrink-fit equation)',
@@ -285,7 +292,7 @@ export default function FitsAndLimitsCalculator() {
       result: `F = ${fmt(result.insertionForceN.nom, 0)} N nominal (${fmt(result.insertionForceN.min, 0)} … ${fmt(result.insertionForceN.max, 0)} N)`,
     });
     return steps;
-  }, [result, shaftTol, hubTol, shaftDev, hubDev, interfaceDiameterMm, shaftMaterial, hubMaterial, operationalTempC,
+  }, [result, shaftTol, hubTol, shaftDev, hubDev, interfaceDiameterMm, shaftMaterial, hubMaterial, shaftAssemblyTempC, hubAssemblyTempC, operationalTempC,
     storageTempC, hubOuterDiameterMm, shaftKind, shaftBoreMm, frictionCoefficient, engagementLengthMm]);
 
   const inputSections: ReportSection[] = useMemo(() => [
@@ -316,18 +323,21 @@ export default function FitsAndLimitsCalculator() {
     {
       heading: 'Temperatures',
       rows: [
-        { label: 'Assembly', value: `${fmt(assemblyTempC, 0)}°C` },
+        { label: 'Assembly — shaft', value: `${fmt(shaftAssemblyTempC, 0)}°C` },
+        { label: 'Assembly — hub', value: `${fmt(hubAssemblyTempC, 0)}°C` },
         { label: 'Operational', value: `${fmt(operationalTempC, 0)}°C` },
         { label: 'Storage', value: `${fmt(storageTempC, 0)}°C` },
       ],
     },
   ], [shaftKind, shaftBoreMm, interfaceDiameterMm, hubOuterDiameterMm, engagementLengthMm, frictionCoefficient,
-    shaftTol, hubTol, shaftDev, hubDev, shaftMaterial, hubMaterial, assemblyTempC, operationalTempC, storageTempC]);
+    shaftTol, hubTol, shaftDev, hubDev, shaftMaterial, hubMaterial, shaftAssemblyTempC, hubAssemblyTempC, operationalTempC, storageTempC]);
 
   function tempPointRows(label: string, point: TemperaturePointResult): ReportRow[] {
     const shaftPoint = point.shaftBore ?? point.shaftInterface;
     const shaftLoc = point.shaftBore ? 'bore' : 'interface';
     return [
+      { label: `${label} — Temperature (shaft/hub) [°C]`, value: `${fmt(point.shaftTempC, 0)} / ${fmt(point.hubTempC, 0)}` },
+      { label: `${label} — Thermal growth, shaft/hub [mm]`, value: `${point.shaftThermalGrowthMm >= 0 ? '+' : ''}${fmt(point.shaftThermalGrowthMm, 4)} / ${point.hubThermalGrowthMm >= 0 ? '+' : ''}${fmt(point.hubThermalGrowthMm, 4)}` },
       { label: `${label} — Interference [mm]`, value: `${fmt(point.interferenceMm.nom, 4)} (${fmt(point.interferenceMm.min, 4)} … ${fmt(point.interferenceMm.max, 4)})` },
       { label: `${label} — Contact pressure [MPa]`, value: `${fmt(point.contactPressureMPa.nom, 1)} (${fmt(point.contactPressureMPa.min, 1)} … ${fmt(point.contactPressureMPa.max, 1)})` },
       { label: `${label} — Hub bore hoop stress [MPa]`, value: `${fmt(point.hubBore.hoopMPa.nom, 1)} · SF ${fmt(point.hubBore.safetyFactor.nom, 2)}` },
@@ -366,7 +376,7 @@ export default function FitsAndLimitsCalculator() {
       outputSections,
       calculationSteps,
       disclaimer:
-        'Engineering estimation tool for cylindrical interference (press/shrink) fits, using classical Lamé thick-walled-cylinder theory (Shigley\'s Mechanical Engineering Design, "Press and Shrink Fits") for contact pressure and hoop/radial stress in a shaft (solid or hollow) pressed into a hub of finite outer diameter, and F = π·f·p·d·L for the axial insertion force. Stresses assume plane stress (free ends, no additional axial load) and use the von Mises criterion. ISO 286 hole fits (H) are computed from the standard\'s formulas; shaft interference fits (k6/m6/n6/p6/r6/s6/t6/u6) are transcribed from the published ANSI B4.2 / ISO 286-1 tolerance-zone tables, which reproduce the ISO values exactly. Thermal effects use each material\'s room-temperature CTE across the full range (temperature-dependent property variation is not modelled). Material properties are typical published values — verify against the specific material datasheet/certificate, and note that brittle materials (e.g. grey cast iron) have no well-defined yield point in compression. Have the final fit reviewed against your application\'s holding-force and fatigue requirements.',
+        'Engineering estimation tool for cylindrical interference (press/shrink) fits, using classical Lamé thick-walled-cylinder theory (Shigley\'s Mechanical Engineering Design, "Press and Shrink Fits") for contact pressure and hoop/radial stress in a shaft (solid or hollow) pressed into a hub of finite outer diameter, and F = π·f·p·d·L for the axial insertion force. Stresses assume plane stress (free ends, no additional axial load) and use the von Mises criterion. ISO 286 hole fits (H) are computed from the standard\'s formulas; shaft interference fits (k6/m6/n6/p6/r6/s6/t6/u6) are transcribed from the published ANSI B4.2 / ISO 286-1 tolerance-zone tables, which reproduce the ISO values exactly. Thermal effects use each material\'s room-temperature CTE across the full range (temperature-dependent property variation is not modelled); the shaft and hub can be set to independent assembly temperatures for a heat/shrink fit, with each part\'s diametral thermal growth reported separately, while the operational/storage points assume both parts have equalised to a shared ambient. Material properties are typical published values — verify against the specific material datasheet/certificate, and note that brittle materials (e.g. grey cast iron) have no well-defined yield point in compression. Have the final fit reviewed against your application\'s holding-force and fatigue requirements.',
       ...branding,
     });
   };
@@ -375,14 +385,15 @@ export default function FitsAndLimitsCalculator() {
   const warningChecks = result.checks.filter((c) => c.severity === 'warn');
   const safetyFactorTarget = 1.5;
 
-  function tempTable(label: string, tempC: number, point: TemperaturePointResult) {
+  function tempTable(label: string, point: TemperaturePointResult) {
     const shaftPoint = point.shaftBore ?? point.shaftInterface;
     const shaftLoc = point.shaftBore ? 'Shaft Bore (Hollow)' : 'Shaft Interface (Solid)';
+    const sameTemp = point.shaftTempC === point.hubTempC;
     return (
       <div className="card">
         <div className="card-title">
           <span>
-            {label} ({fmt(tempC, 0)}°C)
+            {label} ({sameTemp ? `${fmt(point.shaftTempC, 0)}°C` : `shaft ${fmt(point.shaftTempC, 0)}°C / hub ${fmt(point.hubTempC, 0)}°C`})
             {!point.fitRetainedAtMin && <span className="tag" style={{ marginLeft: '0.5rem', background: 'rgba(248,113,113,0.12)', color: 'var(--neg)', borderColor: 'transparent' }}>fit lost at worst-case tolerance</span>}
           </span>
         </div>
@@ -390,6 +401,14 @@ export default function FitsAndLimitsCalculator() {
           <table className="data-table">
             <thead><tr><th>Metric</th><th>Nominal</th><th>Min</th><th>Max</th></tr></thead>
             <tbody>
+              {!sameTemp && (
+                <tr>
+                  <td>Thermal growth, shaft / hub [{lenUnit}]</td>
+                  <td colSpan={3}>
+                    {point.shaftThermalGrowthMm >= 0 ? '+' : ''}{fmtU(point.shaftThermalGrowthMm, unitSystem, UNIT_LENGTH, 4)} / {point.hubThermalGrowthMm >= 0 ? '+' : ''}{fmtU(point.hubThermalGrowthMm, unitSystem, UNIT_LENGTH, 4)}
+                  </td>
+                </tr>
+              )}
               <tr>
                 <td>Interference [{lenUnit}]</td>
                 {(['nom', 'min', 'max'] as const).map((k) => (
@@ -449,7 +468,8 @@ export default function FitsAndLimitsCalculator() {
             Interference (press/shrink) fit design for a shaft — solid or hollow — pressed into a hub or bearing
             bore. ISO 286 fits or custom tolerances on both parts, standard or custom shaft/hub materials, and
             insertion force plus hub/shaft stresses (Lamé thick-cylinder theory) across assembly, operational and
-            storage temperatures.
+            storage temperatures — with independent shaft/hub assembly temperatures for heat/shrink fits and each
+            part's thermal expansion or contraction reported explicitly.
           </p>
         </div>
         <CalculatorActions saved={saved} getInputs={getInputs}>
@@ -536,18 +556,24 @@ export default function FitsAndLimitsCalculator() {
             <div className="card-title">
               <span>
                 <span className="step-num">4</span>Temperatures
-                <InfoTooltip>ISO 286 tolerances are referenced at 20°C. At other temperatures, differential thermal expansion between the shaft and hub materials shifts the interference — growing it if the shaft's CTE exceeds the hub's and the assembly is heated (or the reverse and it's cooled), and shrinking it otherwise.</InfoTooltip>
+                <InfoTooltip>ISO 286 tolerances are referenced at 20°C. At other temperatures, differential thermal expansion between the shaft and hub materials shifts the interference — growing it if the shaft's CTE exceeds the hub's and the assembly is heated (or the reverse and it's cooled), and shrinking it otherwise. The shaft and hub can be set to DIFFERENT temperatures at assembly — the standard heat/shrink-fit method: heat the hub (or chill the shaft, e.g. in dry ice or liquid nitrogen) to open a sliding clearance, drop the parts together with little or no force, then let them equalise to the operational/storage temperature.</InfoTooltip>
               </span>
             </div>
             <div className="grid grid-2">
               <div className="field">
-                <label>Assembly ({unitLabel(unitSystem, UNIT_TEMP)})</label>
-                <input autoComplete="off" type="number" value={toDisplay(assemblyTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setAssemblyTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                <span className="hint">Insertion force is evaluated at this temperature.</span>
+                <label>Assembly — shaft ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                <input autoComplete="off" type="number" value={toDisplay(shaftAssemblyTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setShaftAssemblyTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
+                <span className="hint">Chill the shaft (e.g. dry ice, LN₂) to shrink it for assembly.</span>
+              </div>
+              <div className="field">
+                <label>Assembly — hub ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                <input autoComplete="off" type="number" value={toDisplay(hubAssemblyTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setHubAssemblyTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
+                <span className="hint">Heat the hub to expand it for assembly. Insertion force is evaluated at these two temperatures.</span>
               </div>
               <div className="field">
                 <label>Operational ({unitLabel(unitSystem, UNIT_TEMP)})</label>
                 <input autoComplete="off" type="number" value={toDisplay(operationalTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setOperationalTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
+                <span className="hint">Both parts assumed equalised to this shared ambient.</span>
               </div>
               <div className="field">
                 <label>Storage ({unitLabel(unitSystem, UNIT_TEMP)})</label>
@@ -641,9 +667,9 @@ export default function FitsAndLimitsCalculator() {
             </table>
           </div>
 
-          {tempTable('Assembly', assemblyTempC, result.assembly)}
-          {tempTable('Operational', operationalTempC, result.operational)}
-          {tempTable('Storage', storageTempC, result.storage)}
+          {tempTable('Assembly', result.assembly)}
+          {tempTable('Operational', result.operational)}
+          {tempTable('Storage', result.storage)}
 
           <div className="card">
             <div className="card-title">Fit cross-section</div>
@@ -676,9 +702,12 @@ export default function FitsAndLimitsCalculator() {
           directly from the standard's formulas; the interference-range shaft fits (k6, m6, n6, p6, r6, s6, t6,
           u6) are transcribed from the published ANSI B4.2 tolerance-zone tables, which reproduce the ISO 286-1
           values for these classes exactly (these letters carry IT-grade-dependent correction terms in the
-          standard's own formulas, so they are looked up rather than computed). Differential thermal expansion
-          shifts the interference by d·(αshaft−αhub)·(T−20°C) at each operating temperature — a genuine failure
-          mode if it drives the worst-case interference to zero or below ("fit lost"), or drives stress
+          standard's own formulas, so they are looked up rather than computed). Each part's diametral thermal
+          growth is αpart·d·(Tpart−20°C); the shaft and hub can be set to different assembly temperatures for a
+          heat/shrink fit (hub heated and/or shaft chilled to open a sliding clearance before assembly), while the
+          operational and storage points assume both parts have equalised to one shared ambient. The net shift in
+          interference is the difference between the two parts' growth — a genuine failure mode at the operational/
+          storage points if it drives the worst-case interference to zero or below ("fit lost"), or drives stress
           beyond yield at the opposite extreme. Material properties (E, ν, yield, CTE) are typical published
           room-temperature values for each preset and are not varied with temperature; grey cast iron and other
           brittle materials have no well-defined yield point in compression, so their check is advisory only —
