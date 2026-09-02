@@ -8,6 +8,7 @@ import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import PremiumGate from '../components/PremiumGate';
 import ExportPdfButton from '../components/ExportPdfButton';
+import InfoTooltip from '../components/InfoTooltip';
 import CalculatorActions from '../components/CalculatorActions';
 import GuideBacklink from '../components/GuideBacklink';
 import { getCategory, convert } from '../lib/unitConversions';
@@ -258,21 +259,20 @@ export default function MotorTorquePowerSpeedCalculator() {
           </div>
 
           <div className="card">
-            <div className="card-title"><span><span className="step-num">3</span>Cross-check: torque from current (optional, PM motor)</span></div>
+            <div className="card-title"><span><span className="step-num">3</span>Cross-check: torque from current (optional, PM motor)
+              <InfoTooltip>Leave current at 0 to skip this cross-check. Assumes an ideal PM machine (T = Kt × I), valid below magnetic saturation.</InfoTooltip>
+            </span></div>
             <PremiumGate feature="Cross-check: torque from current">
-              <>
-                <div className="grid grid-2">
-                  <div className="field">
-                    <label>Current (A)</label>
-                    <input autoComplete="off" type="number" min={0} value={currentA} onChange={(e) => setCurrentA(Number(e.target.value))} />
-                  </div>
-                  <div className="field">
-                    <label>Torque constant Kt (N·m/A)</label>
-                    <input autoComplete="off" type="number" min={0} step={0.01} value={torqueConstant} onChange={(e) => setTorqueConstant(Number(e.target.value))} />
-                  </div>
+              <div className="grid grid-2">
+                <div className="field">
+                  <label>Current (A)</label>
+                  <input autoComplete="off" type="number" min={0} value={currentA} onChange={(e) => setCurrentA(Number(e.target.value))} />
                 </div>
-                <span className="hint">Leave current at 0 to skip this cross-check. Assumes an ideal PM machine (T = Kt × I), valid below magnetic saturation.</span>
-              </>
+                <div className="field">
+                  <label>Torque constant Kt (N·m/A)</label>
+                  <input autoComplete="off" type="number" min={0} step={0.01} value={torqueConstant} onChange={(e) => setTorqueConstant(Number(e.target.value))} />
+                </div>
+              </div>
             </PremiumGate>
           </div>
 
@@ -280,9 +280,11 @@ export default function MotorTorquePowerSpeedCalculator() {
             <div className="card-title"><span><span className="step-num">4</span>Electrical input power (optional)</span></div>
             <PremiumGate feature="Electrical input power">
               <div className="field">
-                <label>Efficiency (%)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Efficiency (%)
+                  <InfoTooltip>Leave at 0 to skip. Assumes motoring operation: electrical input = mechanical output / efficiency.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" min={0} max={100} step={0.1} value={efficiencyPercent} onChange={(e) => setEfficiencyPercent(Number(e.target.value))} />
-                <span className="hint">Leave at 0 to skip. Assumes motoring operation: electrical input = mechanical output / efficiency.</span>
               </div>
             </PremiumGate>
           </div>

@@ -5,6 +5,7 @@ import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH } from '../lib/globalUni
 import { exportReportToPdf, type ReportSection, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
 import { useEntitlement } from '../lib/useEntitlement';
+import InfoTooltip from '../components/InfoTooltip';
 import PremiumGate from '../components/PremiumGate';
 import ExportPdfButton from '../components/ExportPdfButton';
 import CalculatorActions from '../components/CalculatorActions';
@@ -125,7 +126,9 @@ export default function EnclosureResonanceCalculator() {
         {/* LEFT COLUMN — inputs */}
         <div>
           <div className="card">
-            <div className="card-title"><span><span className="step-num">1</span>Internal dimensions</span></div>
+            <div className="card-title"><span><span className="step-num">1</span>Internal dimensions
+              <InfoTooltip>Use internal dimensions (the actual cavity), not the enclosure's outer envelope.</InfoTooltip>
+            </span></div>
             <div className="grid grid-3">
               <div className="field">
                 <label>Length ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
@@ -140,7 +143,6 @@ export default function EnclosureResonanceCalculator() {
                 <input autoComplete="off" type="number" min={1} step={1} value={toDisplay(widthMm, unitSystem, UNIT_LENGTH)} onChange={(e) => setWidthMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
               </div>
             </div>
-            <span className="hint">Use internal dimensions (the actual cavity), not the enclosure's outer envelope.</span>
           </div>
 
           <div className="card">

@@ -186,19 +186,25 @@ export default function MohrsCircleCalculator() {
             </div>
             <div className="grid grid-2">
               <div className="field">
-                <label>Normal stress σx ({stressUnit})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Normal stress σx ({stressUnit})
+                  <InfoTooltip>Tension +, compression −.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" value={toDisplay(sigmaXMPa, unitSystem, UNIT_STRESS)} onChange={(e) => setSigmaXMPa(fromDisplay(Number(e.target.value), unitSystem, UNIT_STRESS))} />
-                <span className="hint">Tension +, compression −.</span>
               </div>
               <div className="field">
-                <label>Normal stress σy ({stressUnit})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Normal stress σy ({stressUnit})
+                  <InfoTooltip>Tension +, compression −.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" value={toDisplay(sigmaYMPa, unitSystem, UNIT_STRESS)} onChange={(e) => setSigmaYMPa(fromDisplay(Number(e.target.value), unitSystem, UNIT_STRESS))} />
-                <span className="hint">Tension +, compression −.</span>
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>Shear stress τxy ({stressUnit})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Shear stress τxy ({stressUnit})
+                  <InfoTooltip>+x face acting in +y (right-hand convention).</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" value={toDisplay(tauXYMPa, unitSystem, UNIT_STRESS)} onChange={(e) => setTauXYMPa(fromDisplay(Number(e.target.value), unitSystem, UNIT_STRESS))} />
-                <span className="hint">+x face acting in +y (right-hand convention).</span>
               </div>
             </div>
           </div>
