@@ -497,6 +497,17 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   color: var(--text-2);
 }
 
+/* Unit shown inline after a parameter name, e.g. "Frequency  Hz". Any wording
+   about the unit beyond the symbol itself belongs in the field's ? tooltip. */
+.field label .label-unit {
+  margin-left: 0.4rem;
+  font-weight: 400;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
 .field .hint {
   font-size: 0.72rem;
   color: var(--text-faint);

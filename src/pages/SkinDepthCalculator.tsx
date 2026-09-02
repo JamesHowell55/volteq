@@ -208,10 +208,10 @@ export default function SkinDepthCalculator() {
               <div className="field">
                 <label style={{ display: 'flex', alignItems: 'center' }}>
                   Resistivity @ 20°C
+                  <span className="label-unit">Ω·mm²/m</span>
                   <InfoTooltip>Resistivity in Ω·mm²/m — the common cable/wire engineering unit (numerically = Ω·m × 10⁶). Copper is 0.0172 Ω·mm²/m; that is 1.72×10⁻⁸ Ω·m.</InfoTooltip>
                 </label>
                 <input autoComplete="off" type="number" min={0} step={0.0001} value={rho20} onChange={e => setRho20(Number(e.target.value))} />
-                <span className="hint">Ω·mm²/m</span>
               </div>
               <div className="field">
                 <label style={{ display: 'flex', alignItems: 'center' }}>
@@ -221,14 +221,20 @@ export default function SkinDepthCalculator() {
                 <input autoComplete="off" type="number" min={0.000001} step={0.01} value={muR} onChange={e => setMuR(Number(e.target.value))} />
               </div>
               <div className="field">
-                <label>β (IEC 60865-style temp. reference)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  β (IEC 60865-style temp. reference)
+                  <span className="label-unit">°C</span>
+                  <InfoTooltip>Used only for the ρ(θ) temperature correction below.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" value={beta} onChange={e => setBeta(Number(e.target.value))} />
-                <span className="hint">°C — used only for the ρ(θ) temperature correction below.</span>
               </div>
               <div className="field">
-                <label>Operating temperature</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Operating temperature
+                  <span className="label-unit">{unitLabel(unitSystem, UNIT_TEMP)}</span>
+                  <InfoTooltip>Resistivity (and so skin depth) rises somewhat with temperature.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" value={toDisplay(tempC, unitSystem, UNIT_TEMP)} onChange={e => setTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                <span className="hint">{unitLabel(unitSystem, UNIT_TEMP)} — resistivity (and so skin depth) rises somewhat with temperature.</span>
               </div>
             </div>
           </div>
@@ -241,16 +247,18 @@ export default function SkinDepthCalculator() {
             </div>
             {frequencySource === 'direct' ? (
               <div className="field" style={{ marginTop: '0.85rem' }}>
-                <label>Frequency</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Frequency
+                  <span className="label-unit">Hz</span>
+                  <InfoTooltip>Mains (50/60 Hz), inverter switching frequency, or any AC source.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" min={0} value={directFrequencyHz} onChange={e => setDirectFrequencyHz(Number(e.target.value))} />
-                <span className="hint">Hz — mains (50/60 Hz), inverter switching frequency, or any AC source.</span>
               </div>
             ) : (
               <div className="grid grid-2" style={{ marginTop: '0.85rem' }}>
                 <div className="field">
-                  <label>Motor speed</label>
+                  <label>Motor speed <span className="label-unit">rpm</span></label>
                   <input autoComplete="off" type="number" min={0} value={motorSpeedRpm} onChange={e => setMotorSpeedRpm(Number(e.target.value))} />
-                  <span className="hint">rpm</span>
                 </div>
                 <div className="field">
                   <label>Pole pairs</label>
@@ -268,10 +276,10 @@ export default function SkinDepthCalculator() {
             <div className="field">
               <label style={{ display: 'flex', alignItems: 'center' }}>
                 Conductor diameter
-                <InfoTooltip>Skin depth itself doesn't depend on conductor size — but entering a real diameter scales the graphic accurately and computes an illustrative "how much of my conductor is actually carrying current" area estimate. Leave blank to just see the skin depth number and a generic (proportionally-scaled) illustration.</InfoTooltip>
+                <span className="label-unit">{unitLabel(unitSystem, UNIT_LENGTH)}</span>
+                <InfoTooltip>Skin depth itself doesn't depend on conductor size — but entering a real diameter scales the graphic accurately and computes an illustrative "how much of my conductor is actually carrying current" area estimate. Round conductor assumed. Leave blank to just see the skin depth number and a generic (proportionally-scaled) illustration.</InfoTooltip>
               </label>
               <input autoComplete="off" type="number" min={0} step={0.1} value={conductorDiameterMm === '' ? '' : toDisplay(conductorDiameterMm, unitSystem, UNIT_LENGTH)} onChange={e => setConductorDiameterMm(e.target.value === '' ? '' : fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} placeholder={unitSystem === 'imperial' ? 'e.g. 0.4' : 'e.g. 10'} />
-              <span className="hint">{unitLabel(unitSystem, UNIT_LENGTH)} — round conductor assumed. Leave blank for an illustrative-only graphic.</span>
             </div>
           </div>
         </div>
