@@ -708,40 +708,44 @@ export default function BusbarCalculator() {
               <>
                 <div className="card-title" style={{ marginBottom: '0.5rem' }}>
                   <span style={{ fontWeight: 400 }}>Sections</span>
-                  {!isPremium && sections.length >= FREE_SECTION_LIMIT ? (
-                    <PremiumGate feature="More than 2 sections">
-                      <button className="btn small" onClick={addSection}>+ Add section</button>
-                    </PremiumGate>
-                  ) : (
-                    <button className="btn small" onClick={addSection} disabled={sections.length >= maxSections}>+ Add section</button>
-                  )}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <span className="hint" style={{ fontWeight: 400 }}>
+                      Tick a section to apply conduction cooling{coatingThicknessMm > 0 ? '; second box = keep coating' : ''}
+                    </span>
+                    {!isPremium && sections.length >= FREE_SECTION_LIMIT ? (
+                      <PremiumGate feature="More than 2 sections">
+                        <button className="btn small" onClick={addSection}>+ Add section</button>
+                      </PremiumGate>
+                    ) : (
+                      <button className="btn small" onClick={addSection} disabled={sections.length >= maxSections}>+ Add section</button>
+                    )}
+                  </span>
+                </div>
+                <div className="busbar-section-row busbar-section-head" aria-hidden="true">
+                  <div />
+                  <div className="col-label">Width ({unitLabel(unitSystem, UNIT_LENGTH)})</div>
+                  <div className="col-label">Length ({unitLabel(unitSystem, UNIT_LENGTH)})</div>
+                  <div className="col-label">{coatingThicknessMm > 0 ? 'Cond. · coat' : 'Cond.'}</div>
+                  <div />
                 </div>
                 {sections.map((s, i) => (
-                  <div className="step-row" key={s.id}>
+                  <div className="busbar-section-row" key={s.id}>
                     <div className="bar-index">{i + 1}</div>
                     <div className="field">
-                      <label>Width ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
-                      <input autoComplete="off" type="number" min={0.001} value={toDisplay(s.width, unitSystem, UNIT_LENGTH)} onChange={e => updateSection(s.id, { width: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+                      <input autoComplete="off" type="number" min={0.001} placeholder={`Width (${unitLabel(unitSystem, UNIT_LENGTH)})`} value={toDisplay(s.width, unitSystem, UNIT_LENGTH)} onChange={e => updateSection(s.id, { width: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
                     </div>
                     <div className="field">
-                      <label>Length ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
-                      <input autoComplete="off" type="number" min={0.001} value={toDisplay(s.length, unitSystem, UNIT_LENGTH)} onChange={e => updateSection(s.id, { length: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+                      <input autoComplete="off" type="number" min={0.001} placeholder={`Length (${unitLabel(unitSystem, UNIT_LENGTH)})`} value={toDisplay(s.length, unitSystem, UNIT_LENGTH)} onChange={e => updateSection(s.id, { length: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-end' }}>
+                    <div className="sec-checks">
                       <PremiumGate feature="Conduction cooling">
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--text-2)', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                          <input type="checkbox" checked={!!s.coolingEnabled} onChange={e => updateSection(s.id, { coolingEnabled: e.target.checked })} style={{ width: 'auto' }} />
-                          Apply conduction
-                        </label>
+                        <input type="checkbox" aria-label={`Apply conduction cooling to section ${i + 1}`} title="Apply conduction cooling to this section" checked={!!s.coolingEnabled} onChange={e => updateSection(s.id, { coolingEnabled: e.target.checked })} />
                       </PremiumGate>
                       {coatingThicknessMm > 0 && (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--text-2)', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                          <input type="checkbox" checked={s.coatedEnabled ?? true} onChange={e => updateSection(s.id, { coatedEnabled: e.target.checked })} style={{ width: 'auto' }} />
-                          Coat / overmould
-                        </label>
+                        <input type="checkbox" aria-label={`Keep coating / overmould on section ${i + 1}`} title="Include the coating / overmould on this section" checked={s.coatedEnabled ?? true} onChange={e => updateSection(s.id, { coatedEnabled: e.target.checked })} />
                       )}
-                      <button className="btn small danger" onClick={() => removeSection(s.id)} disabled={sections.length === 1}>Remove</button>
                     </div>
+                    <button className="icon-x" onClick={() => removeSection(s.id)} disabled={sections.length === 1} aria-label={`Remove section ${i + 1}`} title="Remove section">✕</button>
                   </div>
                 ))}
                 <div className="field" style={{ marginTop: '0.6rem' }}>

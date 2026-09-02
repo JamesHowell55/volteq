@@ -562,10 +562,11 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   /* load / step rows are already horizontal multi-field rows -- keep their
      fields stacked (label over input) rather than splitting each one */
   .two-col > :first-child .step-row .field,
-  .two-col > :first-child .bar-row .field {
+  .two-col > :first-child .bar-row .field,
+  .two-col > :first-child .busbar-section-row .field {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.25rem;
     border-top: none;
     padding: 0;
   }
@@ -1404,6 +1405,68 @@ footer.site-footer {
   .step-row { grid-template-columns: 1fr 1fr; }
   .step-row .bar-index { grid-column: 1 / -1; text-align: left; }
   .step-row > button { grid-column: 1 / -1; }
+}
+
+/* ── Busbar lengthwise sections: one compact row per section ──── */
+.busbar-section-row {
+  display: grid;
+  grid-template-columns: 20px 6.5rem 6.5rem 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.busbar-section-row + .busbar-section-row { margin-top: 0.4rem; }
+.busbar-section-row .bar-index {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-align: center;
+}
+.busbar-section-row .field input { width: 100%; }
+
+/* column-header row: same track sizes, no card chrome */
+.busbar-section-head {
+  background: none;
+  border: none;
+  padding: 0 0.6rem;
+  margin-bottom: 0.1rem;
+}
+.busbar-section-head .col-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.busbar-section-row .sec-checks {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  justify-self: start;
+}
+.busbar-section-row .sec-checks input[type="checkbox"] { width: auto; margin: 0; }
+
+.icon-x {
+  align-self: center;
+  background: none;
+  border: none;
+  color: var(--neg);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm);
+}
+.icon-x:hover:not(:disabled) { background: color-mix(in srgb, var(--neg) 16%, transparent); }
+.icon-x:disabled { opacity: 0.3; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .busbar-section-head { display: none; }
+  .busbar-section-row { grid-template-columns: 20px 1fr 1fr auto; }
+  .busbar-section-row .sec-checks { grid-column: 2 / -1; }
+  .busbar-section-row .field input { width: 100%; }
 }
 
 /* ── Theme controls popover ─────────────────────────────────── */
