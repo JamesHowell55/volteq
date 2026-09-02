@@ -383,6 +383,8 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   max-width: 1400px;
   margin: 0 auto;
   padding: 1.5rem 1.5rem 3rem;
+  /* render the tool pages at 90% so more of a calculator is visible at once */
+  zoom: 0.9;
 }
 
 .page-header { margin-bottom: 1.25rem; }
@@ -578,11 +580,13 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   }
 }
 
-/* Keep the results panel in view while editing the inputs beside it. */
+/* Keep the results panel in view while editing the inputs beside it.
+   top is in the .page's zoomed units, so it needs to clear the (unzoomed)
+   sticky navbar once scaled by 0.9. */
 @media (min-width: 901px) {
   .two-col > :last-child {
     position: sticky;
-    top: 4.5rem;
+    top: 5rem;
   }
 }
 
