@@ -703,20 +703,17 @@ export default function DcLinkCalculator() {
               </div>
               {coolingMethod === 'conduction' && (
                 <div className="field">
-                  <label>Conduction Rth to sink (°C/W)</label>
+                  <label style={{ display: 'flex', alignItems: 'center' }}>Conduction Rth to sink (°C/W)<InfoTooltip>Per-cap hot-spot → cold surface (via terminals / clamp).</InfoTooltip></label>
                   {seriesNum(conductionRthCW, setConductionRthCW, { step: 0.5, min: 0.1 })}
-                  <span className="hint">Per-cap hot-spot → cold surface (via terminals / clamp).</span>
                 </div>
               )}
               <div className="field">
-                <label>Columns (0 = auto)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Columns (0 = auto)<InfoTooltip>Auto uses a near-square grid (⌈√N⌉).</InfoTooltip></label>
                 {seriesNum(columns, setColumns, { step: 1, min: 0 })}
-                <span className="hint">Auto uses a near-square grid (⌈√N⌉).</span>
               </div>
               <div className="field">
-                <label>Spacing between caps ({lenUnit})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Spacing between caps ({lenUnit})<InfoTooltip>2–4 mm typical.</InfoTooltip></label>
                 <input autoComplete="off" type="number" min={0} step={0.5} value={toDisplay(spacingMm, unitSystem, UNIT_LENGTH)} onChange={(e) => setSpacingMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
-                <span className="hint">2–4 mm typical.</span>
               </div>
             </div>
           </div>
@@ -784,9 +781,8 @@ export default function DcLinkCalculator() {
             </div>
             {loopMode === 'direct' ? (
               <div className="field">
-                <label>Commutation-loop inductance (nH)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Commutation-loop inductance (nH)<InfoTooltip>Busbar + module + cap-bank ESL. Well-laminated EV inverter loops are ~10–30 nH.</InfoTooltip></label>
                 {seriesNum(loopInductanceNh, setLoopInductanceNh, { step: 1, min: 0 })}
-                <span className="hint">Busbar + module + cap-bank ESL. Well-laminated EV inverter loops are ~10–30 nH.</span>
               </div>
             ) : (
               <div className="grid grid-2">
@@ -814,9 +810,8 @@ export default function DcLinkCalculator() {
                   <span className="hint">Peak phase ≈ {fmt(Math.SQRT2 * phaseCurrentRmsA, 0)} A.</span>
                 </div>
                 <div className="field">
-                  <label>Current fall time (ns)</label>
+                  <label style={{ display: 'flex', alignItems: 'center' }}>Current fall time (ns)<InfoTooltip>SiC ~20–50 ns, IGBT ~100–300 ns.</InfoTooltip></label>
                   {seriesNum(fallTimeNs, setFallTimeNs, { step: 5, min: 1 })}
-                  <span className="hint">SiC ~20–50 ns, IGBT ~100–300 ns.</span>
                 </div>
               </div>
             ) : (

@@ -792,18 +792,16 @@ export default function ORingCalculator() {
                 <span className="hint">{material.notes}</span>
               </div>
               <div className="field">
-                <label>Hardness</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Hardness<InfoTooltip>Drives the permissible extrusion gap (Table XII uses 70/90 Shore; 80 uses the 90-Shore table conservatively... see notes).</InfoTooltip></label>
                 <div className="segmented">
                   <button className={shoreA === 70 ? 'active' : ''} onClick={() => setShoreA(70)}>70 Sh A</button>
                   <button className={shoreA === 80 ? 'active' : ''} onClick={() => setShoreA(80)}>80 Sh A</button>
                   <button className={shoreA === 90 ? 'active' : ''} onClick={() => setShoreA(90)}>90 Sh A</button>
                 </div>
-                <span className="hint">Drives the permissible extrusion gap (Table XII uses 70/90 Shore; 80 uses the 90-Shore table conservatively... see notes).</span>
               </div>
               <div className="field">
-                <label>System pressure ({unitLabel(unitSystem, UNIT_PRESSURE)})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>System pressure ({unitLabel(unitSystem, UNIT_PRESSURE)})<InfoTooltip>0 = skip the extrusion-gap check.</InfoTooltip></label>
                 <input autoComplete="off" type="number" min={0} step={0.1} value={toDisplay(pressureMPa, unitSystem, UNIT_PRESSURE)} onChange={(e) => setPressureMPa(fromDisplay(Number(e.target.value), unitSystem, UNIT_PRESSURE))} />
-                <span className="hint">0 = skip the extrusion-gap check.</span>
               </div>
               <div className="field">
                 <label>Min operating temperature ({unitLabel(unitSystem, UNIT_TEMP)})</label>

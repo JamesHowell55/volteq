@@ -870,24 +870,22 @@ export default function BoltedJointCalculator() {
                 <span className="hint">Pitch diameter dm = {fmtU(size.pitchDiameterMm, unitSystem, UNIT_LENGTH, 3)} {unitLabel(unitSystem, UNIT_LENGTH)} (used in the torque-preload formula).</span>
               </div>
               <div className="field">
-                <label>Head type</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Head type<InfoTooltip>Bearing-face diameter (across-flats for hex, head OD for SHCS) feeds both the frustum base and bearing-stress area.</InfoTooltip></label>
                 <div className="segmented">
                   <button className={headType === 'hexHead' ? 'active' : ''} onClick={() => setHeadType('hexHead')}>Hex head</button>
                   <button className={headType === 'socketHeadCap' ? 'active' : ''} onClick={() => setHeadType('socketHeadCap')}>Socket head cap</button>
                 </div>
-                <span className="hint">Bearing-face diameter (across-flats for hex, head OD for SHCS) feeds both the frustum base and bearing-stress area.</span>
               </div>
               <div className="field">
                 <label>
                   Property class
-                  <InfoTooltip>A steel bolt's strength grade, e.g. 8.8: the first number ×100 = tensile strength (MPa), and first×second÷10 = proof strength (MPa) — the safe elastic limit used in every stress check below. Higher numbers mean a stronger but often more brittle bolt.</InfoTooltip>
+                  <InfoTooltip>A steel bolt's strength grade, e.g. 8.8: the first number ×100 = tensile strength (MPa), and first×second÷10 = proof strength (MPa) — the safe elastic limit used in every stress check below. Higher numbers mean a stronger but often more brittle bolt. ISO 898-1 via designation formula (tensile=1st digit×100, proof=tensile×2nd digit/10); SAE J429 typical published values.</InfoTooltip>
                 </label>
                 <select value={propertyClassId} onChange={(e) => setPropertyClassId(e.target.value)}>
                   {ALL_PROPERTY_CLASSES.map((c) => (
                     <option key={c.id} value={c.id}>{c.label}</option>
                   ))}
                 </select>
-                <span className="hint">ISO 898-1 via designation formula (tensile=1st digit×100, proof=tensile×2nd digit/10); SAE J429 typical published values.</span>
               </div>
               {propertyClassId === 'custom' && (
                 <PremiumGate feature="Custom property class">
@@ -1108,9 +1106,8 @@ export default function BoltedJointCalculator() {
                       </div>
                     ) : (
                       <div className="field">
-                        <label>Bolt length ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
+                        <label style={{ display: 'flex', alignItems: 'center' }}>Bolt length ({unitLabel(unitSystem, UNIT_LENGTH)})<InfoTooltip>Measured from the bearing face (under the head) to the tip — the usual &quot;length&quot; callout for a hex/socket head bolt.</InfoTooltip></label>
                         <input autoComplete="off" type="number" min={0.001} value={toDisplay(boltLengthMm, unitSystem, UNIT_LENGTH)} onChange={(e) => setBoltLengthMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
-                        <span className="hint">Measured from the bearing face (under the head) to the tip — the usual "length" callout for a hex/socket head bolt.</span>
                       </div>
                     )}
                   </div>
@@ -1190,21 +1187,19 @@ export default function BoltedJointCalculator() {
                 <span className="hint">Typical αA scatter range {fmt(tighteningMethod.alphaAMin, 2)}–{fmt(tighteningMethod.alphaAMax, 2)}, recommended target ≈{tighteningMethod.recommendedTargetPercentProof}% of proof load. Approximate literature values — verify for critical joints.</span>
               </div>
               <div className="field">
-                <label>Scatter convention</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Scatter convention<InfoTooltip>Literature isn't unified on this convention — pick per your own tightening-method documentation.</InfoTooltip></label>
                 <div className="segmented">
                   <button className={scatterConvention === 'nominalToMax' ? 'active' : ''} onClick={() => setScatterConvention('nominalToMax')}>Nominal-to-max</button>
                   <button className={scatterConvention === 'symmetric' ? 'active' : ''} onClick={() => setScatterConvention('symmetric')}>Symmetric</button>
                 </div>
-                <span className="hint">Literature isn't unified on this convention — pick per your own tightening-method documentation.</span>
               </div>
               <div className="field">
                 <label>Safety factor target</label>
                 <input autoComplete="off" type="number" min={1} step={0.1} value={safetyFactorTarget} onChange={(e) => setSafetyFactorTarget(Number(e.target.value))} />
               </div>
               <div className="field">
-                <label>External axial load ({unitLabel(unitSystem, UNIT_FORCE)})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>External axial load ({unitLabel(unitSystem, UNIT_FORCE)})<InfoTooltip>Applied tensile load the joint must resist without separating (0 = static preload-only check).</InfoTooltip></label>
                 <input autoComplete="off" type="number" min={0} value={toDisplay(externalAxialLoadN, unitSystem, UNIT_FORCE)} onChange={(e) => setExternalAxialLoadN(fromDisplay(Number(e.target.value), unitSystem, UNIT_FORCE))} />
-                <span className="hint">Applied tensile load the joint must resist without separating (0 = static preload-only check).</span>
               </div>
               <div className="field">
                 <label>

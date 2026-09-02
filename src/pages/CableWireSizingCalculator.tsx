@@ -636,12 +636,11 @@ export default function CableWireSizingCalculator() {
             <div className="grid grid-2">
               {!isLookupProduct && (
                 <div className="field">
-                  <label>Current type</label>
+                  <label style={{ display: 'flex', alignItems: 'center' }}>Current type<InfoTooltip>DC for battery interconnects; AC for motor phase cables (uses skin effect at the drive's fundamental frequency).</InfoTooltip></label>
                   <div className="segmented">
                     <button className={currentType === 'dc' ? 'active' : ''} onClick={() => setCurrentType('dc')}>DC</button>
                     <button className={currentType === 'ac' ? 'active' : ''} onClick={() => setCurrentType('ac')}>AC</button>
                   </div>
-                  <span className="hint">DC for battery interconnects; AC for motor phase cables (uses skin effect at the drive's fundamental frequency).</span>
                 </div>
               )}
               {!isLookupProduct && currentType === 'ac' && (
@@ -692,8 +691,8 @@ export default function CableWireSizingCalculator() {
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <input type="checkbox" checked={twoConductorCircuit} onChange={(e) => setTwoConductorCircuit(e.target.checked)} style={{ width: 'auto' }} />
                   Two-conductor circuit (voltage drop counts both supply and return conductors)
+                  <InfoTooltip>Typical for EV HV circuits (battery/inverter/motor). Uncheck only for legacy chassis-return (e.g. 12V) wiring.</InfoTooltip>
                 </label>
-                <span className="hint">Typical for EV HV circuits (battery/inverter/motor). Uncheck only for legacy chassis-return (e.g. 12V) wiring.</span>
               </div>
               {mode === 'checkCurrent' && (
                 <>
