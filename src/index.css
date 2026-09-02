@@ -1410,7 +1410,7 @@ footer.site-footer {
 /* ── Busbar lengthwise sections: one compact row per section ──── */
 .busbar-section-row {
   display: grid;
-  grid-template-columns: 20px 6.5rem 6.5rem 1fr;
+  grid-template-columns: 20px 1fr 1fr 5rem;
   gap: 0.6rem;
   align-items: center;
   padding: 0.4rem 0.6rem;
@@ -1439,12 +1439,13 @@ footer.site-footer {
   font-weight: 600;
   color: var(--text-2);
 }
+.busbar-section-head .col-label:last-child { text-align: right; }
 
 .busbar-section-row .sec-checks {
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  justify-self: start;
+  justify-self: end;
 }
 .busbar-section-row .sec-checks input[type="checkbox"] { width: auto; margin: 0; }
 

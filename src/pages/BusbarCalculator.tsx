@@ -933,23 +933,17 @@ export default function BusbarCalculator() {
               {currentType === 'ac' && (
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
                   <label>Frequency (Hz)</label>
-                  <div className="grid grid-2">
-                    <input autoComplete="off" type="number" min={0} value={frequency} onChange={e => setFrequency(Number(e.target.value))} />
-                    <div className="segmented">
-                      <button className={frequency === 50 ? 'active' : ''} onClick={() => setFrequency(50)}>50 Hz grid</button>
-                      <button className={frequency === 60 ? 'active' : ''} onClick={() => setFrequency(60)}>60 Hz grid</button>
-                      <button className="btn small" onClick={() => setShowMotorHelper(v => !v)}>
-                        {showMotorHelper ? 'Hide motor helper' : 'Derive from motor speed ▾'}
-                      </button>
-                    </div>
-                  </div>
+                  <input autoComplete="off" type="number" min={0} value={frequency} onChange={e => setFrequency(Number(e.target.value))} />
+                  <button className="btn small" onClick={() => setShowMotorHelper(v => !v)}>
+                    {showMotorHelper ? 'Hide rpm helper' : 'Derive from rpm ▾'}
+                  </button>
                   <span className="hint">
-                    Motor-drive phase busbars carry the fundamental electrical frequency set by the inverter, not a fixed
-                    grid frequency — use the helper below to derive it from motor speed and pole count.
+                    50 Hz / 60 Hz for a grid busbar; for a motor-drive phase busbar use the fundamental
+                    electrical frequency set by the inverter — derive it from motor speed and pole count.
                   </span>
 
                   {showMotorHelper && (
-                    <div className="grid grid-3" style={{ marginTop: '0.65rem', padding: '0.75rem', background: 'var(--bg-raised)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
+                    <div className="grid grid-3" style={{ gridColumn: '1 / -1', marginTop: '0.65rem', padding: '0.75rem', background: 'var(--bg-raised)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
                       <div className="field">
                         <label>Motor speed (RPM)</label>
                         <input autoComplete="off" type="number" min={0} value={motorRpm} onChange={e => setMotorRpm(Number(e.target.value))} />
