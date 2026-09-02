@@ -539,6 +539,32 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   /* segmented toggles and button rows read better left-aligned under nothing */
   .two-col > :first-child .field > .segmented { justify-self: start; }
 
+  /* a field with an action button next to its input (e.g. "Use suggested")
+     puts the button inline after the control instead of stacking it below */
+  .two-col > :first-child .field:has(> input):has(> button),
+  .two-col > :first-child .field:has(> select):has(> button) {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto;
+  }
+  .two-col > :first-child .field:has(> input):has(> button) > button,
+  .two-col > :first-child .field:has(> select):has(> button) > button {
+    grid-column: 3;
+    align-self: center;
+    justify-self: start;
+    white-space: nowrap;
+    margin: 0;
+  }
+
+  /* load / step rows are already horizontal multi-field rows -- keep their
+     fields stacked (label over input) rather than splitting each one */
+  .two-col > :first-child .step-row .field,
+  .two-col > :first-child .bar-row .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    border-top: none;
+    padding: 0;
+  }
+
   /* fields with no label (profile pickers, standalone readouts, custom rows)
      opt out of the two-column grid and keep the plain stacked layout */
   .two-col > :first-child .field:not(:has(> label)) {

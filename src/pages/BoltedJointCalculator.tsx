@@ -946,7 +946,7 @@ export default function BoltedJointCalculator() {
                   <div className="field">
                     <label>Hole Ø ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
                     <input autoComplete="off" type="number" min={0.001} value={toDisplay(s.holeDiameterMm, unitSystem, UNIT_LENGTH)} onChange={(e) => updateSection(s.id, { holeDiameterMm: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
-                    <button className="btn small" style={{ marginTop: '0.3rem' }} onClick={() => updateSection(s.id, { holeDiameterMm: suggestedHoleMm })}>
+                    <button className="btn small" onClick={() => updateSection(s.id, { holeDiameterMm: suggestedHoleMm })}>
                       Use suggested ({fmtU(suggestedHoleMm, unitSystem, UNIT_LENGTH, 3)})
                     </button>
                   </div>
