@@ -539,9 +539,14 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   /* segmented toggles and button rows read better left-aligned under nothing */
   .two-col > :first-child .field > .segmented { justify-self: start; }
 
-  /* a field explicitly asked to span the full grid width keeps doing so */
-  .two-col > :first-child .field[style*="1 / -1"],
-  .two-col > :first-child .field[style*="1/-1"] { grid-template-columns: 1fr; }
+  /* fields with no label (profile pickers, standalone readouts, custom rows)
+     opt out of the two-column grid and keep the plain stacked layout */
+  .two-col > :first-child .field:not(:has(> label)) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    border-top: none;
+  }
 }
 
 /* Keep the results panel in view while editing the inputs beside it. */
