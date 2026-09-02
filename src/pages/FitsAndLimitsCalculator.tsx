@@ -498,9 +498,8 @@ export default function FitsAndLimitsCalculator() {
             </div>
             <div className="grid grid-2">
               <div className="field">
-                <label>Interface diameter d ({lenUnit})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Interface diameter d ({lenUnit})<InfoTooltip>Nominal shaft OD = nominal hub bore.</InfoTooltip></label>
                 <input autoComplete="off" type="number" min={0.1} value={toDisplay(interfaceDiameterMm, unitSystem, UNIT_LENGTH)} onChange={(e) => setInterfaceDiameterMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
-                <span className="hint">Nominal shaft OD = nominal hub bore.</span>
               </div>
               {shaftKind === 'hollow' && (
                 <div className="field">
@@ -561,19 +560,16 @@ export default function FitsAndLimitsCalculator() {
             </div>
             <div className="grid grid-2">
               <div className="field">
-                <label>Assembly — shaft ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Assembly — shaft ({unitLabel(unitSystem, UNIT_TEMP)})<InfoTooltip>Chill the shaft (e.g. dry ice, LN₂) to shrink it for assembly.</InfoTooltip></label>
                 <input autoComplete="off" type="number" value={toDisplay(shaftAssemblyTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setShaftAssemblyTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                <span className="hint">Chill the shaft (e.g. dry ice, LN₂) to shrink it for assembly.</span>
               </div>
               <div className="field">
-                <label>Assembly — hub ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Assembly — hub ({unitLabel(unitSystem, UNIT_TEMP)})<InfoTooltip>Heat the hub to expand it for assembly. Insertion force is evaluated at these two temperatures.</InfoTooltip></label>
                 <input autoComplete="off" type="number" value={toDisplay(hubAssemblyTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setHubAssemblyTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                <span className="hint">Heat the hub to expand it for assembly. Insertion force is evaluated at these two temperatures.</span>
               </div>
               <div className="field">
-                <label>Operational ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Operational ({unitLabel(unitSystem, UNIT_TEMP)})<InfoTooltip>Both parts assumed equalised to this shared ambient.</InfoTooltip></label>
                 <input autoComplete="off" type="number" value={toDisplay(operationalTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setOperationalTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                <span className="hint">Both parts assumed equalised to this shared ambient.</span>
               </div>
               <div className="field">
                 <label>Storage ({unitLabel(unitSystem, UNIT_TEMP)})</label>
