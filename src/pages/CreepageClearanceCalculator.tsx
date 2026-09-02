@@ -414,9 +414,11 @@ export default function CreepageClearanceCalculator() {
                 )}</span>
               </div>
               <div className="field">
-                <label>Factor of safety (%)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Factor of safety (%)
+                  <InfoTooltip>Applied as a margin on top of the standard's calculated minimum distances (default 20%).</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" min={0} step={5} value={safetyFactorPercent} onChange={e => setSafetyFactorPercent(Number(e.target.value))} />
-                <span className="hint">Applied as a margin on top of the standard's calculated minimum distances (default 20%).</span>
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'flex', alignItems: 'center' }}>
@@ -425,13 +427,14 @@ export default function CreepageClearanceCalculator() {
                     <strong>{FIELD_CONDITION_DESCRIPTIONS.A.title}:</strong> {FIELD_CONDITION_DESCRIPTIONS.A.body}
                     <br /><br />
                     <strong>{FIELD_CONDITION_DESCRIPTIONS.B.title}:</strong> {FIELD_CONDITION_DESCRIPTIONS.B.body}
+                    <br /><br />
+                    Case A is the safe default usable for any geometry; Case B needs a uniform-field design verified by test.
                   </InfoTooltip>
                 </label>
                 <div className="segmented">
                   <button className={fieldCondition === 'A' ? 'active' : ''} onClick={() => setFieldCondition('A')}>Inhomogeneous (Case A)</button>
                   <button className={fieldCondition === 'B' ? 'active' : ''} onClick={() => setFieldCondition('B')}>Homogeneous (Case B)</button>
                 </div>
-                <span className="hint">Case A is the safe default usable for any geometry; Case B needs a uniform-field design verified by test.</span>
               </div>
             </div>
           </div>

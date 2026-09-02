@@ -311,14 +311,18 @@ export default function DqCurrentCalculator() {
               {entryMode === 'dq' && (
                 <>
                   <div className="field">
-                    <label>Id (A, peak)</label>
+                    <label style={{ display: 'flex', alignItems: 'center' }}>
+                      Id (A, peak)
+                      <InfoTooltip>Negative = flux-weakening / reluctance-assist.</InfoTooltip>
+                    </label>
                     <input autoComplete="off" type="number" value={idA} onChange={(e) => setIdA(Number(e.target.value))} />
-                    <span className="hint">Negative = flux-weakening / reluctance-assist.</span>
                   </div>
                   <div className="field">
-                    <label>Iq (A, peak)</label>
+                    <label style={{ display: 'flex', alignItems: 'center' }}>
+                      Iq (A, peak)
+                      <InfoTooltip>Torque-producing component.</InfoTooltip>
+                    </label>
                     <input autoComplete="off" type="number" value={iqA} onChange={(e) => setIqA(Number(e.target.value))} />
-                    <span className="hint">Torque-producing component.</span>
                   </div>
                 </>
               )}
@@ -329,9 +333,11 @@ export default function DqCurrentCalculator() {
                     <input autoComplete="off" type="number" min={0} value={magPeakA} onChange={(e) => setMagPeakA(Number(e.target.value))} />
                   </div>
                   <div className="field">
-                    <label>Current angle γ (° from d-axis)</label>
+                    <label style={{ display: 'flex', alignItems: 'center' }}>
+                      Current angle γ (° from d-axis)
+                      <InfoTooltip>90° = pure torque (Id=0); &gt;90° advances into −d.</InfoTooltip>
+                    </label>
                     <input autoComplete="off" type="number" value={angleDeg} onChange={(e) => setAngleDeg(Number(e.target.value))} />
-                    <span className="hint">90° = pure torque (Id=0); &gt;90° advances into −d.</span>
                   </div>
                 </>
               )}
@@ -343,9 +349,11 @@ export default function DqCurrentCalculator() {
                     <span className="hint">Peak = rms × √2 = {fmt(rmsToPeak(magRmsA), 1)} A.</span>
                   </div>
                   <div className="field">
-                    <label>Current angle γ (° from d-axis)</label>
+                    <label style={{ display: 'flex', alignItems: 'center' }}>
+                      Current angle γ (° from d-axis)
+                      <InfoTooltip>90° = pure torque (Id=0); &gt;90° advances into −d.</InfoTooltip>
+                    </label>
                     <input autoComplete="off" type="number" value={angleDeg} onChange={(e) => setAngleDeg(Number(e.target.value))} />
-                    <span className="hint">90° = pure torque (Id=0); &gt;90° advances into −d.</span>
                   </div>
                 </>
               )}
@@ -370,21 +378,25 @@ export default function DqCurrentCalculator() {
                 <MotorProfilePicker onApply={applyMotorProfile} hint="Pulls motor type, pole pairs, flux linkage, and Ld/Lq from a saved motor profile. Only fields present on the profile are applied." />
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>Motor type</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Motor type
+                  <InfoTooltip>Surface PM is non-salient (Lq forced = Ld, no reluctance torque). Interior PM is salient (Lq &gt; Ld gives reluctance torque and a non-trivial MTPA angle).</InfoTooltip>
+                </label>
                 <div className="segmented">
                   <button className={motorType === 'spm' ? 'active' : ''} onClick={() => { setMotorType('spm'); setPresetId('custom'); }}>Surface PM (SPM)</button>
                   <button className={motorType === 'ipm' ? 'active' : ''} onClick={() => { setMotorType('ipm'); setPresetId('custom'); }}>Interior PM (IPM)</button>
                 </div>
-                <span className="hint">{motorType === 'spm' ? 'Non-salient: Lq forced = Ld, no reluctance torque.' : 'Salient: Lq > Ld gives reluctance torque and a non-trivial MTPA angle.'}</span>
               </div>
               <div className="field">
                 <label>Pole pairs</label>
                 <input autoComplete="off" type="number" min={1} step={1} value={polePairs} onChange={(e) => { setPolePairs(Math.max(1, Math.round(Number(e.target.value)))); setPresetId('custom'); }} />
               </div>
               <div className="field">
-                <label>PM flux linkage λpm (Wb)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  PM flux linkage λpm (Wb)
+                  <InfoTooltip>Peak per-phase. Ke(V·s/rad) = λpm; line-line back-EMF const scales with √3.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" min={0} step={0.001} value={fluxLinkageWb} onChange={(e) => { setFluxLinkageWb(Number(e.target.value)); setPresetId('custom'); }} />
-                <span className="hint">Peak per-phase. Ke(V·s/rad) = λpm; line-line back-EMF const scales with √3.</span>
               </div>
               <div className="field">
                 <label>Ld (mH)</label>

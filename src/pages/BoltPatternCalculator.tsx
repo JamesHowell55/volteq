@@ -385,14 +385,12 @@ export default function BoltPatternCalculator() {
                   <input autoComplete="off" type="number" min={0.1} value={toDisplay(perimHeightMm, unitSystem, UNIT_LENGTH)} onChange={(e) => setPerimHeightMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
                 </div>
                 <div className="field">
-                  <label>Bolts per x-side (top/bottom)</label>
+                  <label style={{ display: 'flex', alignItems: 'center' }}>Bolts per x-side (top/bottom)<InfoTooltip>Includes the two corners.</InfoTooltip></label>
                   <input autoComplete="off" type="number" min={2} step={1} value={perimBoltsX} onChange={(e) => setPerimBoltsX(Math.max(2, Math.round(Number(e.target.value))))} />
-                  <span className="hint">Includes the two corners.</span>
                 </div>
                 <div className="field">
-                  <label>Bolts per y-side (left/right)</label>
+                  <label style={{ display: 'flex', alignItems: 'center' }}>Bolts per y-side (left/right)<InfoTooltip>Includes the two corners.</InfoTooltip></label>
                   <input autoComplete="off" type="number" min={2} step={1} value={perimBoltsY} onChange={(e) => setPerimBoltsY(Math.max(2, Math.round(Number(e.target.value))))} />
-                  <span className="hint">Includes the two corners.</span>
                 </div>
               </div>
             )}
@@ -538,9 +536,8 @@ export default function BoltPatternCalculator() {
                 <input autoComplete="off" type="number" value={toDisplay(forceYN, unitSystem, UNIT_FORCE)} onChange={(e) => setForceYN(fromDisplay(Number(e.target.value), unitSystem, UNIT_FORCE))} />
               </div>
               <div className="field">
-                <label>Force Fz ({forceUnit})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Force Fz ({forceUnit})<InfoTooltip>+z = tension (pulls joint apart).</InfoTooltip></label>
                 <input autoComplete="off" type="number" value={toDisplay(forceZN, unitSystem, UNIT_FORCE)} onChange={(e) => setForceZN(fromDisplay(Number(e.target.value), unitSystem, UNIT_FORCE))} />
-                <span className="hint">+z = tension (pulls joint apart).</span>
               </div>
               <div />
               <div className="field">
@@ -552,9 +549,8 @@ export default function BoltPatternCalculator() {
                 <input autoComplete="off" type="number" value={toDisplay(appYmm, unitSystem, UNIT_LENGTH)} onChange={(e) => setAppYmm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
               </div>
               <div className="field">
-                <label>Application point ez ({lenUnit})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Application point ez ({lenUnit})<InfoTooltip>Standoff from the joint plane.</InfoTooltip></label>
                 <input autoComplete="off" type="number" value={toDisplay(appZmm, unitSystem, UNIT_LENGTH)} onChange={(e) => setAppZmm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
-                <span className="hint">Standoff from the joint plane.</span>
               </div>
               <div />
               <div className="field">
@@ -566,9 +562,8 @@ export default function BoltPatternCalculator() {
                 <input autoComplete="off" type="number" value={toDisplay(momentYNmm, unitSystem, UNIT_MOMENT)} onChange={(e) => setMomentYNmm(fromDisplay(Number(e.target.value), unitSystem, UNIT_MOMENT))} />
               </div>
               <div className="field">
-                <label>Direct moment Mz ({momentUnit})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Direct moment Mz ({momentUnit})<InfoTooltip>e.g. an applied torque, on top of any offset-force moment.</InfoTooltip></label>
                 <input autoComplete="off" type="number" value={toDisplay(momentZNmm, unitSystem, UNIT_MOMENT)} onChange={(e) => setMomentZNmm(fromDisplay(Number(e.target.value), unitSystem, UNIT_MOMENT))} />
-                <span className="hint">e.g. an applied torque, on top of any offset-force moment.</span>
               </div>
             </div>
           </div>
