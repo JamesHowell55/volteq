@@ -706,27 +706,24 @@ export default function BusbarCalculator() {
 
             {busbarType === 'single' ? (
               <>
-                <div className="card-title" style={{ marginBottom: '0.5rem' }}>
+                <div className="card-title" style={{ marginBottom: '0.35rem' }}>
                   <span style={{ fontWeight: 400 }}>Sections</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <span className="hint" style={{ fontWeight: 400 }}>
-                      Tick a section to apply conduction cooling{coatingThicknessMm > 0 ? '; second box = keep coating' : ''}
-                    </span>
-                    {!isPremium && sections.length >= FREE_SECTION_LIMIT ? (
-                      <PremiumGate feature="More than 2 sections">
-                        <button className="btn small" onClick={addSection}>+ Add section</button>
-                      </PremiumGate>
-                    ) : (
-                      <button className="btn small" onClick={addSection} disabled={sections.length >= maxSections}>+ Add section</button>
-                    )}
-                  </span>
+                  {!isPremium && sections.length >= FREE_SECTION_LIMIT ? (
+                    <PremiumGate feature="More than 2 sections">
+                      <button className="btn small" onClick={addSection}>+ Add section</button>
+                    </PremiumGate>
+                  ) : (
+                    <button className="btn small" onClick={addSection} disabled={sections.length >= maxSections}>+ Add section</button>
+                  )}
                 </div>
+                <p className="hint" style={{ margin: '0 0 0.6rem' }}>
+                  Tick a section to apply conduction cooling{coatingThicknessMm > 0 ? '; the second box keeps the coating on that section' : ''}.
+                </p>
                 <div className="busbar-section-row busbar-section-head" aria-hidden="true">
                   <div />
                   <div className="col-label">Width ({unitLabel(unitSystem, UNIT_LENGTH)})</div>
                   <div className="col-label">Length ({unitLabel(unitSystem, UNIT_LENGTH)})</div>
                   <div className="col-label">{coatingThicknessMm > 0 ? 'Cond. · coat' : 'Cond.'}</div>
-                  <div />
                 </div>
                 {sections.map((s, i) => (
                   <div className="busbar-section-row" key={s.id}>
@@ -744,8 +741,8 @@ export default function BusbarCalculator() {
                       {coatingThicknessMm > 0 && (
                         <input type="checkbox" aria-label={`Keep coating / overmould on section ${i + 1}`} title="Include the coating / overmould on this section" checked={s.coatedEnabled ?? true} onChange={e => updateSection(s.id, { coatedEnabled: e.target.checked })} />
                       )}
+                      <button className="icon-x" onClick={() => removeSection(s.id)} disabled={sections.length === 1} aria-label={`Remove section ${i + 1}`} title="Remove section">✕</button>
                     </div>
-                    <button className="icon-x" onClick={() => removeSection(s.id)} disabled={sections.length === 1} aria-label={`Remove section ${i + 1}`} title="Remove section">✕</button>
                   </div>
                 ))}
                 <div className="field" style={{ marginTop: '0.6rem' }}>
