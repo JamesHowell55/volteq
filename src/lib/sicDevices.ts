@@ -16,6 +16,16 @@
 //   - eRrMj ................... body-diode "Reverse recovery energy" Err typ (mJ) at the same
 //                               class of conditions; set 0 if the datasheet only gives Qrr —
 //                               the engine then falls back to Err ≈ Qrr·Vdc/4.
+//   - eOnHotMj / eOffHotMj / eRrHotMj / eswHotTempC ... OPTIONAL. Datasheet switching tables list
+//                               Eon/Eoff/Err at 25 °C AND at a hot Tvj; give the hot row here and
+//                               the engine interpolates each energy on the solved junction
+//                               temperature (same two-point linear fit as RDS(on)), inside the Tj
+//                               iteration. Omit them and the 25 °C values are used flat, as before.
+//                               Worth populating: the tempco is strongly device-dependent —
+//                               Eon+Eoff is near-flat on Wolfspeed XM3/YM but +54 % on Infineon
+//                               CoolSiC G2, and Err rises 5-6x on every device measured so far.
+//                               NOTE: the eOnMj/eOffMj/eRrMj above must then all be the 25 °C row —
+//                               do not mix a 25 °C Eon with a hot Err.
 //   - qrrUc ................... body-diode reverse recovery charge Qrr typ (µC). Infineon G2
 //                               datasheets call this "MOSFET forward recovery charge Qfr".
 //   - vsdV .................... body-diode forward voltage VSD typ at rated current with the
@@ -55,6 +65,12 @@ export interface SicDevicePreset {
   eTestVdcV: number;
   eTestCurrentA: number;
   eRrMj: number; // 0 -> engine uses qrrUc fallback
+  /** Optional hot-Tvj switching energies + the temperature they were measured at. When present the
+   *  engine interpolates Eon/Eoff/Err on the solved Tj; when absent the 25 °C values are held flat. */
+  eOnHotMj?: number;
+  eOffHotMj?: number;
+  eRrHotMj?: number;
+  eswHotTempC?: number;
   qrrUc: number;
   vsdV: number;
   rthJcKPerW: number;
@@ -102,9 +118,10 @@ export const SIC_DEVICE_PRESETS: SicDevicePreset[] = [
     id: 'cab450m12xm3', manufacturer: 'Wolfspeed', partNumber: 'CAB450M12XM3', packageLabel: 'XM3 half-bridge module',
     topology: 'halfBridge', currentRatingA: 450, rdsOn25mOhm: 2.6, rdsOnHotmOhm: 4.7, rdsOnHotTempC: 175,
     vgsOnV: 15, vgsOffV: -4, eOnMj: 25.4, eOffMj: 7.51, eTestVdcV: 600, eTestCurrentA: 450,
-    eRrMj: 1.1, qrrUc: 7.2, vsdV: 4.7, rthJcKPerW: 0.094, tvjMaxC: 175, qgNc: 1300,
+    eRrMj: 0.2, eOnHotMj: 24.4, eOffHotMj: 8.35, eRrHotMj: 1.1, eswHotTempC: 175,
+    qrrUc: 7.2, vsdV: 4.7, rthJcKPerW: 0.094, tvjMaxC: 175, qgNc: 1300,
     sourced: true,
-    notes: 'All figures transcribed from the CAB450M12XM3 datasheet (Rev. Jan 2024): Eon/Eoff/Err at VDD=600 V, ID=450 A, VGS=−4/+15 V, RG(on)=4 Ω; Err/Qrr at 175 °C; RthJC per position.',
+    notes: 'All figures transcribed from the CAB450M12XM3 datasheet (Rev. 3, Jun 2024): VDD=600 V, ID=450 A, VGS=−4/+15 V, RG(on)=4.0 Ω, RG(off)=0.0 Ω, Lσ=10.2 nH. Eon 25.4 → 24.4 mJ and Eoff 7.51 → 8.35 mJ across Tvj 25 → 175 °C (near-flat), but Err 0.2 → 1.1 mJ (5.5×) — all four points given to the engine, which interpolates them on the solved Tj. RDS(on) 2.6 → 4.7 mΩ, VSD 4.7 V (25 °C) → 4.2 V (175 °C), Qrr 7.2 µC at 175 °C, RthJC 0.094 K/W per position.',
   },
   {
     id: 'ccb021m12fm3', manufacturer: 'Wolfspeed', partNumber: 'CCB021M12FM3', packageLabel: 'WolfPACK six-pack module',
@@ -118,9 +135,10 @@ export const SIC_DEVICE_PRESETS: SicDevicePreset[] = [
     id: 'qecb1r6m12ym4', manufacturer: 'Wolfspeed', partNumber: 'QECB1R6M12YM4', packageLabel: 'YM six-pack module (automotive, direct-cooled pin-fin)',
     topology: 'sixPack', currentRatingA: 810, rdsOn25mOhm: 1.6, rdsOnHotmOhm: 2.8, rdsOnHotTempC: 175,
     vgsOnV: 15, vgsOffV: -4, eOnMj: 27.1, eOffMj: 33.6, eTestVdcV: 800, eTestCurrentA: 600,
-    eRrMj: 1.5, qrrUc: 17.1, vsdV: 6.3, rthJcKPerW: 0.083, tvjMaxC: 185, qgNc: 1936,
+    eRrMj: 1.5, eOnHotMj: 23.3, eOffHotMj: 32.7, eRrHotMj: 8.6, eswHotTempC: 185,
+    qrrUc: 17.1, vsdV: 6.3, rthJcKPerW: 0.083, tvjMaxC: 185, qgNc: 1936,
     sourced: true,
-    notes: 'Transcribed from the QECB1R6M12YM4 / QECB1R6M12YM4L preliminary datasheet (Rev. A, Nov 2025): 1200 V / 1.6 mΩ automotive six-pack (planned AQG 324), direct-cooled pin-fin baseplate, true Kelvin source. RDS(on) 1.6 mΩ typ at Tvj=25 °C / 2.8 mΩ at 175 °C (VGS=15 V, ID=600 A). Eon 27.1 mJ / Eoff 33.6 mJ / Err 1.5 mJ typ at Tvj=25 °C, VDS=800 V, ID=600 A, VGS=−4/+15 V, RG(on)=4.0 Ω, RG(off)=5.0 Ω, Lσ=16.1 nH (the engine holds these temperature-independent; at 185 °C they are 23.3 / 32.7 / 8.6 mJ). Qrr 17.1 µC at Tvj=185 °C; VSD 6.3 V (25 °C) → 5.5 V (185 °C) at ISD=600 A, VGS=−4 V. Thermal figure is RthJF junction-to-fluid 0.083 K/W per switch position (single switch, Q=10 l/min, TF=60 °C) — direct-cooled module with no case temp published, so leave the extra case-to-heatsink Rth at 0 and set the case temperature to the coolant temperature. Tvj 185 °C continuous (200 °C for 100 h over lifetime). QG 1936 nC over −4/+15 V. DC continuous drain current 810 A at TF=25 °C (700 A at TF=65 °C). Preliminary datasheet — subject to change.',
+    notes: 'Transcribed from the QECB1R6M12YM4 / QECB1R6M12YM4L preliminary datasheet (Rev. A, Nov 2025): 1200 V / 1.6 mΩ automotive six-pack (planned AQG 324), direct-cooled pin-fin baseplate, true Kelvin source. RDS(on) 1.6 mΩ typ at Tvj=25 °C / 2.8 mΩ at 175 °C (VGS=15 V, ID=600 A). Switching at VDS=800 V, ID=600 A, VGS=−4/+15 V, RG(on)=4.0 Ω, RG(off)=5.0 Ω, Lσ=16.1 nH: Eon 27.1 → 23.3 mJ, Eoff 33.6 → 32.7 mJ, Err 1.5 → 8.6 mJ (5.7×) across Tvj 25 → 185 °C — both rows given to the engine, which interpolates them on the solved Tj. Qrr 17.1 µC at Tvj=185 °C; VSD 6.3 V (25 °C) → 5.5 V (185 °C) at ISD=600 A, VGS=−4 V. Thermal figure is RthJF junction-to-fluid 0.083 K/W per switch position (single switch, Q=10 l/min, TF=60 °C) — direct-cooled module with no case temp published, so leave the extra case-to-heatsink Rth at 0 and set the case temperature to the coolant temperature. Tvj 185 °C continuous (200 °C for 100 h over lifetime). QG 1936 nC over −4/+15 V. DC continuous drain current 810 A at TF=25 °C (700 A at TF=65 °C). Preliminary datasheet — subject to change.',
   },
 
   // ---------------- Infineon ----------------
@@ -136,9 +154,10 @@ export const SIC_DEVICE_PRESETS: SicDevicePreset[] = [
     id: 'imbg120r008m2h', manufacturer: 'Infineon', partNumber: 'IMBG120R008M2H', packageLabel: 'D2PAK-7L / TO-263-7 (CoolSiC G2)',
     topology: 'discrete', currentRatingA: 116, rdsOn25mOhm: 7.7, rdsOnHotmOhm: 18.3, rdsOnHotTempC: 175,
     vgsOnV: 18, vgsOffV: 0, eOnMj: 1.28, eOffMj: 0.81, eTestVdcV: 800, eTestCurrentA: 89.9,
-    eRrMj: 0.28, qrrUc: 2.1, vsdV: 4.2, rthJcKPerW: 0.18, tvjMaxC: 175, qgNc: 195,
+    eRrMj: 0.10, eOnHotMj: 2.22, eOffHotMj: 0.99, eRrHotMj: 0.28, eswHotTempC: 175,
+    qrrUc: 2.1, vsdV: 4.2, rthJcKPerW: 0.18, tvjMaxC: 175, qgNc: 195,
     sourced: true,
-    notes: 'Transcribed from the IMBG120R008M2H datasheet (v1.10): Eon 1.28 mJ/Eoff 0.81 mJ at VDD=800 V, ID=89.9 A, VGS=0/+18 V, RG,ext=2.3 Ω; Qfr 2.1 µC and Efr 0.28 mJ at 175 °C used as Qrr/Err; 200 °C cumulative-overload capability. RthJC estimated from package class (datasheet grep returned Rth(j-a) only) — verify.',
+    notes: 'Transcribed from the IMBG120R008M2H datasheet (Rev. 1.50, 2026-07-23) at VDD=800 V, ID=89.9 A, VGS=0/+18 V, RG,ext=2.3 Ω, Lσ=15 nH. Strong switching tempco: Eon 1.28 → 2.22 mJ (+73 %), Eoff 0.81 → 0.99 mJ, forward-recovery Efr (used as Err) 0.10 → 0.28 mJ across Tvj 25 → 175 °C — Eon+Eoff rises 54 %, so both rows are given to the engine and interpolated on the solved Tj. RDS(on) 7.7 mΩ @25 °C / 18.3 mΩ @175 °C at VGS=18 V. VSD 4.2 V, Qfr 2.1 µC at 175 °C. 200 °C cumulative-overload capability. RthJC 0.18 K/W is the datasheet Rth(j-c,max) implied by the Ptot-vs-Tc curve; Rth(j-c,typ) is ≈0.143 K/W — the max value is retained as the conservative choice.',
   },
   {
     id: 'aimbg120r010m1', manufacturer: 'Infineon', partNumber: 'AIMBG120R010M1', packageLabel: 'PG-TO263-7-U01 / D2PAK-7L (CoolSiC Automotive G1p)',

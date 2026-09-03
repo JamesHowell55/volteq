@@ -54,9 +54,12 @@ export default function MosfetLossCalculator() {
     setDeviceId(id);
     setDevice({ ...getSicDevice(id) });
   };
-  const setDeviceField = (field: keyof SicDevicePreset, value: number) => {
+  const setDeviceField = (field: keyof SicDevicePreset, value: number | undefined) => {
     setDevice((d) => ({ ...d, [field]: value }));
   };
+  // Optional hot-Tvj switching-energy fields: an empty box means "not published", which the
+  // engine reads as "hold the 25 °C energy flat" rather than as a zero.
+  const optionalNum = (raw: string): number | undefined => (raw.trim() === '' ? undefined : Number(raw));
   const [parallelCount, setParallelCount] = useState(1);
 
   // Operating point
@@ -309,18 +312,30 @@ export default function MosfetLossCalculator() {
         result: `P_dt = ${fmt(r.deadTimeDiodeW, 2)} W per device`,
       });
     }
+    const hasHotEsw = device.eswHotTempC != null && device.eOnHotMj != null;
     steps.push({
       title: 'Switching loss (Eon + Eoff)',
-      formula: 'P_sw = fsw · (Eon+Eoff) · (Vdc/Vtest)^kv · Ipk_dev/(π·Itest) — linear in current; energies held temperature-independent (SiC Eon/Eoff vary only weakly with Tvj)',
-      substitution: `Eon+Eoff = ${fmt(device.eOnMj + device.eOffMj, 2)} mJ @ ${device.eTestVdcV} V/${device.eTestCurrentA} A, Vdc = ${fmt(vdc, 0)} V, kv = ${fmt(voltageExponent, 2)}`,
+      formula: hasHotEsw
+        ? 'P_sw = fsw · (Eon+Eoff)(Tj) · (Vdc/Vtest)^kv · Ipk_dev/(π·Itest) — linear in current; energies interpolated on the junction temperature from the datasheet 25°C and hot rows, inside the same iteration as RDS(on)'
+        : 'P_sw = fsw · (Eon+Eoff) · (Vdc/Vtest)^kv · Ipk_dev/(π·Itest) — linear in current; only a 25°C energy is published for this device, so it is held temperature-independent',
+      substitution: hasHotEsw
+        ? `Eon+Eoff at Tj = ${fmt(r.junctionTempC, 1)}°C → ${fmt(r.eOnUsedMj + r.eOffUsedMj, 2)} mJ (interpolated ${fmt(device.eOnMj + device.eOffMj, 2)} mJ @25°C → ${fmt((device.eOnHotMj ?? 0) + (device.eOffHotMj ?? 0), 2)} mJ @${fmt(device.eswHotTempC ?? 0, 0)}°C), measured @ ${device.eTestVdcV} V/${device.eTestCurrentA} A; Vdc = ${fmt(vdc, 0)} V, kv = ${fmt(voltageExponent, 2)}`
+        : `Eon+Eoff = ${fmt(device.eOnMj + device.eOffMj, 2)} mJ @ ${device.eTestVdcV} V/${device.eTestCurrentA} A, Vdc = ${fmt(vdc, 0)} V, kv = ${fmt(voltageExponent, 2)}`,
       result: `P_sw = ${fmt(r.switchingW, 2)} W per device`,
     });
+    const hasHotErr = hasHotEsw && device.eRrHotMj != null && device.eRrMj > 0;
     steps.push({
       title: 'Reverse recovery loss',
       formula: device.eRrMj > 0
-        ? 'P_rr = fsw · Err · (Vdc/Vtest)^kv · Ipk_dev/(π·Itest) — datasheet Err, dissipated in the hard-turning-on device'
+        ? (hasHotErr
+          ? 'P_rr = fsw · Err(Tj) · (Vdc/Vtest)^kv · Ipk_dev/(π·Itest) — datasheet Err interpolated on Tj, dissipated in the hard-turning-on device. Err is the most temperature-sensitive term on every device measured (5-6× from 25°C to Tvj max)'
+          : 'P_rr = fsw · Err · (Vdc/Vtest)^kv · Ipk_dev/(π·Itest) — datasheet Err, dissipated in the hard-turning-on device')
         : 'P_rr = fsw · (Qrr·Vdc/4) · Ipk_dev/(π·Itest) — Err not published, standard soft-recovery approximation from Qrr',
-      substitution: device.eRrMj > 0 ? `Err = ${fmt(device.eRrMj, 2)} mJ @ ${device.eTestVdcV} V/${device.eTestCurrentA} A` : `Qrr = ${fmt(device.qrrUc, 2)} µC`,
+      substitution: device.eRrMj > 0
+        ? (hasHotErr
+          ? `Err at Tj = ${fmt(r.junctionTempC, 1)}°C → ${fmt(r.eRrUsedMj, 3)} mJ (interpolated ${fmt(device.eRrMj, 2)} mJ @25°C → ${fmt(device.eRrHotMj ?? 0, 2)} mJ @${fmt(device.eswHotTempC ?? 0, 0)}°C)`
+          : `Err = ${fmt(device.eRrMj, 2)} mJ @ ${device.eTestVdcV} V/${device.eTestCurrentA} A`)
+        : `Qrr = ${fmt(device.qrrUc, 2)} µC`,
       result: `P_rr = ${fmt(r.reverseRecoveryW, 2)} W per device`,
     });
     steps.push({
@@ -379,8 +394,8 @@ export default function MosfetLossCalculator() {
       { label: 'Package / topology', value: `${device.packageLabel}${device.topsideCooled ? ' (top-side cooled)' : ''}` },
       { label: 'Structure', value: inverterStructureLabel(device.topology, parallelCount) },
       { label: 'RDS(on)', value: `${fmt(device.rdsOn25mOhm, 2)} mΩ @25°C / ${fmt(device.rdsOnHotmOhm, 2)} mΩ @${fmtU(device.rdsOnHotTempC, unitSystem, UNIT_TEMP, 0)}${unitLabel(unitSystem, UNIT_TEMP)}` },
-      { label: 'Eon / Eoff', value: `${fmt(device.eOnMj, 2)} / ${fmt(device.eOffMj, 2)} mJ @ ${device.eTestVdcV} V, ${device.eTestCurrentA} A` },
-      { label: 'Err / Qrr', value: `${device.eRrMj > 0 ? `${fmt(device.eRrMj, 2)} mJ` : '—'} / ${fmt(device.qrrUc, 2)} µC` },
+      { label: 'Eon / Eoff', value: `${fmt(device.eOnMj, 2)} / ${fmt(device.eOffMj, 2)} mJ @25°C @ ${device.eTestVdcV} V, ${device.eTestCurrentA} A${device.eOnHotMj != null ? ` → ${fmt(device.eOnHotMj, 2)} / ${fmt(device.eOffHotMj ?? 0, 2)} mJ @${fmt(device.eswHotTempC ?? 0, 0)}°C` : ' (no hot row published — held flat)'}` },
+      { label: 'Err / Qrr', value: `${device.eRrMj > 0 ? `${fmt(device.eRrMj, 2)} mJ${device.eRrHotMj != null ? ` @25°C → ${fmt(device.eRrHotMj, 2)} mJ @${fmt(device.eswHotTempC ?? 0, 0)}°C` : ''}` : '—'} / ${fmt(device.qrrUc, 2)} µC` },
       { label: 'VSD / RthJC / Tvj(max)', value: `${fmt(device.vsdV, 1)} V / ${fmt(device.rthJcKPerW, 3)} K/W / ${fmtU(device.tvjMaxC, unitSystem, UNIT_TEMP, 0)}${unitLabel(unitSystem, UNIT_TEMP)}` },
       { label: 'Parameter provenance', value: device.sourced ? 'Datasheet-transcribed values' : 'Representative estimates (headline specs verified) — refine from the device datasheet' },
     ];
@@ -461,7 +476,7 @@ export default function MosfetLossCalculator() {
       diagrams: [
         { title: 'Loss breakdown (per device)', svgMarkup: renderLossBreakdownSvg(pdfBars, accentHex) },
       ],
-      disclaimer: 'Engineering estimation tool using the standard analytical loss equations for a 2-level, 3-phase, sinusoidal-PWM voltage-source inverter. Switching energies scale linearly with current and with (Vdc/Vtest)^kv in voltage from the datasheet test point; energies are held temperature-independent (SiC Eon/Eoff vary only weakly with Tvj). Reverse recovery uses datasheet Err where published, else the Qrr·Vdc/4 soft-recovery approximation. Duty-cycle steps are solved quasi-steady (assumes each step is long relative to the device thermal time constant). Devices flagged as representative estimates carry verified headline specifications but estimated loss parameters — transcribe the real datasheet values (field-mapping guide in sicDevices.ts) before trusting absolute numbers. Not a substitute for double-pulse characterisation or calorimetric inverter testing.',
+      disclaimer: 'Engineering estimation tool using the standard analytical loss equations for a 2-level, 3-phase, sinusoidal-PWM voltage-source inverter. Switching energies scale linearly with current and with (Vdc/Vtest)^kv in voltage from the datasheet test point. Where a device carries both a 25°C and a hot-Tvj switching row, Eon/Eoff/Err are interpolated on the solved junction temperature inside the same fixed-point iteration as RDS(on); where only a 25°C figure is published the energy is held temperature-independent and the switching term will read low at high Tj. Reverse recovery uses datasheet Err where published, else the Qrr·Vdc/4 soft-recovery approximation. Duty-cycle steps are solved quasi-steady (assumes each step is long relative to the device thermal time constant). Devices flagged as representative estimates carry verified headline specifications but estimated loss parameters — transcribe the real datasheet values (field-mapping guide in sicDevices.ts) before trusting absolute numbers. Not a substitute for double-pulse characterisation or calorimetric inverter testing.',
       ...branding,
     });
   };
@@ -555,6 +570,25 @@ export default function MosfetLossCalculator() {
                   <InfoTooltip>Body-diode reverse recovery energy at the same test class. Set 0 if the datasheet only gives Qrr — the engine then uses Err ≈ Qrr·Vdc/4.</InfoTooltip>
                 </label>
                 <input autoComplete="off" type="number" min={0} step={0.01} value={device.eRrMj} onChange={(e) => setDeviceField('eRrMj', Number(e.target.value))} />
+              </div>
+              <div className="field">
+                <label>
+                  Eon @ hot (mJ)
+                  <InfoTooltip>Optional. Datasheet switching tables give Eon/Eoff/Err at 25°C <em>and</em> at a hot Tvj. Fill the hot row here and the engine interpolates each energy on the solved junction temperature, inside the same iteration as RDS(on). Leave blank if only a 25°C figure is published — the energy is then held flat, as before. Worth doing: the tempco is device-dependent (near-flat Eon+Eoff on Wolfspeed XM3/YM, +54% on Infineon CoolSiC G2) and Err rises 5-6× on every device measured.</InfoTooltip>
+                </label>
+                <input autoComplete="off" type="number" min={0} step={0.01} placeholder="not published" value={device.eOnHotMj ?? ''} onChange={(e) => setDeviceField('eOnHotMj', optionalNum(e.target.value))} />
+              </div>
+              <div className="field">
+                <label>Eoff @ hot (mJ)</label>
+                <input autoComplete="off" type="number" min={0} step={0.01} placeholder="not published" value={device.eOffHotMj ?? ''} onChange={(e) => setDeviceField('eOffHotMj', optionalNum(e.target.value))} />
+              </div>
+              <div className="field">
+                <label>Err @ hot (mJ)</label>
+                <input autoComplete="off" type="number" min={0} step={0.01} placeholder="not published" value={device.eRrHotMj ?? ''} onChange={(e) => setDeviceField('eRrHotMj', optionalNum(e.target.value))} />
+              </div>
+              <div className="field">
+                <label>Esw hot temp ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                <input autoComplete="off" type="number" placeholder="not published" value={device.eswHotTempC != null ? toDisplay(device.eswHotTempC, unitSystem, UNIT_TEMP) : ''} onChange={(e) => setDeviceField('eswHotTempC', e.target.value.trim() === '' ? undefined : fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
               </div>
               <div className="field">
                 <label>Qrr (µC)</label>
