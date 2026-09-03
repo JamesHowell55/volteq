@@ -114,6 +114,14 @@ export const SIC_DEVICE_PRESETS: SicDevicePreset[] = [
     sourced: true,
     notes: 'All figures transcribed from the CCB021M12FM3 datasheet (Rev. 5, Jun 2026): Eon/Eoff/Err at VDD=600 V, ID=30 A, VGS=−4/+15 V; thermal figure is RthJHS (junction-to-heatsink with pre-applied TIM — baseplate-less module).',
   },
+  {
+    id: 'qecb1r6m12ym4', manufacturer: 'Wolfspeed', partNumber: 'QECB1R6M12YM4', packageLabel: 'YM six-pack module (automotive, direct-cooled pin-fin)',
+    topology: 'sixPack', currentRatingA: 810, rdsOn25mOhm: 1.6, rdsOnHotmOhm: 2.8, rdsOnHotTempC: 175,
+    vgsOnV: 15, vgsOffV: -4, eOnMj: 27.1, eOffMj: 33.6, eTestVdcV: 800, eTestCurrentA: 600,
+    eRrMj: 1.5, qrrUc: 17.1, vsdV: 6.3, rthJcKPerW: 0.083, tvjMaxC: 185, qgNc: 1936,
+    sourced: true,
+    notes: 'Transcribed from the QECB1R6M12YM4 / QECB1R6M12YM4L preliminary datasheet (Rev. A, Nov 2025): 1200 V / 1.6 mΩ automotive six-pack (planned AQG 324), direct-cooled pin-fin baseplate, true Kelvin source. RDS(on) 1.6 mΩ typ at Tvj=25 °C / 2.8 mΩ at 175 °C (VGS=15 V, ID=600 A). Eon 27.1 mJ / Eoff 33.6 mJ / Err 1.5 mJ typ at Tvj=25 °C, VDS=800 V, ID=600 A, VGS=−4/+15 V, RG(on)=4.0 Ω, RG(off)=5.0 Ω, Lσ=16.1 nH (the engine holds these temperature-independent; at 185 °C they are 23.3 / 32.7 / 8.6 mJ). Qrr 17.1 µC at Tvj=185 °C; VSD 6.3 V (25 °C) → 5.5 V (185 °C) at ISD=600 A, VGS=−4 V. Thermal figure is RthJF junction-to-fluid 0.083 K/W per switch position (single switch, Q=10 l/min, TF=60 °C) — direct-cooled module with no case temp published, so leave the extra case-to-heatsink Rth at 0 and set the case temperature to the coolant temperature. Tvj 185 °C continuous (200 °C for 100 h over lifetime). QG 1936 nC over −4/+15 V. DC continuous drain current 810 A at TF=25 °C (700 A at TF=65 °C). Preliminary datasheet — subject to change.',
+  },
 
   // ---------------- Infineon ----------------
   {
