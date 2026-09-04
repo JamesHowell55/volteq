@@ -98,9 +98,12 @@ const C4AQ_M_ROWS: Row[] = [
 // 1,100 VDC 40 µF and 65 µF parts (C4AQQBW5400A3NJ, C4AQQEW5650A3BJ) used for
 // the generator DC-link bank sizing options.
 // Note: this series' VNDC is referenced at 70 °C hot spot (vs. C4AQ-M's VNDC
-// at 85 °C) — the shared maxOperatingVoltage()/estimateLifeHours() derating
-// curve below is anchored to C4AQ-M and applied as an approximation here too,
-// same simplification already in effect for the C4AE/TDK series further down.
+// at 85 °C), and its life-vs-temperature-vs-voltage curve has a different
+// shape (flat 100,000 h from 70→85 °C if derated to VOP85, then a steep drop
+// to 10,000 h by 105 °C) — see maxOperatingVoltageC4AQ()/estimateLifeHoursC4AQ()
+// below, which are anchored to this series' own datasheet life-expectancy
+// table rather than reusing the C4AQ-M curve. (The C4AE/TDK series further
+// down still use the shared C4AQ-M-anchored curve as an approximation.)
 // [C, V, ESR(mΩ), Irms(A), Rth(°C/W), ESL(nH), T, H, L, part, leads] — leads
 // read off each part's terminal-code letter (U = 2 leads, W = 4 leads) per the
 // datasheet's part-number key, unlike the C4AQ-M block above which assumes 4
@@ -354,4 +357,108 @@ export function estimateLifeHours(hotSpotTempC: number, appliedVoltageVdc: numbe
   const vRatio = ratedVoltageVdc > 0 ? Math.max(appliedVoltageVdc, 1) / ratedVoltageVdc : 1;
   const voltageFactor = Math.pow(Math.min(1 / vRatio, 3), LIFE_VOLTAGE_EXPONENT); // derating below rated adds life; cap the bonus
   return LIFE_BASE_HOURS * tempFactor * voltageFactor;
+}
+
+// ── KEMET C4AQ (plain) — datasheet-anchored life/derating model ────────────
+// F3114_C4AQ (5/5/2025), "Operative Voltage Derating" table and "Life
+// Expectancy" section. VOP85/VOP105 (as a fraction of VNDC) vary by voltage
+// class rather than being one constant, so they're tabulated per class here
+// rather than approximated with a single ratio.
+//   ratio: [VOP85/VNDC, VOP105/VNDC]
+const C4AQ_DERATING_TABLE: Record<number, [number, number]> = {
+  500: [450 / 500, 350 / 500],
+  650: [600 / 650, 450 / 650],
+  800: [700 / 800, 550 / 800],
+  1100: [900 / 1100, 700 / 1100],
+  1300: [1100 / 1300, 850 / 1300],
+  1500: [1200 / 1500, 900 / 1500],
+};
+
+function c4aqDeratingRatios(ratedVoltageVdc: number): [number, number] {
+  const exact = C4AQ_DERATING_TABLE[ratedVoltageVdc];
+  if (exact) return exact;
+  // Fallback for a non-catalog rated voltage: interpolate between the nearest
+  // tabulated classes (clamped to the end classes outside the tabulated range).
+  const classes = Object.keys(C4AQ_DERATING_TABLE).map(Number).sort((a, b) => a - b);
+  if (ratedVoltageVdc <= classes[0]) return C4AQ_DERATING_TABLE[classes[0]];
+  if (ratedVoltageVdc >= classes[classes.length - 1]) return C4AQ_DERATING_TABLE[classes[classes.length - 1]];
+  for (let i = 0; i < classes.length - 1; i++) {
+    const lo = classes[i], hi = classes[i + 1];
+    if (ratedVoltageVdc >= lo && ratedVoltageVdc <= hi) {
+      const f = (ratedVoltageVdc - lo) / (hi - lo);
+      const [lo85, lo105] = C4AQ_DERATING_TABLE[lo];
+      const [hi85, hi105] = C4AQ_DERATING_TABLE[hi];
+      return [lo85 + f * (hi85 - lo85), lo105 + f * (hi105 - lo105)];
+    }
+  }
+  return [0.86, 0.65];
+}
+
+// Life-expectancy anchors from the datasheet: [hot-spot temp °C, V/VNDC ratio, life hours].
+// 100,000 h is FLAT from 70→85 °C provided the voltage is derated to VOP85 (a
+// different voltage at each anchor — not a single voltage held across all points).
+function c4aqLifeAnchors(ratedVoltageVdc: number): [number, number, number][] {
+  const [r85, r105] = c4aqDeratingRatios(ratedVoltageVdc);
+  return [
+    [70, 1.0, 100000],
+    [85, r85, 100000],
+    [105, r105, 10000],
+    [115, 0.7 * r85, 500],
+    [125, 0.6 * r85, 200],
+  ];
+}
+
+// Max permissible DC voltage at a given hot-spot temperature for a C4AQ (plain)
+// part, per its own datasheet-derived voltage-ratio anchors (piecewise linear
+// between them; held flat at VNDC below 70 °C, since the datasheet gives no
+// basis for a bonus below its 70 °C reference point).
+export function maxOperatingVoltageC4AQ(ratedVoltageVdc: number, hotSpotTempC: number): number {
+  const anchors = c4aqLifeAnchors(ratedVoltageVdc);
+  if (hotSpotTempC <= anchors[0][0]) return ratedVoltageVdc * anchors[0][1];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const [tLo, rLo] = anchors[i];
+    const [tHi, rHi] = anchors[i + 1];
+    if (hotSpotTempC <= tHi) {
+      const f = (hotSpotTempC - tLo) / (tHi - tLo);
+      return ratedVoltageVdc * (rLo + f * (rHi - rLo));
+    }
+  }
+  return ratedVoltageVdc * anchors[anchors.length - 1][1]; // beyond 125 °C: hold at the 125 °C ratio
+}
+
+// PP-film life model anchored directly to the C4AQ (plain) datasheet's own
+// life-expectancy anchors (see c4aqLifeAnchors above) — distinct from the
+// C4AQ-M curve above because C4AQ's shape is different (flat life 70→85 °C
+// with voltage derating, then a steep drop to 105 °C, rather than a smooth
+// ~15 °C-halving decline). Between two bracketing temperature anchors,
+// ln(life) and the reference voltage ratio are interpolated linearly in
+// temperature; the applied voltage is then related to that interpolated
+// reference life via the same (V_ref/V_applied)^n acceleration factor
+// (n = LIFE_VOLTAGE_EXPONENT) used for C4AQ-M, so the model reproduces every
+// datasheet anchor exactly when run at that anchor's own voltage and
+// temperature. Below 70 °C or above 125 °C, the nearest end anchor is held.
+export function estimateLifeHoursC4AQ(hotSpotTempC: number, appliedVoltageVdc: number, ratedVoltageVdc: number): number {
+  const anchors = c4aqLifeAnchors(ratedVoltageVdc);
+  let tLo = anchors[0];
+  let tHi = anchors[anchors.length - 1];
+  if (hotSpotTempC <= anchors[0][0]) {
+    tLo = tHi = anchors[0];
+  } else if (hotSpotTempC >= anchors[anchors.length - 1][0]) {
+    tLo = tHi = anchors[anchors.length - 1];
+  } else {
+    for (let i = 0; i < anchors.length - 1; i++) {
+      if (hotSpotTempC >= anchors[i][0] && hotSpotTempC <= anchors[i + 1][0]) {
+        tLo = anchors[i];
+        tHi = anchors[i + 1];
+        break;
+      }
+    }
+  }
+  const f = tLo[0] === tHi[0] ? 0 : (hotSpotTempC - tLo[0]) / (tHi[0] - tLo[0]);
+  const refRatio = tLo[1] + f * (tHi[1] - tLo[1]);
+  const refLife = Math.exp(Math.log(tLo[2]) + f * (Math.log(tHi[2]) - Math.log(tLo[2])));
+  const refVoltage = refRatio * ratedVoltageVdc;
+  const vRatio = refVoltage > 0 ? Math.max(appliedVoltageVdc, 1) / refVoltage : 1;
+  const voltageFactor = Math.pow(Math.min(1 / vRatio, 3), LIFE_VOLTAGE_EXPONENT);
+  return refLife * voltageFactor;
 }
