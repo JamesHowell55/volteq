@@ -24,7 +24,7 @@ import type { ControllerProfileParams } from '../lib/controllerProfiles';
 import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
 import {
   CAP_SUPPLIERS, DC_LINK_CAPACITORS, seriesForSupplier, voltagesForSeries, partsFor, leadsFor,
-  maxOperatingVoltage, estimateLifeHours, type DcLinkCapacitor,
+  maxOperatingVoltage, estimateLifeHours, maxOperatingVoltageC4AQ, estimateLifeHoursC4AQ, type DcLinkCapacitor,
 } from '../lib/dcLinkCapacitors';
 import {
   solveDcLinkSizing, solveCapBank, resonanceHz, optimizeDcLinkBank,
@@ -147,6 +147,14 @@ export default function DcLinkCalculator() {
   const seriesList = useMemo(() => seriesForSupplier(supplier), [supplier]);
   const leadsList = useMemo(() => leadsFor(supplier, series, voltageSel), [supplier, series, voltageSel]);
   const partList = useMemo(() => partsFor(supplier, series, voltageSel, leadsSel), [supplier, series, voltageSel, leadsSel]);
+
+  // C4AQ (plain) has a different life/voltage-derating curve shape to C4AQ-M
+  // (flat life 70→85 °C with voltage derating, then a steep drop by 105 °C) —
+  // use its own datasheet-anchored functions when that series is active.
+  // Custom parts and every other catalog series keep the C4AQ-M-anchored curve.
+  const isC4AQPlain = capMode === 'catalog' && series === 'C4AQ';
+  const lifeModel = isC4AQPlain ? estimateLifeHoursC4AQ : estimateLifeHours;
+  const maxVoltageModel = isC4AQPlain ? maxOperatingVoltageC4AQ : maxOperatingVoltage;
 
   // Cascade helpers — changing a higher-level selection re-resolves the ones
   // below it to a valid value so a real part is always selected.
@@ -273,9 +281,9 @@ export default function DcLinkCalculator() {
 
   const life = useMemo(() => {
     if (!bank || !cap) return null;
-    const hours = estimateLifeHours(bank.hotSpotTempC, busVoltageV, cap.ratedVoltageVdc);
+    const hours = lifeModel(bank.hotSpotTempC, busVoltageV, cap.ratedVoltageVdc);
     return { hours, years: hours / 8760, quality: lifeQuality(hours) };
-  }, [bank, cap, busVoltageV]);
+  }, [bank, cap, busVoltageV, lifeModel]);
 
   const optResults = useMemo(() => {
     if (!optimizeEnabled || effSizing.requiredCapacitanceUf <= 0) return [];
@@ -310,7 +318,7 @@ export default function DcLinkCalculator() {
   const busbarOnlyNh = loopMode === 'geometry' ? busbarLoopInductanceNh(busbarLenMm, busbarWidthMm, busbarSepMm) : 0;
 
   const actualResonanceHz = useMemo(() => (bank ? resonanceHz(cableInductanceUh * 1e-6, bank.totalCapacitanceUf) : Infinity), [bank, cableInductanceUh]);
-  const maxOpV = cap ? maxOperatingVoltage(cap.ratedVoltageVdc, bank?.hotSpotTempC ?? ambientTempC) : 0;
+  const maxOpV = cap ? maxVoltageModel(cap.ratedVoltageVdc, bank?.hotSpotTempC ?? ambientTempC) : 0;
   const hotRow = bank ? Math.min(Math.floor(bank.rows / 2), bank.rows - 1) : 0;
   const hotColumn = bank ? Math.min(Math.floor(bank.columnsUsed / 2), (hotRow === bank.rows - 1 ? bank.lastRowCount : bank.columnsUsed) - 1) : 0;
 
@@ -458,8 +466,10 @@ export default function DcLinkCalculator() {
       });
       if (life) {
         steps.push({
-          title: 'Expected life (PP-film model)',
-          formula: 'L = 120 000 h · 2^((70−T_HS)/15) · (V_rated/V_bus)^7',
+          title: `Expected life (PP-film model — ${isC4AQPlain ? 'C4AQ datasheet anchors' : 'C4AQ-M-anchored'})`,
+          formula: isC4AQPlain
+            ? 'Piecewise log-linear between the C4AQ datasheet\'s own life anchors (100 000 h @ 70/85°C, 10 000 h @ 105°C, 500 h @ 115°C, 200 h @ 125°C), each at its own VNDC/VOP85/VOP105 voltage, with a (V_ref/V_bus)^7 acceleration factor'
+            : 'L = 120 000 h · 2^((70−T_HS)/15) · (V_rated/V_bus)^7',
           substitution: `T_HS = ${fmt(bank.hotSpotTempC, 0)}°C, V_bus = ${fmt(busVoltageV, 0)} V, V_rated = ${fmt(cap.ratedVoltageVdc, 0)} V`,
           result: `L ≈ ${fmt(life.hours, 0)} h (${fmt(life.years, 1)} years) — ${life.quality.label}`,
         });
@@ -472,7 +482,7 @@ export default function DcLinkCalculator() {
       result: `Device peak ${fmt(overshoot.devicePeakV, 0)} V (bus + ${fmt(overshoot.overshootDeviceV, 0)} V); cap-terminal peak ${fmt(overshoot.capPeakTransientV, 0)} V`,
     });
     return steps;
-  }, [sizingMode, effSizing, phaseCurrentRmsA, modulationIndex, powerFactor, sizing, switchingFreqKhz, rippleVoltagePkPkV, cableInductanceUh, bank, cap, coolingMethod, ambientTempC, life, busVoltageV, loopInductanceTotalNh, bankEslNh, diDtAPerUs, overshoot]);
+  }, [sizingMode, effSizing, phaseCurrentRmsA, modulationIndex, powerFactor, sizing, switchingFreqKhz, rippleVoltagePkPkV, cableInductanceUh, bank, cap, coolingMethod, ambientTempC, life, busVoltageV, loopInductanceTotalNh, bankEslNh, diDtAPerUs, overshoot, isC4AQPlain]);
 
   const inputSections: ReportSection[] = useMemo(() => {
     const sys: ReportRow[] = sizingMode === 'known'
@@ -532,7 +542,7 @@ export default function DcLinkCalculator() {
       passStatus: { pass: overallPass, label: overallPass ? 'DC-link bank within limits' : 'DC-link bank fails one or more checks — see below' },
       inputSections, outputSections, calculationSteps,
       disclaimer:
-        'DC-link sizing for a three-phase voltage-source inverter. The RMS ripple current uses the Kolar & Round closed form (IEE Proc. Electr. Power Appl., 2006, Eq. 28); the sizing capacitance is the larger of the switching-ripple-voltage limit (capacitor reactance dominant at f_sw) and the source-decoupling minimum (LC resonance below f_sw). Loss is P = ESR·I²; the hot-spot temperature uses ΔT = ESR·I²·R_th per the KEMET C4AQ-M datasheet, with an array thermal derating for the most-enclosed capacitor and a cooling-method factor. Expected life uses a PP-film model anchored to the C4AQ-M datasheet (120,000 h at rated voltage at 70°C hot spot, halving each ~15°C, with a (V_rated/V_applied)^7 voltage-acceleration factor); it is a first-order estimate — use the manufacturer lifetime curve for final validation. ESR is frequency- and temperature-dependent (the 10 kHz / 70°C datasheet value is used). Capacitor data transcribed from the KEMET C4AQ-M datasheet (F3125_C4AQ_M). Verify against the current datasheet and, for critical designs, by test.',
+        `DC-link sizing for a three-phase voltage-source inverter. The RMS ripple current uses the Kolar & Round closed form (IEE Proc. Electr. Power Appl., 2006, Eq. 28); the sizing capacitance is the larger of the switching-ripple-voltage limit (capacitor reactance dominant at f_sw) and the source-decoupling minimum (LC resonance below f_sw). Loss is P = ESR·I²; the hot-spot temperature uses ΔT = ESR·I²·R_th per the manufacturer datasheet, with an array thermal derating for the most-enclosed capacitor and a cooling-method factor. Expected life uses a PP-film model: ${isC4AQPlain ? "for the KEMET C4AQ (plain) series, the model is anchored directly to that series' own datasheet life-expectancy points (100,000 h at VNDC/70°C hot spot and at VOP85/85°C — flat life if voltage is derated, not just a scaled constant — then 10,000 h at VOP105/105°C, 500 h at 0.7×VOP85/115°C, 200 h at 0.6×VOP85/125°C), interpolated log-linearly between anchors with a (V_ref/V_applied)^7 voltage-acceleration factor" : 'anchored to the C4AQ-M datasheet (120,000 h at rated voltage at 70°C hot spot, halving each ~15°C, with a (V_rated/V_applied)^7 voltage-acceleration factor)'}; it is a first-order estimate — use the manufacturer lifetime curve for final validation. ESR is frequency- and temperature-dependent (the 10 kHz / 70°C datasheet value is used). Capacitor data transcribed from the KEMET C4AQ-M datasheet (F3125_C4AQ_M) and, for the C4AQ (plain) series, the KEMET C4AQ datasheet (F3114_C4AQ). Verify against the current datasheet and, for critical designs, by test.`,
       ...branding,
     });
   };
@@ -987,18 +997,20 @@ export default function DcLinkCalculator() {
           the KEMET datasheet states "the peak voltage shall not exceed the rated voltage VNDC," and TDK defines its
           rated voltage as the maximum operating peak voltage. So the governing voltage is V_peak = V_bus + ½·ΔV_pp
           (the ripple pushes the required rating up, not just the DC bus), and above 85 °C the permissible voltage
-          derates below the rating (linear to ~0.7×V_rated at 105 °C). Occasional surges to ~1.5×V_rated are allowed
-          (limited cycles), but continuous operation at ≤0.8×V_rated greatly extends life. Bank mass is estimated from
-          the box envelope volume at an effective packaged density of 1.35 g/cm³ (film + resin + box + terminals) —
-          an approximation; use the datasheet weight for precise figures. Bank ESR and ESL are the N-in-parallel
-          combinations of the per-part values; real bank ESL is dominated by the busbar/interconnect layout, which is
-          not included. Switching overshoot uses ΔV = L_loop·di/dt: the commutation-loop inductance (entered, or
-          estimated from a laminated busbar as µ₀·separation·length/width plus the module and cap-bank ESL) times the
-          turn-off current slew (from the commutated current and fall time, or entered directly). The device sees the
-          full loop spike (compare against the switch's rating — out of scope here); the capacitor sees only the
-          ESL_bank·di/dt portion added to the DC bus and ripple, and because it repeats every cycle it must stay within
-          the rated voltage. This is a first-order lumped estimate — real overshoot also depends on damping, gate
-          drive and ringing. {' '}
+          derates below the rating for most series (linear to ~0.7×V_rated at 105 °C for C4AQ-M; for the KEMET C4AQ
+          (plain) series specifically, see the note below — its own derating ratios vary by voltage class and its
+          life is flat, not declining, from 70→85 °C provided the voltage is derated to VOP85). Occasional surges to
+          ~1.5×V_rated are allowed (limited cycles), but continuous operation at ≤0.8×V_rated greatly extends life.
+          Bank mass is estimated from the box envelope volume at an effective packaged density of 1.35 g/cm³ (film +
+          resin + box + terminals) — an approximation; use the datasheet weight for precise figures. Bank ESR and ESL
+          are the N-in-parallel combinations of the per-part values; real bank ESL is dominated by the
+          busbar/interconnect layout, which is not included. Switching overshoot uses ΔV = L_loop·di/dt: the
+          commutation-loop inductance (entered, or estimated from a laminated busbar as
+          µ₀·separation·length/width plus the module and cap-bank ESL) times the turn-off current slew (from the
+          commutated current and fall time, or entered directly). The device sees the full loop spike (compare
+          against the switch's rating — out of scope here); the capacitor sees only the ESL_bank·di/dt portion added
+          to the DC bus and ripple, and because it repeats every cycle it must stay within the rated voltage. This is
+          a first-order lumped estimate — real overshoot also depends on damping, gate drive and ringing. {' '}
           The DC-link RMS ripple current uses the Kolar &amp; Round closed-form expression (IEE Proc. Electr. Power
           Appl., 2006, Eq. 28) for a three-phase voltage-source PWM inverter with sinusoidal output current and a
           constant DC-link voltage; it peaks near modulation index M ≈ 0.6 at roughly 0.6–0.65 × the RMS phase current.
@@ -1007,19 +1019,31 @@ export default function DcLinkCalculator() {
           ΔV_pp/(2√2) — conservative, since all the ripple is taken at the switching frequency), and the
           source-decoupling minimum C ≥ 1/(L_cable·(2π·f_sw)²) that keeps the cable-inductance/capacitor resonance below
           the switching frequency. Capacitor loss is P = ESR·I² with the ripple current shared equally across the
-          parallel bank; the hot-spot temperature is ΔT = ESR·I²·R_th (per the KEMET C4AQ-M datasheet), with the
+          parallel bank; the hot-spot temperature is ΔT = ESR·I²·R_th (per the manufacturer datasheet), with the
           single-part R_th derated for the most-enclosed capacitor by its exposed-face fraction (top face plus side
           faces, side faces facing a neighbour across the gap cooling only partially) and a cooling-method factor
           (natural / forced air / conduction). ESR is frequency- and temperature-dependent — the datasheet 10 kHz /
-          70 °C value is used, so real losses vary with the actual ripple spectrum. Expected life uses a PP-film model
-          anchored to the C4AQ-M datasheet — 120,000 h at rated voltage at 70 °C hot spot, halving every ~15 °C
-          (60,000 h at 85 °C), with a (V_rated/V_applied)^7 voltage-acceleration factor — and is a first-order
-          estimate; the manufacturer's lifetime curve for the specific series governs. Capacitor parameters are
-          transcribed from the manufacturer datasheets — KEMET C4AQ-M (F3125), KEMET C4AE (F3046) and TDK/EPCOS
-          B3277x MKP DC-Link (MKP_B32774XYZ_778XYZ). Note the Irms rating basis differs by manufacturer: KEMET quotes
-          the current for a 30 °C hot-spot rise, TDK for a 15 °C rise; the TDK parts' R_th is derived from R_th =
-          ΔT/(ESR·Irms²) with ΔT = 15 °C (which cross-checks against KEMET for matching case sizes). The
-          voltage-derating and life models are generic PP-film approximations. Verify against the current datasheets
+          70 °C value is used, so real losses vary with the actual ripple spectrum.
+        </p>
+        <p className="note">
+          <b>Expected life models — two curves, not one:</b> the KEMET C4AQ-M and C4AQ (plain) series have
+          differently-shaped life-vs-temperature-vs-voltage curves, so each uses its own datasheet-anchored model
+          rather than sharing an approximation. <b>C4AQ-M</b> (and, as an approximation, C4AE/TDK/custom parts) use
+          a PP-film model anchored to the C4AQ-M datasheet — 120,000 h at rated voltage at 70 °C hot spot, halving
+          every ~15 °C (60,000 h at 85 °C, 40,000 h at 105 °C), with a (V_rated/V_applied)^7 voltage-acceleration
+          factor. <b>C4AQ (plain)</b> instead uses its own datasheet's life-expectancy points directly: 100,000 h at
+          VNDC/70 °C <i>and</i> 100,000 h at VOP85/85 °C (flat life across that range, not a decline, provided the
+          voltage is derated to VOP85 — a materially different shape to C4AQ-M), then 10,000 h at VOP105/105 °C, 500 h
+          at 0.7×VOP85/115 °C, 200 h at 0.6×VOP85/125 °C. The VOP85/VOP105 ratios (as a fraction of VNDC) vary by
+          voltage class per the datasheet (e.g. VOP85/VNDC = 0.90 at 500 V vs 0.80 at 1,500 V) rather than being one
+          constant, and are interpolated log-linearly between these anchors with the same (V_ref/V_applied)^7
+          acceleration factor. Both models are first-order estimates; the manufacturer's lifetime curve for the
+          specific part governs. Capacitor parameters are transcribed from the manufacturer datasheets — KEMET
+          C4AQ-M (F3125), KEMET C4AQ, plain (F3114), KEMET C4AE (F3046) and TDK/EPCOS B3277x MKP DC-Link
+          (MKP_B32774XYZ_778XYZ). Note the Irms rating basis differs by manufacturer: KEMET quotes the current for a
+          30 °C hot-spot rise, TDK for a 15 °C rise; the TDK parts' R_th is derived from R_th = ΔT/(ESR·Irms²) with
+          ΔT = 15 °C (which cross-checks against KEMET for matching case sizes). The voltage-derating and life models
+          are PP-film approximations anchored to their respective datasheets. Verify against the current datasheets
           and, for critical designs, by test.
         </p>
         <p className="note">
@@ -1028,7 +1052,8 @@ export default function DcLinkCalculator() {
           characteristic stated above — the ratio peaks at M = 0.615 with a value of 0.650, right in the
           documented "M ≈ 0.6, ~0.6–0.65×" range. LC resonance, both capacitance-sizing constraints, stored
           energy, busbar loop inductance, and the di/dt and overshoot formulas all matched independent hand
-          calculation exactly.
+          calculation exactly. The C4AQ (plain) life/derating model reproduces every one of its five datasheet
+          anchor points exactly when evaluated at that anchor's own hot-spot temperature and voltage.
         </p>
       </div>
 
