@@ -23,6 +23,7 @@ import { fundamentalElectricalFreqHz } from '../lib/chokePhysics';
 import ControllerProfilePicker from '../components/ControllerProfilePicker';
 import type { ControllerProfileParams } from '../lib/controllerProfiles';
 import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
+import { trackApply, type ProfileApplyResult } from '../lib/profileApply';
 import {
   solveDeviceLosses, solveDutyCycle,
   type OperatingPoint, type DutyStep, type DeviceLossResult,
@@ -68,9 +69,11 @@ export default function MosfetLossCalculator() {
   const [modulationIndex, setModulationIndex] = useState(1.0);
   const [cosPhiMag, setCosPhiMag] = useState(0.9);
 
-  const applyControllerProfile = (p: ControllerProfileParams) => {
+  const applyControllerProfile = (p: ControllerProfileParams): ProfileApplyResult => {
+    const t = trackApply();
     setVdc(p.maxDcVoltageV);
-    if (p.switchingFrequencyKhz != null) setSwitchingFreqKhz(p.switchingFrequencyKhz);
+    t.set('Switching frequency', p.switchingFrequencyKhz, setSwitchingFreqKhz);
+    return t.result();
   };
   usePowertrainPrefill({ onController: applyControllerProfile });
   const [deadTimeNs, setDeadTimeNs] = useState(500);

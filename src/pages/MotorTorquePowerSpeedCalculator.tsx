@@ -16,6 +16,7 @@ import { solveTorquePowerSpeed, torqueFromCurrent, electricalInputPower, type So
 import MotorProfilePicker from '../components/MotorProfilePicker';
 import type { MotorProfileParams } from '../lib/motorProfiles';
 import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
+import { trackApply, type ProfileApplyResult } from '../lib/profileApply';
 
 function fmt(n: number, digits = 3): string {
   if (!isFinite(n)) return '—';
@@ -55,12 +56,15 @@ export default function MotorTorquePowerSpeedCalculator() {
   // "solved for" (its input is disabled/computed, so setting it is harmless
   // and it's simplest to just apply everything available rather than branch
   // on solveFor). Units are forced to the SI ids the values are expressed in.
-  const applyMotorProfile = (p: MotorProfileParams) => {
+  const applyMotorProfile = (p: MotorProfileParams): ProfileApplyResult => {
+    const t = trackApply();
     setTorqueValue(p.peakTorqueNm); setTorqueUnit('nm');
     setPowerValue(p.ratedPowerKw); setPowerUnit('kw');
     const speed = p.ratedSpeedRpm ?? p.maxSpeedRpm;
     if (speed != null) { setSpeedValue(speed); setSpeedUnit('rpm'); }
-    if (p.ktNmPerA != null) setTorqueConstant(p.ktNmPerA);
+    else t.miss('Speed');
+    t.set('Torque constant Kt', p.ktNmPerA, setTorqueConstant);
+    return t.result();
   };
 
   usePowertrainPrefill({ onMotor: applyMotorProfile });

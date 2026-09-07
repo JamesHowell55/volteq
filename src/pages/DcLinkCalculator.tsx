@@ -22,6 +22,8 @@ import type { BatteryProfileParams } from '../lib/batteryProfiles';
 import ControllerProfilePicker from '../components/ControllerProfilePicker';
 import type { ControllerProfileParams } from '../lib/controllerProfiles';
 import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
+import { motorElectricalFrequency } from '../lib/busbarPhysics';
+import { trackApply, type ProfileApplyResult } from '../lib/profileApply';
 import {
   CAP_SUPPLIERS, DC_LINK_CAPACITORS, seriesForSupplier, voltagesForSeries, partsFor, leadsFor,
   maxOperatingVoltage, estimateLifeHours, maxOperatingVoltageC4AQ, estimateLifeHoursC4AQ, type DcLinkCapacitor,
@@ -80,19 +82,39 @@ export default function DcLinkCalculator() {
   const [modulationIndex, setModulationIndex] = useState(0.9);
   const [cableInductanceUh, setCableInductanceUh] = useState(1);
 
-  const applyMotorProfile = (p: MotorProfileParams) => {
-    const current = p.peakCurrentARms ?? p.continuousCurrentARms;
-    if (current != null) setPhaseCurrentRmsA(current);
+  // rpm → output-frequency helper, same derivation as the Busbar calculator:
+  // the inverter fundamental output frequency is f = n·p / 60. Pre-filled from
+  // a motor profile's rated (or max) speed and pole pairs.
+  const [showFreqHelper, setShowFreqHelper] = useState(false);
+  const [motorRpm, setMotorRpm] = useState(6000);
+  const [motorPolePairs, setMotorPolePairs] = useState(4);
+  const derivedOutputFreqHz = useMemo(() => motorElectricalFrequency(motorRpm, motorPolePairs), [motorRpm, motorPolePairs]);
+
+  const applyMotorProfile = (p: MotorProfileParams): ProfileApplyResult => {
+    const t = trackApply();
+    t.set('Phase current', p.peakCurrentARms ?? p.continuousCurrentARms, setPhaseCurrentRmsA);
+    // Output frequency: pre-fill the rpm helper from the profile, and when it
+    // carries both speed and pole pairs set the electrical frequency directly.
+    const rpm = p.ratedSpeedRpm ?? p.maxSpeedRpm;
+    if (rpm != null) setMotorRpm(rpm);
+    if (p.polePairs != null) setMotorPolePairs(p.polePairs);
+    if (rpm != null && p.polePairs != null) setOutputFreqHz(motorElectricalFrequency(rpm, p.polePairs));
+    else t.miss('Output frequency (needs the profile’s rated/max speed and pole pairs)');
+    return t.result();
   };
 
-  const applyBatteryProfile = (p: BatteryProfileParams) => {
+  const applyBatteryProfile = (p: BatteryProfileParams): ProfileApplyResult => {
+    const t = trackApply();
     setBusVoltageV(p.maxVoltageV);
-    if (p.inductanceUh != null) setCableInductanceUh(p.inductanceUh);
+    t.set('Cable inductance', p.inductanceUh, setCableInductanceUh);
+    return t.result();
   };
 
-  const applyControllerProfile = (p: ControllerProfileParams) => {
+  const applyControllerProfile = (p: ControllerProfileParams): ProfileApplyResult => {
+    const t = trackApply();
     setBusVoltageV(p.maxDcVoltageV);
-    if (p.switchingFrequencyKhz != null) setSwitchingFreqKhz(p.switchingFrequencyKhz);
+    t.set('Switching frequency', p.switchingFrequencyKhz, setSwitchingFreqKhz);
+    return t.result();
   };
 
   usePowertrainPrefill({ onController: applyControllerProfile, onBattery: applyBatteryProfile, onMotor: applyMotorProfile });
@@ -379,12 +401,14 @@ export default function DcLinkCalculator() {
   const getInputs = useCallback((): Record<string, unknown> => ({
     sizingMode, knownCapacitanceUf, knownRippleCurrentA,
     busVoltageV, rippleVoltagePkPkV, outputFreqHz, switchingFreqKhz, phaseCurrentRmsA, powerFactor, modulationIndex, cableInductanceUh,
+    motorRpm, motorPolePairs,
     capMode, supplier, series, voltageSel, leadsSel, partNumber,
     customCapUf, customRatedV, customEsrMohm, customEslNh, customIrmsA, customRthCW, customLmm, customTmm, customHmm, customPartRef,
     ambientTempC, coolingMethod, conductionRthCW, columns, spacingMm,
     optimizeEnabled, maxWidthMm, maxDepthMm, maxHeightMm, optMaxHotSpotC, optMinRatedVoltageV, optObjective,
     loopMode, loopInductanceNh, busbarLenMm, busbarWidthMm, busbarSepMm, moduleEslNh, didtMode, switchedCurrentA, fallTimeNs, didtDirectAPerUs,
   }), [sizingMode, knownCapacitanceUf, knownRippleCurrentA, busVoltageV, rippleVoltagePkPkV, outputFreqHz, switchingFreqKhz, phaseCurrentRmsA, powerFactor, modulationIndex, cableInductanceUh,
+    motorRpm, motorPolePairs,
     capMode, supplier, series, voltageSel, leadsSel, partNumber, customCapUf, customRatedV, customEsrMohm, customEslNh, customIrmsA, customRthCW, customLmm, customTmm, customHmm, customPartRef,
     ambientTempC, coolingMethod, conductionRthCW, columns, spacingMm,
     optimizeEnabled, maxWidthMm, maxDepthMm, maxHeightMm, optMaxHotSpotC, optMinRatedVoltageV, optObjective,
@@ -397,6 +421,7 @@ export default function DcLinkCalculator() {
     set(v.busVoltageV, setBusVoltageV); set(v.rippleVoltagePkPkV, setRippleVoltagePkPkV); set(v.outputFreqHz, setOutputFreqHz);
     set(v.switchingFreqKhz, setSwitchingFreqKhz); set(v.phaseCurrentRmsA, setPhaseCurrentRmsA); set(v.powerFactor, setPowerFactor);
     set(v.modulationIndex, setModulationIndex); set(v.cableInductanceUh, setCableInductanceUh);
+    set(v.motorRpm, setMotorRpm); set(v.motorPolePairs, setMotorPolePairs);
     set(v.capMode, setCapMode); set(v.supplier, setSupplier); set(v.series, setSeries); set(v.voltageSel, setVoltageSel); set(v.leadsSel, setLeadsSel); set(v.partNumber, setPartNumber);
     set(v.customCapUf, setCustomCapUf); set(v.customRatedV, setCustomRatedV); set(v.customEsrMohm, setCustomEsrMohm); set(v.customEslNh, setCustomEslNh); set(v.customIrmsA, setCustomIrmsA);
     set(v.customRthCW, setCustomRthCW); set(v.customLmm, setCustomLmm); set(v.customTmm, setCustomTmm); set(v.customHmm, setCustomHmm); set(v.customPartRef, setCustomPartRef);
@@ -612,14 +637,41 @@ export default function DcLinkCalculator() {
               <div className="grid grid-2" style={{ marginTop: '0.6rem' }}>
                 <div className="field"><label>Bus voltage (V)</label>{seriesNum(busVoltageV, setBusVoltageV, { step: 10, min: 0 })}</div>
                 <div className="field"><label>Allowed ripple, pk-pk (V)</label>{seriesNum(rippleVoltagePkPkV, setRippleVoltagePkPkV, { step: 0.5, min: 0 })}</div>
-                <div className="field"><label>Output frequency (Hz)</label>{seriesNum(outputFreqHz, setOutputFreqHz, { step: 10, min: 0 })}</div>
+                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                  <label>Output frequency (Hz)</label>
+                  {seriesNum(outputFreqHz, setOutputFreqHz, { step: 10, min: 0 })}
+                  <button className="btn small" onClick={() => setShowFreqHelper((v) => !v)}>
+                    {showFreqHelper ? 'Hide rpm helper' : 'Derive from rpm ▾'}
+                  </button>
+                  <span className="hint">
+                    The inverter fundamental output frequency — derive it from motor speed and pole count,
+                    or load a motor profile to fill it from the profile's rated speed × pole pairs.
+                  </span>
+                  {showFreqHelper && (
+                    <div className="grid grid-3" style={{ gridColumn: '1 / -1', marginTop: '0.65rem', padding: '0.75rem', background: 'var(--bg-raised)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
+                      <div className="field">
+                        <label>Motor speed (RPM)</label>
+                        <input autoComplete="off" type="number" min={0} value={motorRpm} onChange={(e) => setMotorRpm(Number(e.target.value))} />
+                      </div>
+                      <div className="field">
+                        <label style={{ display: 'flex', alignItems: 'center' }}>Pole pairs<InfoTooltip>e.g. an 8-pole motor = 4 pole pairs.</InfoTooltip></label>
+                        <input autoComplete="off" type="number" min={1} value={motorPolePairs} onChange={(e) => setMotorPolePairs(Number(e.target.value))} />
+                      </div>
+                      <div className="field">
+                        <label>f = n × p / 60</label>
+                        <input value={`${fmt(derivedOutputFreqHz, 1)} Hz`} readOnly />
+                        <button className="btn small primary" onClick={() => setOutputFreqHz(derivedOutputFreqHz)}>Use this frequency</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="field"><label>Switching frequency (kHz)</label>{seriesNum(switchingFreqKhz, setSwitchingFreqKhz, { step: 1, min: 0.1 })}</div>
                 <div className="field"><label>Phase current (A rms)</label>{seriesNum(phaseCurrentRmsA, setPhaseCurrentRmsA, { step: 10, min: 0 })}</div>
                 <div className="field"><label>Power factor cos φ</label>{seriesNum(powerFactor, setPowerFactor, { step: 0.05, min: 0, max: 1 })}</div>
                 <div className="field"><label>Modulation index M</label>{seriesNum(modulationIndex, setModulationIndex, { step: 0.05, min: 0, max: 1.15 })}</div>
                 <div className="field"><label>Cable inductance (µH)</label>{seriesNum(cableInductanceUh, setCableInductanceUh, { step: 0.1, min: 0 })}</div>
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
-                  <MotorProfilePicker onApply={applyMotorProfile} hint="Sets the phase current from a saved motor profile's peak (preferred) or continuous current rating." />
+                  <MotorProfilePicker onApply={applyMotorProfile} hint="Sets phase current from the profile's peak (preferred) or continuous current rating, and output frequency from its rated (or max) speed × pole pairs." />
                 </div>
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
                   <BatteryProfilePicker onApply={applyBatteryProfile} hint="Sets the bus voltage from a saved battery profile's max voltage, and cable inductance from its pack inductance if set." />

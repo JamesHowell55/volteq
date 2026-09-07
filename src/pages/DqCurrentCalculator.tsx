@@ -16,6 +16,7 @@ import DqSpaceVectorDiagram from '../components/DqSpaceVectorDiagram';
 import MotorProfilePicker from '../components/MotorProfilePicker';
 import type { MotorProfileParams } from '../lib/motorProfiles';
 import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
+import { trackApply, type ProfileApplyResult } from '../lib/profileApply';
 import {
   rmsToPeak,
   magnitudeAngleFromDq,
@@ -99,13 +100,16 @@ export default function DqCurrentCalculator() {
     }
   };
 
-  const applyMotorProfile = (p: MotorProfileParams) => {
+  const applyMotorProfile = (p: MotorProfileParams): ProfileApplyResult => {
+    const t = trackApply();
     if (p.motorType === 'spm' || p.motorType === 'ipm') setMotorType(p.motorType);
-    if (p.polePairs != null) setPolePairs(p.polePairs);
-    if (p.fluxLinkageWb != null) setFluxLinkageWb(p.fluxLinkageWb);
-    if (p.ldMh != null) setLdMh(p.ldMh);
-    if (p.lqMh != null) setLqMh(p.lqMh);
+    else t.miss('Motor type (profile is not surface- or interior-PM)');
+    t.set('Pole pairs', p.polePairs, setPolePairs);
+    t.set('Flux linkage', p.fluxLinkageWb, setFluxLinkageWb);
+    t.set('Ld', p.ldMh, setLdMh);
+    t.set('Lq', p.lqMh, setLqMh);
     setPresetId('custom');
+    return t.result();
   };
 
   usePowertrainPrefill({ onMotor: applyMotorProfile });

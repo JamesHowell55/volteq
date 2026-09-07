@@ -22,6 +22,7 @@ import type { BatteryProfileParams } from '../lib/batteryProfiles';
 import ControllerProfilePicker from '../components/ControllerProfilePicker';
 import type { ControllerProfileParams } from '../lib/controllerProfiles';
 import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
+import { trackApply, type ProfileApplyResult } from '../lib/profileApply';
 import {
   INSULATION_PRESETS,
   STANDARD_CROSS_SECTIONS_MM2,
@@ -149,19 +150,22 @@ export default function CableWireSizingCalculator() {
   const [targetCurrentA, setTargetCurrentA] = useState(150);
   const [systemVoltage, setSystemVoltage] = useState(400);
 
-  const applyMotorProfile = (p: MotorProfileParams) => {
-    const current = p.continuousCurrentARms ?? p.peakCurrentARms;
-    if (current != null) setTargetCurrentA(current);
+  const applyMotorProfile = (p: MotorProfileParams): ProfileApplyResult => {
+    const t = trackApply();
+    t.set('Target current', p.continuousCurrentARms ?? p.peakCurrentARms, setTargetCurrentA);
+    return t.result();
   };
 
-  const applyBatteryProfile = (p: BatteryProfileParams) => {
+  const applyBatteryProfile = (p: BatteryProfileParams): ProfileApplyResult => {
     setSystemVoltage(p.maxVoltageV);
+    return { skipped: [] };
   };
 
-  const applyControllerProfile = (p: ControllerProfileParams) => {
+  const applyControllerProfile = (p: ControllerProfileParams): ProfileApplyResult => {
+    const t = trackApply();
     setSystemVoltage(p.maxDcVoltageV);
-    const current = p.continuousCurrentARms ?? p.peakCurrentARms;
-    if (current != null) setTargetCurrentA(current);
+    t.set('Target current', p.continuousCurrentARms ?? p.peakCurrentARms, setTargetCurrentA);
+    return t.result();
   };
 
   usePowertrainPrefill({
