@@ -442,6 +442,14 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
 
 .card + .card { margin-top: 0.75rem; }
 
+/* Dark mode: the calculator boxes (inputs, results, reference/steps) render
+   pure black so they sit flat against the near-black page instead of lifting
+   off it — the 1px border is what delineates them. Scoped to calculator pages
+   via the two-column layout they all use; light mode keeps white cards. */
+:root:not([data-theme="light"]) .page:has(.two-col) .card {
+  background: #000;
+}
+
 .card-title {
   display: flex;
   align-items: center;
