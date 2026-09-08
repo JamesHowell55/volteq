@@ -183,6 +183,15 @@ export const SIC_DEVICE_PRESETS: SicDevicePreset[] = [
     sourced: false,
     notes: 'Automotive traction six-pack (2.75 mΩ/400 A headline verified; PinFin baseplate; G2 successor FS02MR12A8MA2B 1200 V/390 A also exists). Loss parameters representative — refine from the FS03MR12A6MA1B datasheet.',
   },
+  {
+    id: 'fs01m9r13a7ma2b', manufacturer: 'Infineon', partNumber: 'FS01M9R13A7MA2B', packageLabel: 'HybridPACK Drive G2 six-pack (CoolSiC Automotive Gen2, 1300 V)',
+    topology: 'sixPack', currentRatingA: 390, rdsOn25mOhm: 1.91, rdsOnHotmOhm: 4.47, rdsOnHotTempC: 185,
+    vgsOnV: 18, vgsOffV: -5, eOnMj: 31.0, eOffMj: 12.1, eTestVdcV: 750, eTestCurrentA: 390,
+    eRrMj: 0.200, eOnHotMj: 33.1, eOffHotMj: 13.3, eRrHotMj: 1.41, eswHotTempC: 205,
+    qrrUc: 6.94, vsdV: 4.55, rthJcKPerW: 0.115, tvjMaxC: 205, qgNc: 1200,
+    sourced: true,
+    notes: 'Transcribed from the FS01M9R13A7MA2B final datasheet (Rev. 1.10, 2026-05-12): HybridPACK Drive G2 automotive traction six-pack, second-gen CoolSiC Automotive MOSFET, VDSS 1300 V continuous (1400 V transient), AQG 324 qualified, direct-cooled PinFin baseplate. ID,nom 390 A at VGS=18 V, Tf=65 °C, Tvj,max=205 °C. RDS(on) typ 1.91 mΩ @Tvj=25 °C / 3.22 mΩ @125 °C / 4.47 mΩ @185 °C / 5.03 mΩ @205 °C at ID=390 A, VGS=18 V (the 185 °C point is given to the engine as the hot RDS(on); recommended VGS(on) range is 15…18 V). Switching at VDS=750 V, ID=390 A, VGS=−5/18 V, RG,on=12 Ω, RG,off=3.3 Ω, Lσ=6.5 nH: Eon 31.0 → 33.1 mJ, Eoff 12.1 → 13.3 mJ, Erec 0.200 → 1.41 mJ across Tvj 25 → 205 °C — 25 °C and 205 °C rows both given to the engine, which interpolates each on the solved Tj. Body diode Qrr 6.94 µC and VF,SD 4.55 V (25 °C, falls to 3.89 V at 205 °C) at IF,S=390 A, VGS=−5 V. Thermal figure is Rth,j-f junction-to-fluid 0.115 K/W per switch position (10 dm³/min, 50/50 water-glycol, Tf=60 °C) — direct-cooled module with no case temperature published, so leave the extra case-to-heatsink Rth at 0 and set the case temperature to the coolant temperature. Tvj,op 205 °C continuous. QG 1.20 µC (1200 nC) over VGS=−5/18 V at VDS=750 V. Stray inductance Ls,DS 8.0 nH.',
+  },
 
   // ---------------- STMicroelectronics ----------------
   {
