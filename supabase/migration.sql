@@ -132,3 +132,14 @@ create policy "delete own component profiles" on component_profiles
   for delete using (auth.uid() = user_id);
 
 grant select, insert, update, delete on table public.component_profiles to authenticated;
+
+-- Keep-alive probe for the GitHub Action (.github/workflows/supabase-keepalive.yml).
+-- Free-tier projects pause after 7 days without database activity, and a request that
+-- is rejected for permissions (401/42501) does NOT count. This runs a real query against
+-- a real table as the function owner, and returns only 0/1 so it exposes no data.
+create or replace function public.keepalive() returns int
+language sql security definer set search_path = public as
+$$ select count(*)::int from (select 1 from public.saved_calculations limit 1) t $$;
+
+revoke all on function public.keepalive() from public;
+grant execute on function public.keepalive() to anon;
