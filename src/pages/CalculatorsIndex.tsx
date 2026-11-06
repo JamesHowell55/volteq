@@ -37,6 +37,8 @@ const SHORT_DESCRIPTIONS: Record<string, string> = {
   '/harness-designer': 'MIL-DTL-38999 connector pinouts and wiring schematics.',
   '/pcb-trace-width': 'Current capacity and trace width per IPC-2221.',
   '/skin-depth': 'AC skin depth from material, frequency, and geometry.',
+  '/power-factor': 'Power factor from real and apparent power, with correction sizing.',
+  '/short-circuit-current': "Fault current from Ohm's Law for AC and DC systems.",
   '/choke-sizing': 'CM/DM choke sizing with saturation and core-loss checks.',
   '/mosfet-loss': 'Conduction, switching, and thermal losses for SiC inverters.',
   '/heatsink-thermal': 'Junction-to-ambient Rth budget and natural-convection fin-array sizing.',

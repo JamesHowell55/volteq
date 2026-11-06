@@ -10,6 +10,7 @@
 // of the live site's current theme.
 
 import { generateProfilePoints, type SplineGeometry } from './splinePhysics';
+import { PT_W, PT_H, triangleGeometry } from './powerTriangleGeometry';
 
 const TEXT_2 = '#565C53';
 const TEXT_FAINT = '#9A9D95';
@@ -981,5 +982,38 @@ export function renderSplineProfileSvg(g: SplineGeometry, accentColor: string): 
     <text x="${CX}" y="${(toY(rTip) - 6).toFixed(2)}" text-anchor="middle" font-size="9.5" fill="${TEXT_FAINT}">Dee ${fmtNum(g.majorDiaMm)} mm</text>
     <text x="${W / 2}" y="${H - 20}" text-anchor="middle" font-size="10" fill="${TEXT_2}">z = ${g.teeth} · m = ${g.moduleMm} · &#945; = ${g.pressureAngleDeg}° · Ø${fmtNum(g.pinDiameterMm)} pins</text>
     <text x="${W / 2}" y="${H - 6}" text-anchor="middle" font-size="9" fill="${TEXT_FAINT}">external spline end view · true involute profile · to scale</text>
+  </svg>`;
+}
+
+// ── Power triangle: matches PowerTriangle.tsx's layout (shared geometry) with literal colors. ──
+
+export function renderPowerTriangleSvg(
+  pW: number, qVar: number, sVA: number, lagging: boolean,
+  labels: { p: string; q: string; s: string; phiDeg: number },
+  corrected: { qVar: number; sVA: number; sLabel: string; phiDeg: number } | null,
+  accentColor: string,
+): string {
+  const g = triangleGeometry({ pW, qVar, sVA, lagging, corrected });
+  const midX = (g.ox + g.px) / 2;
+  const showArc = qVar > 1e-9 * sVA && pW > 1e-9 * sVA;
+  const mono = 'font-family="ui-monospace, monospace"';
+  const overlay = corrected && g.qyNew !== null ? `
+    <line x1="${g.ox}" y1="${g.oy}" x2="${g.px}" y2="${g.qyNew}" stroke="${POS}" stroke-width="1.5" stroke-dasharray="5 3" />
+    <line x1="18" y1="19" x2="44" y2="19" stroke="${POS}" stroke-width="1.5" stroke-dasharray="5 3" />
+    <text x="50" y="22" font-size="9.5" fill="${POS}" ${mono}>corrected S = ${escapeXml(corrected.sLabel)} &middot; &#966; = ${corrected.phiDeg.toFixed(1)}&#176;</text>` : '';
+  const arc = showArc ? `
+    <path d="M ${g.ox + g.arcR} ${g.oy} A ${g.arcR} ${g.arcR} 0 0 ${lagging ? 0 : 1} ${g.arcEndX} ${g.arcEndY}" fill="none" stroke="${TEXT_2}" stroke-width="1" />
+    <text x="${g.ox + g.arcR + 8}" y="${g.oy + (lagging ? -8 : 16)}" font-size="10" fill="${TEXT_2}" ${mono}>&#966; = ${labels.phiDeg.toFixed(1)}&#176;</text>` : '';
+  return `<svg viewBox="0 0 ${PT_W} ${PT_H}" width="100%">
+    <polygon points="${g.ox},${g.oy} ${g.px},${g.oy} ${g.px},${g.qy}" fill="color-mix(in srgb, ${accentColor} 12%, white)" />
+    ${overlay}
+    <line x1="${g.ox}" y1="${g.oy}" x2="${g.px}" y2="${g.oy}" stroke="${accentColor}" stroke-width="2" />
+    <line x1="${g.px}" y1="${g.oy}" x2="${g.px}" y2="${g.qy}" stroke="${TEXT_2}" stroke-width="2" />
+    <line x1="${g.ox}" y1="${g.oy}" x2="${g.px}" y2="${g.qy}" stroke="${accentColor}" stroke-width="2" />
+    ${arc}
+    <text x="${midX}" y="${g.oy + (lagging ? 18 : -8)}" text-anchor="middle" font-size="10.5" fill="${accentColor}" ${mono}>P = ${escapeXml(labels.p)}</text>
+    <text x="${g.px + 8}" y="${(g.oy + g.qy) / 2 + 4}" font-size="10.5" fill="${TEXT_2}" ${mono}>Q = ${escapeXml(labels.q)}</text>
+    <text x="${midX - 12}" y="${(g.oy + g.qy) / 2 + (lagging ? -10 : 18)}" text-anchor="end" font-size="10.5" fill="${accentColor}" ${mono}>S = ${escapeXml(labels.s)}</text>
+    <text x="${PT_W / 2}" y="${PT_H - 8}" text-anchor="middle" font-size="9.5" fill="${TEXT_FAINT}" ${mono}>power triangle to scale &middot; ${lagging ? 'lagging (inductive) load' : 'leading (capacitive) load'}</text>
   </svg>`;
 }
