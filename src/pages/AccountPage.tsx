@@ -337,6 +337,8 @@ function BrandingSection() {
 const CALCULATOR_META: Record<string, { label: string; path: string }> = {
   'busbar': { label: 'Busbar Calculator', path: '/busbar' },
   'skin-depth': { label: 'Skin Depth Calculator', path: '/skin-depth' },
+  'power-factor': { label: 'Power Factor Calculator', path: '/power-factor' },
+  'short-circuit-current': { label: 'Short Circuit Current', path: '/short-circuit-current' },
   'creepage-clearance': { label: 'Creepage & Clearance', path: '/creepage-clearance' },
   'cable-wire-sizing': { label: 'Cable / Wire Sizing', path: '/cable-sizing' },
   'battery-pack': { label: 'Battery Pack Series-Parallel', path: '/battery-pack-series-parallel' },

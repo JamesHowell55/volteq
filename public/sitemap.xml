@@ -67,6 +67,16 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://volteq.io/power-factor</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://volteq.io/short-circuit-current</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://volteq.io/skin-depth</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

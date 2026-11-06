@@ -42,6 +42,8 @@ import ControllerProfilesPage from './pages/ControllerProfilesPage';
 import PowertrainPage from './pages/PowertrainPage';
 import DcLinkCalculator from './pages/DcLinkCalculator';
 import SkinDepthCalculator from './pages/SkinDepthCalculator';
+import PowerFactorCalculator from './pages/PowerFactorCalculator';
+import ShortCircuitCurrentCalculator from './pages/ShortCircuitCurrentCalculator';
 import ConversionsCalculator from './pages/ConversionsCalculator';
 import ComingSoonCalculator from './pages/ComingSoonCalculator';
 import AccountPage from './pages/AccountPage';
@@ -148,6 +150,8 @@ function App() {
               <Route path="/harness-designer" element={<HarnessDesigner />} />
               <Route path="/pcb-trace-width" element={<PcbTraceCalculator />} />
               <Route path="/skin-depth" element={<SkinDepthCalculator />} />
+              <Route path="/power-factor" element={<PowerFactorCalculator />} />
+              <Route path="/short-circuit-current" element={<ShortCircuitCurrentCalculator />} />
               <Route path="/conversions" element={<ConversionsCalculator />} />
               <Route path="/guides" element={<GuidesIndex />} />
               <Route path="/guides/ipc-2221" element={<Ipc2221Guide />} />
