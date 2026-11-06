@@ -70,6 +70,21 @@ export function rdsOnAtTempOhm(rdsOn25mOhm: number, rdsOnHotmOhm: number, rdsOnH
   return (rdsOn25mOhm + slope * (tjC - 25)) * 1e-3;
 }
 
+/** Switching energy at junction temperature, same two-point linear fit as Rdson: interpolates
+ *  between the 25°C datasheet value and an optional hot-temperature value. Datasheets publish
+ *  Eon/Eoff/Err at 25°C and at Tvj(max)-ish, and the temperature coefficient is strongly
+ *  device-dependent — Wolfspeed XM3/YM Eon+Eoff is near-flat (CAB450M12XM3 32.9 -> 32.8 mJ,
+ *  25 -> 175°C) while Infineon CoolSiC G2 rises steeply (IMBG120R008M2H 2.09 -> 3.21 mJ, +54%),
+ *  and body-diode Err rises 5-6x on every device measured. Returns the 25°C value unchanged when
+ *  no hot point is published, which reproduces the previous temperature-independent behaviour. */
+export function switchingEnergyAtTempMj(
+  cold25Mj: number, hotMj: number | undefined, hotTempC: number | undefined, tjC: number
+): number {
+  if (hotMj == null || hotTempC == null || hotTempC <= 25) return cold25Mj;
+  const slope = (hotMj - cold25Mj) / (hotTempC - 25);
+  return Math.max(cold25Mj + slope * (tjC - 25), 0);
+}
+
 /** Inverter fundamental output power: 3 phases × (m·Vdc/(2√2)) line-neutral RMS × Irms × |cosφ|. */
 export function inverterOutputPowerW(vdcV: number, modulationIndex: number, phaseCurrentArms: number, cosPhi: number): number {
   return 3 * (modulationIndex * vdcV / (2 * Math.SQRT2)) * phaseCurrentArms * Math.abs(cosPhi);
@@ -99,6 +114,9 @@ export interface DeviceLossResult {
   totalDeviceDieW: number; // conduction + dead-time diode + switching + reverse recovery
   junctionTempC: number;
   rdsOnUsedmOhm: number;
+  eOnUsedMj: number; // switching energies actually used, after the Tj interpolation
+  eOffUsedMj: number;
+  eRrUsedMj: number;
   converged: boolean;
   inverterTotalW: number; // 6 × parallelCount × totalDeviceDieW
   outputPowerW: number;
@@ -110,22 +128,15 @@ export interface DeviceLossResult {
  *  RthExtra is 0 for direct-cooled modules (caseTempC already references the coolant/heatsink
  *  through the device's own RthJC/RthJHS); for a TIM-mounted baseplate it's the added
  *  solder/sinter/pad conduction resistance, and caseTempC is then the heatsink-side temperature.
- *  Switching energies are held temperature-independent (disclosed — datasheet Eon/Eoff
- *  vary only weakly with Tvj for SiC, e.g. CAB450M12XM3: 25.4→24.4 mJ across 25→175 °C). */
+ *  Eon/Eoff/Err are re-interpolated on Tj inside the same loop whenever the device carries
+ *  hot-temperature switching energies; devices with only a 25 °C point keep the previous
+ *  temperature-independent behaviour. */
 export function solveDeviceLosses(device: SicDevicePreset, op: OperatingPoint): DeviceLossResult {
   const n = Math.max(1, Math.round(op.parallelCount));
   const irmsDev = op.phaseCurrentArms / n;
   const ipkDev = Math.SQRT2 * irmsDev;
 
   const gateDriveW = gateDriveLossW(device.qgNc, device.vgsOnV, device.vgsOffV, op.switchingFreqHz);
-  const switchingW = switchingLossW(
-    device.eOnMj + device.eOffMj, op.switchingFreqHz, op.vdcV, ipkDev,
-    device.eTestVdcV, device.eTestCurrentA, op.voltageExponent
-  );
-  const reverseRecoveryW = reverseRecoveryLossW(
-    device.eRrMj, device.qrrUc, op.switchingFreqHz, op.vdcV, ipkDev,
-    device.eTestVdcV, device.eTestCurrentA, op.voltageExponent
-  );
   const deadTimeDiodeW = op.syncRect
     ? deadTimeDiodeLossW(device.vsdV, ipkDev, op.deadTimeNs, op.switchingFreqHz)
     : 0;
@@ -133,6 +144,11 @@ export function solveDeviceLosses(device: SicDevicePreset, op: OperatingPoint): 
   let tj = op.caseTempC + 10;
   let conductionChannelW = 0;
   let conductionDiodeW = 0;
+  let switchingW = 0;
+  let reverseRecoveryW = 0;
+  let eOnUsedMj = device.eOnMj;
+  let eOffUsedMj = device.eOffMj;
+  let eRrUsedMj = device.eRrMj;
   let rdsOnOhm = rdsOnAtTempOhm(device.rdsOn25mOhm, device.rdsOnHotmOhm, device.rdsOnHotTempC, tj);
   let converged = false;
 
@@ -146,6 +162,21 @@ export function solveDeviceLosses(device: SicDevicePreset, op: OperatingPoint): 
 
   for (let i = 0; i < 30; i++) {
     rdsOnOhm = rdsOnAtTempOhm(device.rdsOn25mOhm, device.rdsOnHotmOhm, device.rdsOnHotTempC, tj);
+    eOnUsedMj = switchingEnergyAtTempMj(device.eOnMj, device.eOnHotMj, device.eswHotTempC, tj);
+    eOffUsedMj = switchingEnergyAtTempMj(device.eOffMj, device.eOffHotMj, device.eswHotTempC, tj);
+    // Only interpolate Err when the device actually publishes one — leaving a 0 at 0 preserves
+    // the Qrr·Vdc/4 fallback path inside reverseRecoveryLossW.
+    eRrUsedMj = device.eRrMj > 0
+      ? switchingEnergyAtTempMj(device.eRrMj, device.eRrHotMj, device.eswHotTempC, tj)
+      : 0;
+    switchingW = switchingLossW(
+      eOnUsedMj + eOffUsedMj, op.switchingFreqHz, op.vdcV, ipkDev,
+      device.eTestVdcV, device.eTestCurrentA, op.voltageExponent
+    );
+    reverseRecoveryW = reverseRecoveryLossW(
+      eRrUsedMj, device.qrrUc, op.switchingFreqHz, op.vdcV, ipkDev,
+      device.eTestVdcV, device.eTestCurrentA, op.voltageExponent
+    );
     if (op.syncRect) {
       conductionChannelW = conductionLossSyncRectW(rdsOnOhm, irmsDev);
       conductionDiodeW = 0;
@@ -173,7 +204,8 @@ export function solveDeviceLosses(device: SicDevicePreset, op: OperatingPoint): 
 
   return {
     conductionChannelW, conductionDiodeW, deadTimeDiodeW, switchingW, reverseRecoveryW, gateDriveW,
-    totalDeviceDieW, junctionTempC: tj, rdsOnUsedmOhm: rdsOnOhm * 1e3, converged,
+    totalDeviceDieW, junctionTempC: tj, rdsOnUsedmOhm: rdsOnOhm * 1e3,
+    eOnUsedMj, eOffUsedMj, eRrUsedMj, converged,
     inverterTotalW, outputPowerW, efficiencyPercent,
   };
 }

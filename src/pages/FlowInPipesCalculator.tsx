@@ -288,9 +288,8 @@ export default function FlowInPipesCalculator() {
                 <input autoComplete="off" type="number" step={0.1} value={toDisplay(elevationGainM, unitSystem, UNIT_LENGTH_M)} onChange={(e) => setElevationGainM(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH_M))} />
               </div>
               <div className="field">
-                <label>Pump efficiency (%)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Pump efficiency (%)<InfoTooltip>Small coolant pumps ~30–60%.</InfoTooltip></label>
                 <input autoComplete="off" type="number" min={1} max={100} value={Math.round(pumpEfficiency * 100)} onChange={(e) => setPumpEfficiency(Math.min(1, Math.max(0.01, Number(e.target.value) / 100)))} />
-                <span className="hint">Small coolant pumps ~30–60%.</span>
               </div>
             </div>
           </div>

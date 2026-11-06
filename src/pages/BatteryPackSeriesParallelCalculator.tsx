@@ -4,6 +4,7 @@ import { exportReportToPdf, type ReportSection, type CalcStepData } from '../lib
 import { useBranding } from '../lib/useBranding';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
+import InfoTooltip from '../components/InfoTooltip';
 import SharedCalcBanner from '../components/SharedCalcBanner';
 import SavedCalculations from '../components/SavedCalculations';
 import ExportPdfButton from '../components/ExportPdfButton';
@@ -222,9 +223,11 @@ export default function BatteryPackSeriesParallelCalculator() {
                 <input autoComplete="off" type="number" min={0} value={massG} onChange={(e) => setMassG(Number(e.target.value))} />
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>Max continuous discharge (C-rate)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Max continuous discharge (C-rate)
+                  <InfoTooltip>Max continuous current for one cell = C-rate × capacity (Ah).</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" min={0.1} step={0.1} value={maxContinuousDischargeC} onChange={(e) => setMaxContinuousDischargeC(Number(e.target.value))} />
-                <span className="hint">Max continuous current for one cell = C-rate × capacity (Ah).</span>
               </div>
             </div>
           </div>
@@ -233,19 +236,25 @@ export default function BatteryPackSeriesParallelCalculator() {
             <div className="card-title"><span><span className="step-num">2</span>Pack configuration</span></div>
             <div className="grid grid-2">
               <div className="field">
-                <label>Series count (S)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Series count (S)
+                  <InfoTooltip>Number of cells/groups in series — sets pack voltage.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" min={1} value={seriesCount} onChange={(e) => setSeriesCount(Math.max(1, Number(e.target.value)))} />
-                <span className="hint">Number of cells/groups in series — sets pack voltage.</span>
               </div>
               <div className="field">
-                <label>Parallel count (P)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Parallel count (P)
+                  <InfoTooltip>Number of cells in parallel per series group — sets pack capacity.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" min={1} value={parallelCount} onChange={(e) => setParallelCount(Math.max(1, Number(e.target.value)))} />
-                <span className="hint">Number of cells in parallel per series group — sets pack capacity.</span>
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>Load current (A)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Load current (A)
+                  <InfoTooltip>Used to check voltage sag and discharge current against the pack's continuous rating.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" min={0} value={loadCurrentA} onChange={(e) => setLoadCurrentA(Number(e.target.value))} />
-                <span className="hint">Used to check voltage sag and discharge current against the pack's continuous rating.</span>
               </div>
             </div>
           </div>

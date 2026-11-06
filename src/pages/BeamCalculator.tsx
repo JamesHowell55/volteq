@@ -11,6 +11,7 @@ import {
   type LoadKind,
   type SectionProperties,
 } from '../lib/beamPhysics';
+import InfoTooltip from '../components/InfoTooltip';
 import BeamDiagram from '../components/BeamDiagram';
 import BeamResponseChart from '../components/BeamResponseChart';
 import SharedCalcBanner from '../components/SharedCalcBanner';
@@ -447,9 +448,11 @@ export default function BeamCalculator() {
               )}
 
               <div className="field">
-                <label>Allowable bending stress ({unitLabel(unitSystem, UNIT_STRESS)})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Allowable bending stress ({unitLabel(unitSystem, UNIT_STRESS)})
+                  <InfoTooltip>0 to skip the pass/fail check.</InfoTooltip>
+                </label>
                 <input type="number" min={0} value={toDisplay(allowableStress, unitSystem, UNIT_STRESS)} onChange={(e) => setAllowableStress(fromDisplay(Number(e.target.value), unitSystem, UNIT_STRESS))} />
-                <span className="hint">0 to skip the pass/fail check</span>
               </div>
             </div>
             <p className="note" style={{ marginTop: '0.75rem' }}>

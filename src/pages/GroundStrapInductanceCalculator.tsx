@@ -4,6 +4,7 @@ import { useUnitSystem } from '../lib/UnitSystemContext';
 import { toDisplay, fromDisplay, unitLabel, UNIT_LENGTH } from '../lib/globalUnits';
 import { exportReportToPdf, type ReportSection, type CalcStepData } from '../lib/pdfExport';
 import { useBranding } from '../lib/useBranding';
+import InfoTooltip from '../components/InfoTooltip';
 import PremiumGate from '../components/PremiumGate';
 import ExportPdfButton from '../components/ExportPdfButton';
 import CalculatorActions from '../components/CalculatorActions';
@@ -165,9 +166,11 @@ export default function GroundStrapInductanceCalculator() {
             <div className="card">
               <div className="card-title"><span><span className="step-num">3</span>Compare against a round wire</span></div>
               <div className="field">
-                <label>Equivalent wire diameter ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Equivalent wire diameter ({unitLabel(unitSystem, UNIT_LENGTH)})
+                  <InfoTooltip>Same length as the strap — a round-wire pigtail is the classic (and much worse) alternative.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" min={0.1} step={0.1} value={toDisplay(compareWireDiameterMm, unitSystem, UNIT_LENGTH)} onChange={(e) => setCompareWireDiameterMm(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
-                <span className="hint">Same length as the strap — a round-wire pigtail is the classic (and much worse) alternative.</span>
               </div>
             </div>
           </PremiumGate>

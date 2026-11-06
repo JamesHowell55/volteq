@@ -17,6 +17,7 @@ import { renderChokeCoreProfileSvg } from '../lib/pdfDiagrams';
 import ControllerProfilePicker from '../components/ControllerProfilePicker';
 import type { ControllerProfileParams } from '../lib/controllerProfiles';
 import { usePowertrainPrefill } from '../lib/usePowertrainPrefill';
+import { trackApply, type ProfileApplyResult } from '../lib/profileApply';
 import {
   CORE_PROFILES,
   computeCoreGeometry,
@@ -102,9 +103,11 @@ export default function ChokeSizingCalculator() {
   const [switchingFreqHz, setSwitchingFreqHz] = useState(10000);
   const [motorPolePairs, setMotorPolePairs] = useState(4);
 
-  const applyControllerProfile = (p: ControllerProfileParams) => {
+  const applyControllerProfile = (p: ControllerProfileParams): ProfileApplyResult => {
+    const t = trackApply();
     setVDc(p.maxDcVoltageV);
-    if (p.switchingFrequencyKhz != null) setSwitchingFreqHz(p.switchingFrequencyKhz * 1000);
+    t.set('Switching frequency', p.switchingFrequencyKhz, (v) => setSwitchingFreqHz(v * 1000));
+    return t.result();
   };
   usePowertrainPrefill({ onController: applyControllerProfile });
   const [motorSpeedRpm, setMotorSpeedRpm] = useState(6000);
@@ -588,12 +591,11 @@ export default function ChokeSizingCalculator() {
           <div className="card">
             <div className="card-title"><span><span className="step-num">3</span>Turns &amp; topology</span></div>
             <div className="field">
-              <label>Conductor configuration</label>
+              <label style={{ display: 'flex', alignItems: 'center' }}>Conductor configuration<InfoTooltip>Pass-through fixes N=1 per busbar (a straight busbar through a core is a single-turn winding).</InfoTooltip></label>
               <div className="segmented">
                 <button className={turnsConfig === 'passthrough' ? 'active' : ''} onClick={() => setTurnsConfig('passthrough')}>Busbar pass-through</button>
                 <button className={turnsConfig === 'wound' ? 'active' : ''} onClick={() => setTurnsConfig('wound')}>Wound</button>
               </div>
-              <span className="hint">Pass-through fixes N=1 per busbar (a straight busbar through a core is a single-turn winding).</span>
             </div>
             <div className="grid grid-2" style={{ marginTop: '0.5rem' }}>
               {turnsConfig === 'wound' ? (
@@ -621,9 +623,8 @@ export default function ChokeSizingCalculator() {
                 </>
               )}
               <div className="field">
-                <label>Phase count</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Phase count<InfoTooltip>Informational/report only — CM flux from all phases adds; DM flux uses the per-conductor N above.</InfoTooltip></label>
                 <input autoComplete="off" type="number" min={1} step={1} value={phaseCount} onChange={(e) => setPhaseCount(Number(e.target.value))} />
-                <span className="hint">Informational/report only — CM flux from all phases adds; DM flux uses the per-conductor N above.</span>
               </div>
             </div>
           </div>
@@ -667,9 +668,8 @@ export default function ChokeSizingCalculator() {
                   <input autoComplete="off" type="number" min={0} value={targetRippleA} onChange={(e) => setTargetRippleA(Number(e.target.value))} />
                 </div>
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
-                  <label>Duty cycle</label>
+                  <label style={{ display: 'flex', alignItems: 'center' }}>Duty cycle<InfoTooltip>Worst-case ripple occurs near D≈0.5, regardless of absolute motor speed.</InfoTooltip></label>
                   <input autoComplete="off" type="number" min={0} max={1} step={0.01} value={dutyCycle} onChange={(e) => setDutyCycle(Number(e.target.value))} />
-                  <span className="hint">Worst-case ripple occurs near D≈0.5, regardless of absolute motor speed.</span>
                 </div>
               </div>
             </div>

@@ -364,9 +364,8 @@ export default function BatteryCellCoolingCalculator() {
               </>
             ) : (
               <div className="field">
-                <label>Ambient temperature ({tempUnit})</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Ambient temperature ({tempUnit})<InfoTooltip>Natural convection, solved from the cell's own geometry — no fan/forced-air input.</InfoTooltip></label>
                 <input autoComplete="off" type="number" value={toDisplay(ambientTempC, unitSystem, UNIT_TEMP)} onChange={(e) => setAmbientTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                <span className="hint">Natural convection, solved from the cell's own geometry — no fan/forced-air input.</span>
               </div>
             )}
           </div>

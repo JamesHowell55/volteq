@@ -13,8 +13,8 @@
 // user enter any part's C / ESR / Rth / Irms / dimensions and a reference
 // part number.
 //
-// Also included: KEMET C4AQ (plain, non-miniaturized) at 1,300 VDC — see the
-// C4AQ_ROWS comment below for sourcing.
+// Also included: KEMET C4AQ (plain, non-miniaturized) — see the C4AQ_ROWS
+// comment below for sourcing.
 
 export interface DcLinkCapacitor {
   partNumber: string;
@@ -89,26 +89,112 @@ const C4AQ_M_ROWS: Row[] = [
 
 // KEMET C4AQ (plain, non-"miniaturized") — the standard-line sibling of C4AQ-M
 // above: radial 2/4-lead automotive-grade (AEC-Q200) DC-Link PP film, 500–1,500
-// VDC. Values below cover only the 1,300 VDC class (voltage code "U"), each
-// figure independently confirmed against KEMET's per-part specsheet (Series
-// Selection tree + Table 1 "Ratings & Part Number Reference", datasheet
-// F3114_C4AQ, rev 5/5/2025; individual specsheets pulled from
-// search.kemet.com/component-documentation/download/specsheet/<partNumber>).
+// VDC. Full standard-box range (Table 1, "Ratings & Part Number Reference"),
+// each figure individually transcribed against KEMET's per-part specsheet
+// (Series Selection tree + Table 1, datasheet F3114_C4AQ, rev 5/5/2025;
+// individual specsheets pulled from search.kemet.com/component-documentation/
+// download/specsheet/<partNumber>), covering all six voltage classes (500,
+// 650, 800, 1,100, 1,300, 1,500 VDC — voltage codes L/C/I/Q/U/S). Includes the
+// 1,100 VDC 40 µF and 65 µF parts (C4AQQBW5400A3NJ, C4AQQEW5650A3BJ) used for
+// the generator DC-link bank sizing options.
 // Note: this series' VNDC is referenced at 70 °C hot spot (vs. C4AQ-M's VNDC
-// at 85 °C) — the shared maxOperatingVoltage()/estimateLifeHours() derating
-// curve below is anchored to C4AQ-M and applied as an approximation here too,
-// same simplification already in effect for the C4AE/TDK series further down.
+// at 85 °C), and its life-vs-temperature-vs-voltage curve has a different
+// shape (flat 100,000 h from 70→85 °C if derated to VOP85, then a steep drop
+// to 10,000 h by 105 °C) — see maxOperatingVoltageC4AQ()/estimateLifeHoursC4AQ()
+// below, which are anchored to this series' own datasheet life-expectancy
+// table rather than reusing the C4AQ-M curve. (The C4AE/TDK series further
+// down still use the shared C4AQ-M-anchored curve as an approximation.)
 // [C, V, ESR(mΩ), Irms(A), Rth(°C/W), ESL(nH), T, H, L, part, leads] — leads
-// read off each part's own specsheet ("Lead: Wire Leads" = 2, "4 Wire Leads" = 4),
-// unlike the C4AQ-M block above which assumes 4 uniformly.
+// read off each part's terminal-code letter (U = 2 leads, W = 4 leads) per the
+// datasheet's part-number key, unlike the C4AQ-M block above which assumes 4
+// uniformly.
 const C4AQ_ROWS: [number, number, number, number, number, number, number, number, number, string, number][] = [
-  // 1300 VDC (voltage code "U")
+  // 500 VDC (voltage code "L")
+  [5.6, 500, 12.7, 6.8, 44, 17, 11, 20, 31.5, 'C4AQLBU4560A1WK', 2],
+  [10, 500, 7.8, 9.6, 36, 22, 13, 25, 31.5, 'C4AQLBU5100A1XK', 2],
+  [12.5, 500, 6.7, 11.0, 33, 24, 14, 28, 31.5, 'C4AQLBU5125A1YK', 2],
+  [15, 500, 5.8, 12.6, 29, 25, 19, 29, 31.5, 'C4AQLBU5150A11K', 2],
+  [25, 500, 4.4, 16.0, 23, 28, 22, 37, 31.5, 'C4AQLBU5250A12K', 2],
+  [40, 500, 3.4, 19.6, 20, 12, 20, 40, 42, 'C4AQLBW5400A3FK', 4],
+  [50, 500, 2.8, 22.8, 18, 10, 28, 37, 42, 'C4AQLBW5500A3JK', 4],
+  [70, 500, 2.1, 29.1, 15, 13, 30, 45, 42, 'C4AQLBW5700A3LK', 4],
+  [90, 500, 1.7, 35.1, 13, 14, 35, 50, 42, 'C4AQLBW5900A3OK', 4],
+  [100, 500, 2.9, 27.4, 12, 13, 30, 45, 57.5, 'C4AQLBW6100A3MK', 4],
+  [130, 500, 2.3, 33.3, 10, 15, 35, 50, 57.5, 'C4AQLBW6130A3NK', 4],
+  [170, 500, 1.8, 41.6, 8, 17, 45, 56, 57.5, 'C4AQLEW6170A3AK', 4],
+  [210, 500, 1.6, 47.7, 7, 19, 45, 65, 57.5, 'C4AQLEW6210A3BK', 4],
+  // 650 VDC (voltage code "C")
+  [3.3, 650, 17.0, 5.9, 44, 17, 11, 20, 31.5, 'C4AQCBU4330A1WJ', 2],
+  [5.6, 650, 10.7, 8.2, 36, 22, 13, 25, 31.5, 'C4AQCBU4560A1XJ', 2],
+  [7, 650, 9.0, 9.5, 33, 24, 14, 28, 31.5, 'C4AQCBU4700A1YJ', 2],
+  [10, 650, 6.8, 11.7, 29, 25, 19, 29, 31.5, 'C4AQCBU5100A11J', 2],
+  [15, 650, 5.3, 14.6, 23, 28, 22, 37, 31.5, 'C4AQCBU5150A12J', 2],
+  [20, 650, 5.3, 15.6, 20, 12, 20, 40, 42, 'C4AQCBW5200A3FJ', 4],
+  [30, 650, 3.6, 19.9, 18, 10, 28, 37, 42, 'C4AQCBW5300A3JJ', 4],
+  [40, 650, 2.8, 24.9, 15, 13, 30, 45, 42, 'C4AQCBW5400A3LJ', 4],
+  [50, 650, 2.3, 29.9, 13, 14, 35, 50, 42, 'C4AQCBW5500A3OJ', 4],
+  [55, 650, 4.1, 23.0, 12, 13, 30, 45, 57.5, 'C4AQCBW5550A3MJ', 4],
+  [75, 650, 3.1, 28.7, 10, 15, 35, 50, 57.5, 'C4AQCBW5750A3NJ', 4],
+  [110, 650, 2.2, 37.9, 8, 17, 45, 56, 57.5, 'C4AQCEW6110A3AJ', 4],
+  [130, 650, 1.9, 42.9, 7, 19, 45, 65, 57.5, 'C4AQCEW6130A3BJ', 4],
+  // 800 VDC (voltage code "I")
+  [2.7, 800, 18.3, 5.7, 44, 17, 11, 20, 31.5, 'C4AQIBU4270A1WJ', 2],
+  [4, 800, 12.9, 7.5, 36, 22, 13, 25, 31.5, 'C4AQIBU4400A1XJ', 2],
+  [5, 800, 10.7, 8.7, 33, 24, 14, 28, 31.5, 'C4AQIBU4500A1YJ', 2],
+  [8, 800, 7.3, 11.2, 29, 25, 19, 29, 31.5, 'C4AQIBU4800A11J', 2],
+  [12.5, 800, 5.5, 14.3, 23, 28, 22, 37, 31.5, 'C4AQIBU5125A12J', 2],
+  [15, 800, 6.2, 14.5, 20, 12, 20, 40, 42, 'C4AQIBW5150A3FJ', 4],
+  [20, 800, 4.7, 17.4, 18, 10, 28, 37, 42, 'C4AQIBW5200A3JJ', 4],
+  [30, 800, 3.2, 23.2, 15, 13, 30, 45, 42, 'C4AQIBW5300A3LJ', 4],
+  [40, 800, 2.5, 28.7, 13, 14, 35, 50, 42, 'C4AQIBW5400A3OJ', 4],
+  [45, 800, 4.4, 22.3, 12, 13, 30, 45, 57.5, 'C4AQIBW5450A3MJ', 4],
+  [55, 800, 3.6, 26.4, 10, 15, 35, 50, 57.5, 'C4AQIBW5550A3NJ', 4],
+  [60, 800, 3.3, 27.5, 10, 15, 35, 50, 57.5, 'C4AQIBW5600A3NJ', 4],
+  [85, 800, 2.5, 35.8, 8, 17, 45, 56, 57.5, 'C4AQIEW5850A3AJ', 4],
+  [100, 800, 2.2, 40.6, 7, 19, 45, 65, 57.5, 'C4AQIEW6100A3BJ', 4],
+  // 1,100 VDC (voltage code "Q") — includes the two highlighted DC-link parts
+  [1.5, 1100, 26.3, 4.8, 44, 17, 11, 20, 31.5, 'C4AQQBU4150A1WJ', 2],
+  [2.7, 1100, 15.3, 6.9, 36, 22, 13, 25, 31.5, 'C4AQQBU4270A1XJ', 2],
+  [3.3, 1100, 12.9, 7.9, 33, 24, 14, 28, 31.5, 'C4AQQBU4330A1YJ', 2],
+  [5, 1100, 9.1, 10.1, 29, 25, 19, 29, 31.5, 'C4AQQBU4500A11J', 2],
+  [8, 1100, 6.6, 12.9, 23, 28, 22, 37, 31.5, 'C4AQQBU4800A12J', 2],
+  [12, 1100, 6.3, 14.4, 20, 12, 20, 40, 42, 'C4AQQBW5120A3FJ', 4],
+  [14, 1100, 5.4, 16.3, 18, 10, 28, 37, 42, 'C4AQQBW5140A3JJ', 4],
+  [20, 1100, 3.9, 21.2, 15, 13, 30, 45, 42, 'C4AQQBW5200A3LJ', 4],
+  [25, 1100, 3.2, 25.5, 13, 14, 35, 50, 42, 'C4AQQBW5250A3OJ', 4],
+  [30, 1100, 5.2, 20.4, 12, 13, 30, 45, 57.5, 'C4AQQBW5300A3MJ', 4],
+  [40, 1100, 4.0, 25.2, 10, 15, 35, 50, 57.5, 'C4AQQBW5400A3NJ', 4],
+  [55, 1100, 3.0, 32.5, 8, 17, 45, 56, 57.5, 'C4AQQEW5550A3AJ', 4],
+  [65, 1100, 2.6, 37.0, 7, 19, 45, 65, 57.5, 'C4AQQEW5650A3BJ', 4],
+  // 1,300 VDC (voltage code "U")
   [1, 1300, 33.1, 4.2, 44, 17, 11, 20, 31.5, 'C4AQUBU4100A1WJ', 2],
+  [1.8, 1300, 19.1, 6.2, 36, 22, 13, 25, 31.5, 'C4AQUBU4180A1XJ', 2],
+  [2.2, 1300, 16.0, 7.1, 33, 24, 14, 28, 31.5, 'C4AQUBU4220A1YJ', 2],
+  [3.3, 1300, 11.2, 9.1, 29, 25, 19, 29, 31.5, 'C4AQUBU4330A11J', 2],
   [5, 1300, 8.2, 11.8, 23, 28, 22, 37, 31.5, 'C4AQUBU4500A12J', 2],
   [8, 1300, 7.9, 12.9, 20, 12, 20, 40, 42, 'C4AQUBW4800A3FJ', 4],
+  [10, 1300, 6.3, 15.0, 18, 10, 28, 37, 42, 'C4AQUBW5100A3JJ', 4],
+  [12, 1300, 5.3, 18.1, 15, 13, 30, 45, 42, 'C4AQUBW5120A3LJ', 4],
+  [18, 1300, 3.7, 23.7, 13, 14, 35, 50, 42, 'C4AQUBW5180A3OJ', 4],
   [20, 1300, 6.5, 18.3, 12, 13, 30, 45, 57.5, 'C4AQUBW5200A3MJ', 4],
+  [25, 1300, 5.2, 22.0, 10, 15, 35, 50, 57.5, 'C4AQUBW5250A3NJ', 4],
   [27, 1300, 4.9, 22.8, 10, 15, 35, 50, 57.5, 'C4AQUBW5270A3NJ', 4],
+  [38, 1300, 3.6, 29.8, 8, 17, 45, 56, 57.5, 'C4AQUEW5380A3AJ', 4],
   [45, 1300, 3.1, 34.0, 7, 19, 45, 65, 57.5, 'C4AQUEW5450A3BJ', 4],
+  // 1,500 VDC (voltage code "S")
+  [1, 1500, 29.8, 4.5, 44, 17, 11, 20, 31.5, 'C4AQSBU4100A1WJ', 2],
+  [1.5, 1500, 20.5, 6.0, 36, 22, 13, 25, 31.5, 'C4AQSBU4150A1XJ', 2],
+  [2, 1500, 15.8, 7.1, 33, 24, 14, 28, 31.5, 'C4AQSBU4200A1YJ', 2],
+  [3, 1500, 11.1, 9.1, 29, 25, 19, 29, 31.5, 'C4AQSBU4300A11J', 2],
+  [4.5, 1500, 8.2, 11.8, 23, 28, 22, 37, 31.5, 'C4AQSBU4450A12J', 2],
+  [6, 1500, 9.4, 11.8, 20, 12, 20, 40, 42, 'C4AQSBW4600A3FJ', 4],
+  [8, 1500, 7.1, 14.2, 18, 10, 28, 37, 42, 'C4AQSBW4800A3JJ', 4],
+  [12, 1500, 4.8, 19.0, 15, 13, 30, 45, 42, 'C4AQSBW5120A3LJ', 4],
+  [15, 1500, 3.9, 22.9, 13, 14, 35, 50, 42, 'C4AQSBW5150A3OJ', 4],
+  [17, 1500, 6.9, 17.7, 12, 13, 30, 45, 57.5, 'C4AQSBW5170A3MJ', 4],
+  [22, 1500, 5.4, 21.7, 10, 15, 35, 50, 57.5, 'C4AQSBW5220A3NJ', 4],
+  [32, 1500, 3.8, 28.8, 8, 17, 45, 56, 57.5, 'C4AQSEW5320A3AJ', 4],
+  [40, 1500, 3.1, 33.7, 7, 19, 45, 65, 57.5, 'C4AQSEW5400A3BJ', 4],
 ];
 
 // KEMET C4AE — radial 2/4-lead DC-Link PP film, 450–1,100 VDC (datasheet
@@ -271,4 +357,108 @@ export function estimateLifeHours(hotSpotTempC: number, appliedVoltageVdc: numbe
   const vRatio = ratedVoltageVdc > 0 ? Math.max(appliedVoltageVdc, 1) / ratedVoltageVdc : 1;
   const voltageFactor = Math.pow(Math.min(1 / vRatio, 3), LIFE_VOLTAGE_EXPONENT); // derating below rated adds life; cap the bonus
   return LIFE_BASE_HOURS * tempFactor * voltageFactor;
+}
+
+// ── KEMET C4AQ (plain) — datasheet-anchored life/derating model ────────────
+// F3114_C4AQ (5/5/2025), "Operative Voltage Derating" table and "Life
+// Expectancy" section. VOP85/VOP105 (as a fraction of VNDC) vary by voltage
+// class rather than being one constant, so they're tabulated per class here
+// rather than approximated with a single ratio.
+//   ratio: [VOP85/VNDC, VOP105/VNDC]
+const C4AQ_DERATING_TABLE: Record<number, [number, number]> = {
+  500: [450 / 500, 350 / 500],
+  650: [600 / 650, 450 / 650],
+  800: [700 / 800, 550 / 800],
+  1100: [900 / 1100, 700 / 1100],
+  1300: [1100 / 1300, 850 / 1300],
+  1500: [1200 / 1500, 900 / 1500],
+};
+
+function c4aqDeratingRatios(ratedVoltageVdc: number): [number, number] {
+  const exact = C4AQ_DERATING_TABLE[ratedVoltageVdc];
+  if (exact) return exact;
+  // Fallback for a non-catalog rated voltage: interpolate between the nearest
+  // tabulated classes (clamped to the end classes outside the tabulated range).
+  const classes = Object.keys(C4AQ_DERATING_TABLE).map(Number).sort((a, b) => a - b);
+  if (ratedVoltageVdc <= classes[0]) return C4AQ_DERATING_TABLE[classes[0]];
+  if (ratedVoltageVdc >= classes[classes.length - 1]) return C4AQ_DERATING_TABLE[classes[classes.length - 1]];
+  for (let i = 0; i < classes.length - 1; i++) {
+    const lo = classes[i], hi = classes[i + 1];
+    if (ratedVoltageVdc >= lo && ratedVoltageVdc <= hi) {
+      const f = (ratedVoltageVdc - lo) / (hi - lo);
+      const [lo85, lo105] = C4AQ_DERATING_TABLE[lo];
+      const [hi85, hi105] = C4AQ_DERATING_TABLE[hi];
+      return [lo85 + f * (hi85 - lo85), lo105 + f * (hi105 - lo105)];
+    }
+  }
+  return [0.86, 0.65];
+}
+
+// Life-expectancy anchors from the datasheet: [hot-spot temp °C, V/VNDC ratio, life hours].
+// 100,000 h is FLAT from 70→85 °C provided the voltage is derated to VOP85 (a
+// different voltage at each anchor — not a single voltage held across all points).
+function c4aqLifeAnchors(ratedVoltageVdc: number): [number, number, number][] {
+  const [r85, r105] = c4aqDeratingRatios(ratedVoltageVdc);
+  return [
+    [70, 1.0, 100000],
+    [85, r85, 100000],
+    [105, r105, 10000],
+    [115, 0.7 * r85, 500],
+    [125, 0.6 * r85, 200],
+  ];
+}
+
+// Max permissible DC voltage at a given hot-spot temperature for a C4AQ (plain)
+// part, per its own datasheet-derived voltage-ratio anchors (piecewise linear
+// between them; held flat at VNDC below 70 °C, since the datasheet gives no
+// basis for a bonus below its 70 °C reference point).
+export function maxOperatingVoltageC4AQ(ratedVoltageVdc: number, hotSpotTempC: number): number {
+  const anchors = c4aqLifeAnchors(ratedVoltageVdc);
+  if (hotSpotTempC <= anchors[0][0]) return ratedVoltageVdc * anchors[0][1];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const [tLo, rLo] = anchors[i];
+    const [tHi, rHi] = anchors[i + 1];
+    if (hotSpotTempC <= tHi) {
+      const f = (hotSpotTempC - tLo) / (tHi - tLo);
+      return ratedVoltageVdc * (rLo + f * (rHi - rLo));
+    }
+  }
+  return ratedVoltageVdc * anchors[anchors.length - 1][1]; // beyond 125 °C: hold at the 125 °C ratio
+}
+
+// PP-film life model anchored directly to the C4AQ (plain) datasheet's own
+// life-expectancy anchors (see c4aqLifeAnchors above) — distinct from the
+// C4AQ-M curve above because C4AQ's shape is different (flat life 70→85 °C
+// with voltage derating, then a steep drop to 105 °C, rather than a smooth
+// ~15 °C-halving decline). Between two bracketing temperature anchors,
+// ln(life) and the reference voltage ratio are interpolated linearly in
+// temperature; the applied voltage is then related to that interpolated
+// reference life via the same (V_ref/V_applied)^n acceleration factor
+// (n = LIFE_VOLTAGE_EXPONENT) used for C4AQ-M, so the model reproduces every
+// datasheet anchor exactly when run at that anchor's own voltage and
+// temperature. Below 70 °C or above 125 °C, the nearest end anchor is held.
+export function estimateLifeHoursC4AQ(hotSpotTempC: number, appliedVoltageVdc: number, ratedVoltageVdc: number): number {
+  const anchors = c4aqLifeAnchors(ratedVoltageVdc);
+  let tLo = anchors[0];
+  let tHi = anchors[anchors.length - 1];
+  if (hotSpotTempC <= anchors[0][0]) {
+    tLo = tHi = anchors[0];
+  } else if (hotSpotTempC >= anchors[anchors.length - 1][0]) {
+    tLo = tHi = anchors[anchors.length - 1];
+  } else {
+    for (let i = 0; i < anchors.length - 1; i++) {
+      if (hotSpotTempC >= anchors[i][0] && hotSpotTempC <= anchors[i + 1][0]) {
+        tLo = anchors[i];
+        tHi = anchors[i + 1];
+        break;
+      }
+    }
+  }
+  const f = tLo[0] === tHi[0] ? 0 : (hotSpotTempC - tLo[0]) / (tHi[0] - tLo[0]);
+  const refRatio = tLo[1] + f * (tHi[1] - tLo[1]);
+  const refLife = Math.exp(Math.log(tLo[2]) + f * (Math.log(tHi[2]) - Math.log(tLo[2])));
+  const refVoltage = refRatio * ratedVoltageVdc;
+  const vRatio = refVoltage > 0 ? Math.max(appliedVoltageVdc, 1) / refVoltage : 1;
+  const voltageFactor = Math.pow(Math.min(1 / vRatio, 3), LIFE_VOLTAGE_EXPONENT);
+  return refLife * voltageFactor;
 }

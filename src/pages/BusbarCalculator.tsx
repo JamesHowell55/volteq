@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import InfoTooltip from '../components/InfoTooltip';
 import BusbarCrossSection from '../components/BusbarCrossSection';
 import BusbarLengthProfile from '../components/BusbarLengthProfile';
 import ConductionStackCrossSection from '../components/ConductionStackCrossSection';
@@ -705,7 +706,7 @@ export default function BusbarCalculator() {
 
             {busbarType === 'single' ? (
               <>
-                <div className="card-title" style={{ marginBottom: '0.5rem' }}>
+                <div className="card-title" style={{ marginBottom: '0.35rem' }}>
                   <span style={{ fontWeight: 400 }}>Sections</span>
                   {!isPremium && sections.length >= FREE_SECTION_LIMIT ? (
                     <PremiumGate feature="More than 2 sections">
@@ -715,31 +716,32 @@ export default function BusbarCalculator() {
                     <button className="btn small" onClick={addSection} disabled={sections.length >= maxSections}>+ Add section</button>
                   )}
                 </div>
+                <p className="hint" style={{ margin: '0 0 0.6rem' }}>
+                  Tick a section to apply conduction cooling{coatingThicknessMm > 0 ? '; the second box keeps the coating on that section' : ''}.
+                </p>
+                <div className="busbar-section-row busbar-section-head" aria-hidden="true">
+                  <div />
+                  <div className="col-label">Width ({unitLabel(unitSystem, UNIT_LENGTH)})</div>
+                  <div className="col-label">Length ({unitLabel(unitSystem, UNIT_LENGTH)})</div>
+                  <div className="col-label">{coatingThicknessMm > 0 ? 'Cond. · coat' : 'Cond.'}</div>
+                </div>
                 {sections.map((s, i) => (
-                  <div className="step-row" key={s.id}>
+                  <div className="busbar-section-row" key={s.id}>
                     <div className="bar-index">{i + 1}</div>
                     <div className="field">
-                      <label>Width ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
-                      <input autoComplete="off" type="number" min={0.001} value={toDisplay(s.width, unitSystem, UNIT_LENGTH)} onChange={e => updateSection(s.id, { width: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+                      <input autoComplete="off" type="number" min={0.001} placeholder={`Width (${unitLabel(unitSystem, UNIT_LENGTH)})`} value={toDisplay(s.width, unitSystem, UNIT_LENGTH)} onChange={e => updateSection(s.id, { width: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
                     </div>
                     <div className="field">
-                      <label>Length ({unitLabel(unitSystem, UNIT_LENGTH)})</label>
-                      <input autoComplete="off" type="number" min={0.001} value={toDisplay(s.length, unitSystem, UNIT_LENGTH)} onChange={e => updateSection(s.id, { length: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
+                      <input autoComplete="off" type="number" min={0.001} placeholder={`Length (${unitLabel(unitSystem, UNIT_LENGTH)})`} value={toDisplay(s.length, unitSystem, UNIT_LENGTH)} onChange={e => updateSection(s.id, { length: fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH) })} />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-end' }}>
+                    <div className="sec-checks">
                       <PremiumGate feature="Conduction cooling">
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--text-2)', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                          <input type="checkbox" checked={!!s.coolingEnabled} onChange={e => updateSection(s.id, { coolingEnabled: e.target.checked })} style={{ width: 'auto' }} />
-                          Apply conduction
-                        </label>
+                        <input type="checkbox" aria-label={`Apply conduction cooling to section ${i + 1}`} title="Apply conduction cooling to this section" checked={!!s.coolingEnabled} onChange={e => updateSection(s.id, { coolingEnabled: e.target.checked })} />
                       </PremiumGate>
                       {coatingThicknessMm > 0 && (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--text-2)', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                          <input type="checkbox" checked={s.coatedEnabled ?? true} onChange={e => updateSection(s.id, { coatedEnabled: e.target.checked })} style={{ width: 'auto' }} />
-                          Coat / overmould
-                        </label>
+                        <input type="checkbox" aria-label={`Keep coating / overmould on section ${i + 1}`} title="Include the coating / overmould on this section" checked={s.coatedEnabled ?? true} onChange={e => updateSection(s.id, { coatedEnabled: e.target.checked })} />
                       )}
-                      <button className="btn small danger" onClick={() => removeSection(s.id)} disabled={sections.length === 1}>Remove</button>
+                      <button className="icon-x" onClick={() => removeSection(s.id)} disabled={sections.length === 1} aria-label={`Remove section ${i + 1}`} title="Remove section">✕</button>
                     </div>
                   </div>
                 ))}
@@ -768,9 +770,8 @@ export default function BusbarCalculator() {
                 <div className="grid grid-2">
                   {bulkResistanceMode === 'enter' ? (
                     <div className="field">
-                      <label>Resistance at 20°C (µΩ)</label>
+                      <label style={{ display: 'flex', alignItems: 'center' }}>Resistance at 20°C (µΩ)<InfoTooltip>DC or AC resistance of the whole conductor.</InfoTooltip></label>
                       <input autoComplete="off" type="number" min={0.0001} step={0.1} value={bulkResistance20uOhm} onChange={e => setBulkResistance20uOhm(Number(e.target.value))} />
-                      <span className="hint">DC or AC resistance of the whole conductor.</span>
                     </div>
                   ) : (
                     <div className="field">
@@ -785,9 +786,8 @@ export default function BusbarCalculator() {
                     <span className="hint">Solid metal volume from CAD (mass properties) — sets the thermal mass{bulkResistanceMode === 'fromLength' ? ' and, with the path length, the resistance' : ' and nominal current density'}.</span>
                   </div>
                   <div className="field" style={{ gridColumn: '1 / -1' }}>
-                    <label>Total exposed surface area (mm²)</label>
+                    <label style={{ display: 'flex', alignItems: 'center' }}>Total exposed surface area (mm²)<InfoTooltip>Wetted (air-exposed) surface area from CAD — the single biggest driver of the steady temperature. Exclude overmoulded/buried faces, or model them with the coating below.</InfoTooltip></label>
                     <input autoComplete="off" type="number" min={0.001} step={100} value={bulkSurfaceAreaMm2} onChange={e => setBulkSurfaceAreaMm2(Number(e.target.value))} />
-                    <span className="hint">Wetted (air-exposed) surface area from CAD — the single biggest driver of the steady temperature. Exclude overmoulded/buried faces, or model them with the coating below.</span>
                   </div>
                 </div>
                 <span className="hint" style={{ display: 'block', marginTop: '0.4rem' }}>
@@ -818,7 +818,7 @@ export default function BusbarCalculator() {
                     <input autoComplete="off" type="number" min={0} value={toDisplay(barGap, unitSystem, UNIT_LENGTH)} onChange={e => setBarGap(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH))} />
                   </div>
                   <div className="field">
-                    <label>Bar length ({unitLabel(unitSystem, UNIT_LENGTH_M)}) <span className="hint">— for total loss</span></label>
+                    <label style={{ display: 'flex', alignItems: 'center' }}>Bar length ({unitLabel(unitSystem, UNIT_LENGTH_M)})<InfoTooltip>Used for the total-loss figure.</InfoTooltip></label>
                     <input autoComplete="off" type="number" min={0.001} value={toDisplay(bundleLengthM, unitSystem, UNIT_LENGTH_M)} onChange={e => setBundleLengthM(fromDisplay(Number(e.target.value), unitSystem, UNIT_LENGTH_M))} />
                   </div>
                   <div className="field">
@@ -849,9 +849,8 @@ export default function BusbarCalculator() {
                 </span>
               </div>
               <div className="field">
-                <label>Total mass</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>Total mass<InfoTooltip>Solid conductor mass (density × volume) — excludes coating/overmould, TIM and mounting hardware.</InfoTooltip></label>
                 <input value={`${fmt(totalMassKg, totalMassKg < 1 ? 3 : 2)} kg`} readOnly />
-                <span className="hint">Solid conductor mass (density × volume) — excludes coating/overmould, TIM and mounting hardware.</span>
               </div>
             </div>
           </div>
@@ -934,31 +933,24 @@ export default function BusbarCalculator() {
               {currentType === 'ac' && (
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
                   <label>Frequency (Hz)</label>
-                  <div className="grid grid-2">
-                    <input autoComplete="off" type="number" min={0} value={frequency} onChange={e => setFrequency(Number(e.target.value))} />
-                    <div className="segmented">
-                      <button className={frequency === 50 ? 'active' : ''} onClick={() => setFrequency(50)}>50 Hz grid</button>
-                      <button className={frequency === 60 ? 'active' : ''} onClick={() => setFrequency(60)}>60 Hz grid</button>
-                      <button className="btn small" onClick={() => setShowMotorHelper(v => !v)}>
-                        {showMotorHelper ? 'Hide motor helper' : 'Derive from motor speed ▾'}
-                      </button>
-                    </div>
-                  </div>
+                  <input autoComplete="off" type="number" min={0} value={frequency} onChange={e => setFrequency(Number(e.target.value))} />
+                  <button className="btn small" onClick={() => setShowMotorHelper(v => !v)}>
+                    {showMotorHelper ? 'Hide rpm helper' : 'Derive from rpm ▾'}
+                  </button>
                   <span className="hint">
-                    Motor-drive phase busbars carry the fundamental electrical frequency set by the inverter, not a fixed
-                    grid frequency — use the helper below to derive it from motor speed and pole count.
+                    50 Hz / 60 Hz for a grid busbar; for a motor-drive phase busbar use the fundamental
+                    electrical frequency set by the inverter — derive it from motor speed and pole count.
                   </span>
 
                   {showMotorHelper && (
-                    <div className="grid grid-3" style={{ marginTop: '0.65rem', padding: '0.75rem', background: 'var(--bg-raised)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
+                    <div className="grid grid-3" style={{ gridColumn: '1 / -1', marginTop: '0.65rem', padding: '0.75rem', background: 'var(--bg-raised)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
                       <div className="field">
                         <label>Motor speed (RPM)</label>
                         <input autoComplete="off" type="number" min={0} value={motorRpm} onChange={e => setMotorRpm(Number(e.target.value))} />
                       </div>
                       <div className="field">
-                        <label>Pole pairs</label>
+                        <label style={{ display: 'flex', alignItems: 'center' }}>Pole pairs<InfoTooltip>e.g. an 8-pole motor = 4 pole pairs.</InfoTooltip></label>
                         <input autoComplete="off" type="number" min={1} value={motorPolePairs} onChange={e => setMotorPolePairs(Number(e.target.value))} />
-                        <span className="hint">e.g. an 8-pole motor = 4 pole pairs</span>
                       </div>
                       <div className="field">
                         <label>f = n × p / 60</label>
@@ -988,9 +980,8 @@ export default function BusbarCalculator() {
             {durationMode === 'continuous' && (
               <div className="grid grid-2" style={{ marginTop: '0.85rem' }}>
                 <div className="field">
-                  <label>Max allowable temperature ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                  <label style={{ display: 'flex', alignItems: 'center' }}>Max allowable temperature ({unitLabel(unitSystem, UNIT_TEMP)})<InfoTooltip>IEC 61439-1 default: 35°C ambient + 70K rise = 105°C for bare bars.</InfoTooltip></label>
                   <input autoComplete="off" type="number" value={toDisplay(maxContinuousTempC, unitSystem, UNIT_TEMP)} onChange={e => setMaxContinuousTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                  <span className="hint">IEC 61439-1 default: 35°C ambient + 70K rise = 105°C for bare bars.</span>
                 </div>
               </div>
             )}
@@ -998,18 +989,16 @@ export default function BusbarCalculator() {
             {durationMode === 'fault' && (
               <div className="grid grid-2" style={{ marginTop: '0.85rem' }}>
                 <div className="field">
-                  <label>Fault duration (s)</label>
+                  <label style={{ display: 'flex', alignItems: 'center' }}>Fault duration (s)<InfoTooltip>Adiabatic assumption is valid up to a few seconds.</InfoTooltip></label>
                   <input autoComplete="off" type="number" min={0.01} step={0.1} value={faultDurationS} onChange={e => setFaultDurationS(Number(e.target.value))} />
-                  <span className="hint">Adiabatic assumption is valid up to a few seconds.</span>
                 </div>
                 <div className="field">
                   <label>Initial (pre-fault) temperature ({unitLabel(unitSystem, UNIT_TEMP)})</label>
                   <input autoComplete="off" type="number" value={toDisplay(faultInitialTempC, unitSystem, UNIT_TEMP)} onChange={e => setFaultInitialTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
                 </div>
                 <div className="field">
-                  <label>Max short-time temperature ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                  <label style={{ display: 'flex', alignItems: 'center' }}>Max short-time temperature ({unitLabel(unitSystem, UNIT_TEMP)})<InfoTooltip>Bare-conductor limit: 250°C copper / 200°C aluminium (typical).</InfoTooltip></label>
                   <input autoComplete="off" type="number" value={toDisplay(maxFaultTempC, unitSystem, UNIT_TEMP)} onChange={e => setMaxFaultTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                  <span className="hint">Bare-conductor limit: 250°C copper / 200°C aluminium (typical).</span>
                 </div>
               </div>
             )}
@@ -1099,9 +1088,8 @@ export default function BusbarCalculator() {
                   <input autoComplete="off" type="number" min={0} step={0.1} value={coolantFlowRateLPerMin} onChange={e => setCoolantFlowRateLPerMin(Number(e.target.value))} />
                 </div>
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
-                  <label>Coolant inlet temperature ({unitLabel(unitSystem, UNIT_TEMP)})</label>
+                  <label style={{ display: 'flex', alignItems: 'center' }}>Coolant inlet temperature ({unitLabel(unitSystem, UNIT_TEMP)})<InfoTooltip>Used as the fixed sink temperature for the conduction path — the metallic section's outer face is taken to be directly at this temperature (no separate coolant-film resistance term).</InfoTooltip></label>
                   <input autoComplete="off" type="number" value={toDisplay(coolantInletTempC, unitSystem, UNIT_TEMP)} onChange={e => setCoolantInletTempC(fromDisplay(Number(e.target.value), unitSystem, UNIT_TEMP))} />
-                  <span className="hint">Used as the fixed sink temperature for the conduction path — the metallic section's outer face is taken to be directly at this temperature (no separate coolant-film resistance term).</span>
                 </div>
                 {coolantPresetId === 'custom' && (
                   <>

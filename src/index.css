@@ -20,7 +20,7 @@
   --navbar-text-hover:  var(--accent-on-dark);
   --navbar-border:      #1a1a1d;
 
-  --bg:          #0B0B0B;
+  --bg:          #000000;
   --bg-raised:   #101211;
   --bg-card:     #121412;
   --bg-input:    #171917;
@@ -382,10 +382,12 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 2.5rem 1.75rem 4rem;
+  padding: 1.5rem 1.5rem 3rem;
+  /* render the tool pages at 90% so more of a calculator is visible at once */
+  zoom: 0.9;
 }
 
-.page-header { margin-bottom: 2rem; }
+.page-header { margin-bottom: 1.25rem; }
 
 .eyebrow {
   display: inline-flex;
@@ -434,11 +436,19 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 1.4rem;
+  padding: 1rem 1.1rem;
   box-shadow: var(--shadow-card);
 }
 
-.card + .card { margin-top: 1.25rem; }
+.card + .card { margin-top: 0.75rem; }
+
+/* Dark mode: the calculator boxes (inputs, results, reference/steps) render
+   pure black so they sit flat against the near-black page instead of lifting
+   off it — the 1px border is what delineates them. Scoped to calculator pages
+   via the two-column layout they all use; light mode keeps white cards. */
+:root:not([data-theme="light"]) .page:has(.two-col) .card {
+  background: #000;
+}
 
 .card-title {
   display: flex;
@@ -447,7 +457,7 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   gap: 0.75rem;
   font-size: 0.95rem;
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: 0.7rem;
   color: var(--text);
 }
 
@@ -474,11 +484,11 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
 }
 
 /* ── Grid helpers ───────────────────────────────────────────── */
-.grid { display: grid; gap: 1rem; }
+.grid { display: grid; gap: 0.6rem; }
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
 
 @media (max-width: 900px) {
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; }
@@ -489,7 +499,7 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
 }
 
 /* ── Form controls ──────────────────────────────────────────── */
-.field { display: flex; flex-direction: column; gap: 0.4rem; }
+.field { display: flex; flex-direction: column; gap: 0.3rem; }
 
 .field label {
   font-size: 0.78rem;
@@ -500,6 +510,93 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
 .field .hint {
   font-size: 0.72rem;
   color: var(--text-faint);
+}
+
+/* ── Compact "spreadsheet" input layout ─────────────────────────
+   Calculator input columns (the LEFT side of .two-col) render each field as a
+   single tight row: label on the left, control on the right, hint underneath.
+   The 2/3-up field grids inside those cards collapse to one column so every
+   input stacks directly above the next -- less vertical spread, so a variable
+   change and its effect on the results panel are visible together. Purely
+   presentational; no page markup changed. Reverts to the stacked layout on
+   narrow screens. */
+@media (min-width: 641px) {
+  .two-col > :first-child .grid-2,
+  .two-col > :first-child .grid-3,
+  .two-col > :first-child .grid-4 {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .two-col > :first-child .field {
+    display: grid;
+    /* fixed label column so every control's left edge lines up down the card,
+       regardless of what sits in the control column */
+    grid-template-columns: 42% 1fr;
+    align-items: center;
+    column-gap: 0.85rem;
+    row-gap: 0.15rem;
+    padding: 0.32rem 0;
+  }
+  .two-col > :first-child .field + .field {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  /* control(s) sit in the right column; label in the left; hints span full width */
+  .two-col > :first-child .field > * { grid-column: 2; min-width: 0; }
+  .two-col > :first-child .field > label { grid-column: 1; margin: 0; }
+  .two-col > :first-child .field > .hint,
+  .two-col > :first-child .field > .note { grid-column: 1 / -1; }
+
+  /* segmented toggles and button rows read better left-aligned under nothing */
+  .two-col > :first-child .field > .segmented { justify-self: start; }
+
+  /* a field with an action button next to its input (e.g. "Use suggested")
+     puts the button inline after the control instead of stacking it below.
+     Same 42% label column as every other field so the input still lines up. */
+  .two-col > :first-child .field:has(> input):has(> button),
+  .two-col > :first-child .field:has(> select):has(> button) {
+    grid-template-columns: 42% 1fr auto;
+  }
+  .two-col > :first-child .field:has(> input):has(> button) > button,
+  .two-col > :first-child .field:has(> select):has(> button) > button {
+    grid-column: 3;
+    align-self: center;
+    justify-self: start;
+    white-space: nowrap;
+    margin: 0;
+  }
+
+  /* load / step rows are already horizontal multi-field rows -- keep their
+     fields stacked (label over input) rather than splitting each one */
+  .two-col > :first-child .step-row .field,
+  .two-col > :first-child .bar-row .field,
+  .two-col > :first-child .busbar-section-row .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border-top: none;
+    padding: 0;
+  }
+
+  /* fields with no label (profile pickers, standalone readouts, custom rows)
+     opt out of the two-column grid and keep the plain stacked layout */
+  .two-col > :first-child .field:not(:has(> label)) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    border-top: none;
+  }
+}
+
+/* Keep the results panel in view while editing the inputs beside it.
+   top is in the .page's zoomed units, so it needs to clear the (unzoomed)
+   sticky navbar once scaled by 0.9. */
+@media (min-width: 901px) {
+  .two-col > :last-child {
+    position: sticky;
+    top: 5rem;
+  }
 }
 
 input, select, textarea {
@@ -618,14 +715,14 @@ input[type="number"] { font-family: var(--font-mono); }
 .result-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.85rem;
+  gap: 0.6rem;
 }
 
 .result-tile {
   background: var(--bg-raised);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 0.9rem 1rem;
+  padding: 0.7rem 0.8rem;
 }
 
 .result-tile .label {
@@ -634,12 +731,12 @@ input[type="number"] { font-family: var(--font-mono); }
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 600;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
 }
 
 .result-tile .value {
   font-family: var(--font-mono);
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   font-weight: 700;
 }
 
@@ -680,7 +777,7 @@ input[type="number"] { font-family: var(--font-mono); }
 /* ── Calculation steps ──────────────────────────────────────── */
 .calc-step {
   border-bottom: 1px solid var(--border-subtle);
-  padding: 0.9rem 0;
+  padding: 0.6rem 0;
 }
 .calc-step:last-child { border-bottom: none; }
 
@@ -1316,6 +1413,69 @@ footer.site-footer {
   .step-row { grid-template-columns: 1fr 1fr; }
   .step-row .bar-index { grid-column: 1 / -1; text-align: left; }
   .step-row > button { grid-column: 1 / -1; }
+}
+
+/* ── Busbar lengthwise sections: one compact row per section ──── */
+.busbar-section-row {
+  display: grid;
+  grid-template-columns: 20px 1fr 1fr 5rem;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.busbar-section-row + .busbar-section-row { margin-top: 0.4rem; }
+.busbar-section-row .bar-index {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-align: center;
+}
+.busbar-section-row .field input { width: 100%; }
+
+/* column-header row: same track sizes, no card chrome */
+.busbar-section-head {
+  background: none;
+  border: none;
+  padding: 0 0.6rem;
+  margin-bottom: 0.1rem;
+}
+.busbar-section-head .col-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.busbar-section-head .col-label:last-child { text-align: right; }
+
+.busbar-section-row .sec-checks {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  justify-self: end;
+}
+.busbar-section-row .sec-checks input[type="checkbox"] { width: auto; margin: 0; }
+
+.icon-x {
+  align-self: center;
+  background: none;
+  border: none;
+  color: var(--neg);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm);
+}
+.icon-x:hover:not(:disabled) { background: color-mix(in srgb, var(--neg) 16%, transparent); }
+.icon-x:disabled { opacity: 0.3; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .busbar-section-head { display: none; }
+  .busbar-section-row { grid-template-columns: 20px 1fr 1fr; }
+  .busbar-section-row .sec-checks { grid-column: 2 / -1; }
+  .busbar-section-row .field input { width: 100%; }
 }
 
 /* ── Theme controls popover ─────────────────────────────────── */

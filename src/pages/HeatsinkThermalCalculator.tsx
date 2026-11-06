@@ -310,9 +310,11 @@ export default function HeatsinkThermalCalculator() {
 
             {mode === 'direct' ? (
               <div className="field" style={{ marginTop: '0.75rem' }}>
-                <label>Sink-to-ambient, Rsa (K/W)</label>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  Sink-to-ambient, Rsa (K/W)
+                  <InfoTooltip>From a heatsink datasheet, or 0 to only see the required budget.</InfoTooltip>
+                </label>
                 <input autoComplete="off" type="number" min={0} step={0.01} value={actualRthSaKPerW} onChange={(e) => setActualRthSaKPerW(Number(e.target.value))} />
-                <span className="hint">From a heatsink datasheet, or 0 to only see the required budget.</span>
               </div>
             ) : (
               <div style={{ marginTop: '0.75rem' }}>
