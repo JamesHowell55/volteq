@@ -16,7 +16,7 @@ import FlowSweepChart from '../components/FlowSweepChart';
 import { useSavedCalculations } from '../lib/useSavedCalculations';
 import { useShareableLink } from '../lib/useShareableLink';
 import {
-  solvePinColdPlate, sweepFlow, fluidProps, fluidTempWindowC, glycolFreezePointC,
+  solvePinColdPlate, sweepFlow, sweepFlowRates, fluidProps, fluidTempWindowC, glycolFreezePointC,
   FLUID_KIND_LABELS, type FluidKind, type FluidChoice,
 } from '../lib/pinFinColdPlatePhysics';
 
@@ -106,7 +106,7 @@ export default function PinFinColdPlateCalculator() {
   }), [fluidChoice, diaMm, heightMm, pitchTMm, pitchLMm, rows, across, pinK, tip, flowLpm, heatLoadW, inletTempC, portDiaMm, effCal, baseThicknessMm, effBase, baseK]);
 
   const result = useMemo(() => solvePinColdPlate(input), [input]);
-  const sweep = useMemo(() => sweepFlow(input, Math.max(flowLpm * 2, 1), 24), [input, flowLpm]);
+  const sweep = useMemo(() => sweepFlow(input, sweepFlowRates(flowLpm, 5, 1)), [input, flowLpm]);
   const [tLo, tHi] = fluidTempWindowC(fluidChoice);
 
   // Fluid card property preview at the inlet temperature
@@ -451,7 +451,7 @@ export default function PinFinColdPlateCalculator() {
 
           <div className="card">
             <div className="card-title">Pressure drop vs flow rate</div>
-            <p className="hint" style={{ marginTop: 0 }}>Total pressure drop (array + ports) from 0 to {fmt(Math.max(flowLpm * 2, 1), 1)} L/min for this geometry and fluid (ring = current flow: {fmt(result.totalDropPa / 100, 1)} mbar).</p>
+            <p className="hint" style={{ marginTop: 0 }}>Total pressure drop (array + ports) at the design flow ±5 L/min in 1 L/min steps ({fmt(sweep[0]?.flowLpm ?? 0, 1)}–{fmt(sweep[sweep.length - 1]?.flowLpm ?? 0, 1)} L/min) for this geometry and fluid (ring = design flow: {fmt(result.totalDropPa / 100, 1)} mbar).</p>
             <FlowSweepChart xs={sweep.map((p) => p.flowLpm)} ys={sweep.map((p) => p.dropKPa * 10)} color="var(--accent)" xLabel="Flow (L/min)" yLabel="ΔP" yUnit="mbar" decimals={1}
               marker={{ x: flowLpm, y: result.totalDropPa / 100 }} />
             <PremiumGate feature="Thermal-resistance sweep">

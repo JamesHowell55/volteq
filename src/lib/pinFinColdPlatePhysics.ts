@@ -441,13 +441,21 @@ export function solvePinColdPlate(inp: PinColdPlateInput): PinColdPlateResult {
 
 export interface SweepPoint { flowLpm: number; dropKPa: number; rKPerW: number; reynolds: number }
 
-/** ΔP and thermal resistance vs flow rate for the same geometry/fluid. */
-export function sweepFlow(inp: PinColdPlateInput, maxFlowLpm: number, steps = 24): SweepPoint[] {
-  const pts: SweepPoint[] = [];
-  for (let i = 1; i <= steps; i++) {
-    const f = (maxFlowLpm * i) / steps;
-    const r = solvePinColdPlate({ ...inp, flowLpm: f });
-    pts.push({ flowLpm: f, dropKPa: r.totalDropPa / 1000, rKPerW: r.rTotalKPerW, reynolds: r.reynolds });
+/** Flow rates for a sweep: the design flow ± spanLpm in stepLpm increments (positive flows only). */
+export function sweepFlowRates(centreLpm: number, spanLpm = 5, stepLpm = 1): number[] {
+  const n = Math.round(spanLpm / stepLpm);
+  const flows: number[] = [];
+  for (let i = -n; i <= n; i++) {
+    const f = Math.round((centreLpm + i * stepLpm) * 1000) / 1000;
+    if (f > 0) flows.push(f);
   }
-  return pts;
+  return flows;
+}
+
+/** ΔP and thermal resistance at each flow rate for the same geometry/fluid. */
+export function sweepFlow(inp: PinColdPlateInput, flowsLpm: number[]): SweepPoint[] {
+  return flowsLpm.map((f) => {
+    const r = solvePinColdPlate({ ...inp, flowLpm: f });
+    return { flowLpm: f, dropKPa: r.totalDropPa / 1000, rKPerW: r.rTotalKPerW, reynolds: r.reynolds };
+  });
 }
