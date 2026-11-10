@@ -26,6 +26,7 @@ import GroundStrapInductanceCalculator from './pages/GroundStrapInductanceCalcul
 import HeatsinkThermalCalculator from './pages/HeatsinkThermalCalculator';
 import HeatExchangerSizingCalculator from './pages/HeatExchangerSizingCalculator';
 import FlowInPipesCalculator from './pages/FlowInPipesCalculator';
+import PinFinColdPlateCalculator from './pages/PinFinColdPlateCalculator';
 import ColdPlateCalculator from './pages/ColdPlateCalculator';
 import BundleDiameterCalculator from './pages/BundleDiameterCalculator';
 import HarnessDesigner from './pages/HarnessDesigner';
@@ -145,6 +146,7 @@ function App() {
               <Route path="/heat-exchanger-sizing" element={<HeatExchangerSizingCalculator />} />
               <Route path="/flow-in-pipes" element={<FlowInPipesCalculator />} />
               <Route path="/cold-plate" element={<ColdPlateCalculator />} />
+              <Route path="/pin-fin-cold-plate" element={<PinFinColdPlateCalculator />} />
               <Route path="/dc-link" element={<DcLinkCalculator />} />
               <Route path="/harness-bundle-diameter" element={<BundleDiameterCalculator />} />
               <Route path="/harness-designer" element={<HarnessDesigner />} />
