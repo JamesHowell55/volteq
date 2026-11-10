@@ -408,7 +408,7 @@ export default function PinFinColdPlateCalculator() {
               <div className="result-tile">
                 <div className="label">Total pressure drop</div>
                 <div className="value">{fmt(kPa(result.totalDropPa), 2)}<span className="unit">kPa</span></div>
-                <div className="hint">array {fmt(kPa(result.arrayDropPa), 2)} + ports {fmt(kPa(result.portDropPa), 2)} · {fmt(result.totalDropPa / 1e5, 3)} bar</div>
+                <div className="hint">array {fmt(kPa(result.arrayDropPa), 2)} + ports {fmt(kPa(result.portDropPa), 2)} · {fmt(result.totalDropPa / 100, 0)} mbar</div>
               </div>
               <div className="result-tile">
                 <div className="label">Base temperature</div>
@@ -450,15 +450,13 @@ export default function PinFinColdPlateCalculator() {
           </div>
 
           <div className="card">
-            <div className="card-title">Flow-rate sweep</div>
-            <PremiumGate feature="Flow-rate sweep">
-              <>
-                <p className="hint" style={{ marginTop: 0 }}>Pressure drop and thermal resistance from 0 to {fmt(Math.max(flowLpm * 2, 1), 1)} L/min for this geometry and fluid (ring = current flow).</p>
-                <FlowSweepChart xs={sweep.map((p) => p.flowLpm)} ys={sweep.map((p) => p.dropKPa)} color="var(--accent)" xLabel="Flow (L/min)" yLabel="ΔP" yUnit="kPa"
-                  marker={{ x: flowLpm, y: kPa(result.totalDropPa) }} />
-                <FlowSweepChart xs={sweep.map((p) => p.flowLpm)} ys={sweep.map((p) => p.rKPerW)} color="#a855f7" xLabel="Flow (L/min)" yLabel="R_th" yUnit="K/W" decimals={4}
-                  marker={{ x: flowLpm, y: result.rTotalKPerW }} />
-              </>
+            <div className="card-title">Pressure drop vs flow rate</div>
+            <p className="hint" style={{ marginTop: 0 }}>Total pressure drop (array + ports) from 0 to {fmt(Math.max(flowLpm * 2, 1), 1)} L/min for this geometry and fluid (ring = current flow: {fmt(result.totalDropPa / 100, 1)} mbar).</p>
+            <FlowSweepChart xs={sweep.map((p) => p.flowLpm)} ys={sweep.map((p) => p.dropKPa * 10)} color="var(--accent)" xLabel="Flow (L/min)" yLabel="ΔP" yUnit="mbar" decimals={1}
+              marker={{ x: flowLpm, y: result.totalDropPa / 100 }} />
+            <PremiumGate feature="Thermal-resistance sweep">
+              <FlowSweepChart xs={sweep.map((p) => p.flowLpm)} ys={sweep.map((p) => p.rKPerW)} color="#a855f7" xLabel="Flow (L/min)" yLabel="R_th" yUnit="K/W" decimals={4}
+                marker={{ x: flowLpm, y: result.rTotalKPerW }} />
             </PremiumGate>
           </div>
         </div>
