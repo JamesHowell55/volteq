@@ -134,12 +134,28 @@ create policy "delete own component profiles" on component_profiles
 grant select, insert, update, delete on table public.component_profiles to authenticated;
 
 -- Keep-alive probe for the GitHub Action (.github/workflows/supabase-keepalive.yml).
--- Free-tier projects pause after 7 days without database activity, and a request that
--- is rejected for permissions (401/42501) does NOT count. This runs a real query against
--- a real table as the function owner, and returns only 0/1 so it exposes no data.
+-- Free-tier projects pause after 7 days without "sufficient" database activity. Neither
+-- permission-rejected requests nor a bare read-only SELECT counted (paused 2026-10-20 and
+-- again 2026-11-19), so this WRITES: it inserts a row into keepalive_log and trims the table
+-- to the last 50 rows. Returns only the row count so it exposes no data.
+create table if not exists public.keepalive_log (
+  id bigint generated always as identity primary key,
+  pinged_at timestamptz not null default now()
+);
+alter table public.keepalive_log enable row level security; -- no policies: unreachable via the API
+
 create or replace function public.keepalive() returns int
-language sql security definer set search_path = public as
-$$ select count(*)::int from (select 1 from public.saved_calculations limit 1) t $$;
+language plpgsql security definer set search_path = public as
+$$
+declare n int;
+begin
+  insert into public.keepalive_log default values;
+  delete from public.keepalive_log
+    where id <= (select max(id) - 50 from public.keepalive_log);
+  select count(*)::int into n from public.keepalive_log;
+  return n;
+end
+$$;
 
 revoke all on function public.keepalive() from public;
 grant execute on function public.keepalive() to anon;

@@ -4,15 +4,15 @@ name: Supabase keep-alive
 # (Supabase's own criterion: "no API requests, no database queries, and no Edge
 # Function invocations" — dashboard visits and non-DB-touching pings don't count).
 # This job makes a lightweight authenticated REST (PostgREST) request against a
-# real table every 2 days so the project keeps counting as active. It also runs
+# real table every day so the project keeps counting as active. It also runs
 # on demand from the Actions tab (workflow_dispatch).
 #
-# IMPORTANT: two earlier versions did NOT keep the project awake, though both ran
-# green: /auth/v1/health never touches Postgres, and an RLS-rejected request
+# IMPORTANT: three versions did NOT keep the project awake, though all ran
+# green (the third was a read-only SELECT via RPC; paused again 2026-11-19): /auth/v1/health never touches Postgres, and an RLS-rejected request
 # (HTTP 401, code 42501) is also not counted as activity — Supabase paused the project
 # on 2026-10-20 despite weeks of green runs. This now calls public.keepalive(), an
-# anon-executable SECURITY DEFINER function (see supabase/migration.sql) that runs a
-# real query against saved_calculations and returns 0/1. Only a plain HTTP 200 is
+# anon-executable SECURITY DEFINER function (see supabase/migration.sql) that INSERTs a
+# row into keepalive_log (writes, not just reads) and returns the row count. Only a plain HTTP 200 is
 # accepted; anything else fails the job (GitHub emails you about failed scheduled runs).
 #
 # The values below are PUBLIC: the project URL appears in every request and the
@@ -26,7 +26,7 @@ name: Supabase keep-alive
 
 on:
   schedule:
-    - cron: '23 5 */2 * *' # every 2 days at 05:23 UTC — comfortably inside the 7-day window
+    - cron: '23 5 * * *' # daily at 05:23 UTC — well inside the 7-day window
   workflow_dispatch: {}
 
 permissions:
